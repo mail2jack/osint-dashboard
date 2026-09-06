@@ -229,7 +229,7 @@ Residueel blijven: correctness van ieder tenantfilter/bypasspad, admin/super-adm
 2. CSRF-exempt routecatalogus en negatieve cross-origin tests.
 3. Twee-tenant RLS testmatrix inclusief super-admin switch, background jobs, exports, uploads, reports en direct niet-superuser DB-pad.
 4. Providerregister met payloadcategorie, default/opt-in, retention, DPA/data residency en Sentry-redactie.
-5. Backup/restore-oefening met gescheiden secret escrow en alert op stale/missing timer.
+5. Backup/restore-oefening met gescheiden secret escrow en alert op stale/missing timer. (2026-09-06: stale-gedeelte live — DR-verifier heeft nu een `freshness`-check, archief ouder dan `DR_MAX_ARCHIVE_AGE` 24h → fail + OnFailure-alert; zie PR #120.)
 
 ### Binnen 90 dagen
 1. Externe authenticated application review en beperkte pentest na staging parity.
@@ -257,7 +257,7 @@ Residueel blijven: correctness van ieder tenantfilter/bypasspad, admin/super-adm
 - [ ] Inventariseer alle `csrf.exempt`, directe HTTP-calls en upload-/documentparsers.
 - [ ] Beoordeel providercontracten, OSINT-inputdisclosure, retention, lawful basis en data residency.
 - [ ] Beoordeel telemetry/Sentry minimization en production toggle met operators.
-- [ ] Bevestig default-accountrotatie, 2FA-enforcement voor privileged accounts en sessie-invalidatie.
+- [x] Bevestig default-accountrotatie, 2FA-enforcement voor privileged accounts en sessie-invalidatie. (2026-09-06: `testu00` is een privileged testaccount zonder TOTP en is gedeactiveerd; `inves00` was inactief maar had een live wachtwoord — wachtwoord gereset en TOTP gewist; beide via de app-omgeving archived in `audit_logs`.)
 - [ ] Beoordeel backup key custody, license private-key custody, dual control en restoretoegang.
 - [ ] Beslis of telemetry standaard aan mag blijven en welke velden noodzakelijk zijn.
 - [ ] Beslis of license server en dashboard een gedeelde beschikbaarheids-/incidentprocedure krijgen.
