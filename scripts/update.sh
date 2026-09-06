@@ -113,19 +113,29 @@ DEPLOYED_SHA=$(sudo -u osint git rev-parse HEAD)
 echo "$DEPLOYED_SHA" > "$DIR/.deployed_sha"
 echo "Gedeployed commit: $DEPLOYED_SHA"
 
-# --- 3/7 Dependencies ---
-echo "=== 3/7 Afhankelijkheden installeren ==="
+# --- 3/8 Systemd-units synchroniseren (deploy -> /etc/systemd/system) ---
+# Publiceert release-tracked units zodat live definities en repo in lockstep
+# blijven. Enable/arm gebeurt bewust niet hier (zie scripts/sync_units.sh).
+echo "=== 3/8 Systemd-units synchroniseren ==="
+if [ -x "$DIR/scripts/sync_units.sh" ]; then
+    sudo bash "$DIR/scripts/sync_units.sh" || fail "unit-sync mislukt"
+else
+    echo "WARNING: scripts/sync_units.sh niet gevonden — units niet gesynchroniseerd"
+fi
+
+# --- 4/8 Dependencies ---
+echo "=== 4/8 Afhankelijkheden installeren ==="
 sudo -u osint "$VENV_PYTHON" -m pip install -r "$DIR/requirements.txt" --quiet \
     || fail "pip install mislukt"
 
-# --- 4/7 Frontend build ---
-echo "=== 4/7 Frontend builden ==="
+# --- 5/8 Frontend build ---
+echo "=== 5/8 Frontend builden ==="
 sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     node "$DIR/build.mjs" \
     || fail "frontend build mislukt"
 
-# --- 5/7 Database migrations ---
-echo "=== 5/7 Migraties draaien ==="
+# --- 6/8 Database migrations ---
+echo "=== 6/8 Migraties draaien ==="
 if [ -n "$DB_URL" ]; then
     sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic upgrade head \
         || fail "alembic upgrade mislukt"
@@ -135,12 +145,12 @@ else
         || fail "alembic upgrade mislukt"
 fi
 
-# --- 6/7 Restart ---
-echo "=== 6/7 Service herstarten ==="
+# --- 7/8 Restart ---
+echo "=== 7/8 Service herstarten ==="
 sudo systemctl restart osint-dashboard || fail "restart mislukt"
 
-# --- 7/7 Health check na restart ---
-echo "=== 7/7 Health check ==="
+# --- 8/8 Health check na restart ---
+echo "=== 8/8 Health check ==="
 for i in 1 2 3 4 5; do
     if curl -fsS http://localhost:5000/api/v1/health >/dev/null 2>&1; then
         echo "OK: /api/v1/health bereikbaar"

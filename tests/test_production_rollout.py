@@ -58,3 +58,24 @@ def test_rollout_report_schema(tmp_path):
     )
     assert result.returncode == 0
     assert '"status": "pass"' in output.read_text(encoding="utf-8")
+
+
+def test_sync_units_script_is_syntax_safe_and_does_not_enable():
+    script = ROOT / "scripts/sync_units.sh"
+    result = subprocess.run(["bash", "-n", str(script)], check=False)
+    assert result.returncode == 0
+    source = script.read_text(encoding="utf-8")
+    assert "/etc/systemd/system" in source
+    assert 'install -o root -g root -m 0644' in source
+    assert "systemctl daemon-reload" in source
+    assert "systemctl enable" not in source
+    assert "systemctl start" not in source
+    assert "osint-dashboard.service" in source
+
+
+def test_update_script_syncs_units_before_deps():
+    source = (ROOT / "scripts/update.sh").read_text(encoding="utf-8")
+    sync_marker = source.index("scripts/sync_units.sh")
+    deps_marker = source.index("Afhankelijkheden installeren")
+    assert sync_marker < deps_marker
+    assert "daemon-reload" in source or "sync_units.sh" in source

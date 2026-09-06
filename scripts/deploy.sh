@@ -51,7 +51,7 @@ if [ "$DRY" -eq 1 ]; then
     echo "Deploydoel: ${PIN:-origin/master}"
     sudo bash "$APP_DIR/scripts/preflight.sh"
     echo ""
-    echo "update.sh zou vervolgens draaien: backup, pull, deps, build, migrate, restart, health."
+    echo "update.sh zou vervolgens draaien: backup, pull, units-sync, deps, build, migrate, restart, health."
     echo "=== DRY RUN VOLTOOID ==="
     exit 0
 fi
@@ -75,7 +75,7 @@ else
     echo "=== 2/4 origin/master deployen ==="
 fi
 
-echo "=== 3/4 update.sh (backup, deps, build, migrate, restart, health) ==="
+echo "=== 3/4 update.sh (backup, pull, units-sync, deps, build, migrate, restart, health) ==="
 sudo env DEPLOY_PIN="$PIN" bash "$APP_DIR/scripts/update.sh"
 
 echo "=== 4/4 Readiness na restart ==="
