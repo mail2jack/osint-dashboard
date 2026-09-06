@@ -173,12 +173,13 @@ def test_light_health_monitor_uses_incremental_journal_cursor():
 
 def test_health_monitor_probes_redis_without_leaking_password():
     source = (ROOT / "scripts/monitor_health_light.sh").read_text(encoding="utf-8")
-    assert "redis-state" in source
+    assert "redis_state" in source
     assert ",redis\\n" in source or ",redis\n" in source
     assert "REDISCLI_AUTH=" in source
     assert "redis-cli -h 127.0.0.1 -p 6379" in source
+    assert '== "PONG"' in source, "probe moet op output testen, niet op exit-code (redis-cli v8 geeft ook bij WRONGPASS exit 0)"
     assert "ping FAIL" in source
-    assert "dr_alert_email.py" in source
+    assert "venv/bin/python3" in source, "dr_alert_email.py heeft geen exec-bit; aanroepen via venv-python"
     assert "redis_url" not in source, "probe mag geen REDIS_URL-met-wachtwoord loggen"
 
 

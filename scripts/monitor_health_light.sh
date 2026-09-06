@@ -57,8 +57,9 @@ while :; do
     redis_state="-"
     if [[ -r "$REDIS_PASS_FILE" ]] && command -v redis-cli >/dev/null 2>&1; then
         redis_auth=$(cat "$REDIS_PASS_FILE")
-        if REDISCLI_AUTH="$redis_auth" timeout 3 redis-cli -h 127.0.0.1 -p 6379 \
-            --no-auth-warning ping >/dev/null 2>&1; then
+        pong=$(REDISCLI_AUTH="$redis_auth" timeout 3 redis-cli -h 127.0.0.1 -p 6379 \
+            --no-auth-warning ping 2>/dev/null || true)
+        if [[ "$pong" == "PONG" ]]; then
             redis_state="ok"
         else
             redis_state="FAIL"
@@ -66,7 +67,7 @@ while :; do
         prev_redis=$(cat "$redis_state_file" 2>/dev/null || true)
         if [[ "$redis_state" == "FAIL" && "$prev_redis" != "FAIL" ]]; then
             logger -p user.alert "osint-health-monitor: Redis ping FAIL"
-            "$DIR/scripts/dr_alert_email.py" --dir "$DIR" \
+            "$DIR/venv/bin/python3" "$DIR/scripts/dr_alert_email.py" --dir "$DIR" \
                 --subject "OSINT Redis ping FAIL" \
                 --message "Redis op joost.iveras.com reageert niet op ping (Auth uit /etc/redis/redis-pass). Health-monitor 5-min-tick." \
                 --to "$REDIS_ALERT_TO" >/dev/null 2>&1 || true
