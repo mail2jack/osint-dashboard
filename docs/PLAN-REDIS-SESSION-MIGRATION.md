@@ -1,6 +1,6 @@
 # Plan: Session-backend migreren van filesystem naar Redis (ADR-0004 optie C)
 
-**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); Fase A (code) in PR #117, Fase B (Redis-install VPS) gereed, Fase C (verificatie + monitor-probe) gereed; Fase D (switch) open — geblokkeerd op merge+deploy van PR #117.  
+**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); Fase A (code, PR #117 `bb51cfa`) en B (Redis-install VPS) en C (verificatie + monitor-probe) en D (switch) gereed op 2026-09-06. Restant: menselijke browser-E2E en eventuele opschoning van oude filesystem-sessies.  
 **Doel:** filesystem-sessie-races definitief elimineren en schaalbaarheid naar
 meer workers ondersteunen, zonder bestaande functionaliteit te breken  
 **Systeem:** Iveras OSINT Dashboard (VPS `joost.iveras.com`, Ubuntu)
@@ -141,6 +141,17 @@ sessies omzetten (= extra scope); in-vivo migratie kan in een latere fase als
     Probe zelf (niet de switch) is nu actief. *(Fase C voltooid op 2026-09-06)*
 4. **Fase D (switch, onderhoudsvenster)**: `REDIS_URL` in `.env`,
    app herstart, sessie-login E2E, admin-sessie-UI check, OSINT-cache-check.
+   **GEREED (2026-09-06, onderhoudsvenster)**: `REDIS_URL` uit
+   `/etc/redis/redis-url` → `.env` (mode 600), app herstart, log bevestigt
+   `Session backend: Redis`. Verificatie: `GET /auth/login` zet HttpOnly
+   sessie-cookie, Redis-keyspace `session:*` groeit naar 2 (db 0, dbsize 2),
+   sessie-TTL ≈ 8 uur (`PERMANENT_SESSION_LIFETIME`), `rq:*` = 0 (geen dode
+   queue; `_use_rq` blijft uit want `RQ_URL` leeg). `flask_session/` bevat na
+   de switch géén sessies meer — de kleine pickle-bestandjes zijn de cachelib-
+   filesystemcache (`_cached_count` e.d.), bedoeld. Voormalige filesystem-
+   sessies (4791 bestanden) blijven voor als-het-nodig ligt op disk; handmatig
+   opschonen na bevestigd dagelijks gebruik. Menselijke E2E (browser-login als
+   admin, admin-sessie-UI, OSINT-cache) is de resterende gebruikerstap.
 5. **Rollback** indien nodig: `REDIS_URL` unsetten, app herstart →
    filesystem route (sessies van de switch zijn weg; re-login).
 
