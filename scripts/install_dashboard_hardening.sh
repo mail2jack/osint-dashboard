@@ -103,7 +103,8 @@ else
 fi
 
 echo "=== systemd-analyze verify ==="
-if ! systemd-analyze verify /etc/systemd/system/osint-dashboard.service "$DST"; then
+# Verify the main unit: systemd-analyze loads the unit plus its drop-ins.
+if ! systemd-analyze verify /etc/systemd/system/osint-dashboard.service; then
     echo "FAIL: unitverificatie mislukt — hardening terugdraaien."
     if [ "${INSTALLED:-0}" -eq 1 ]; then
         rm -f "$DST"
