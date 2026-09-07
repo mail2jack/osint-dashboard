@@ -280,20 +280,19 @@ def _run(args) -> int:
 
             finally:
                 try:
-                    # Detach the ORM instances before bulk-DELETE cleanup so
-                    # SQLAlchemy does not treat their rows as "deleted while
-                    # still in the identity map" on the final commit.
+                    # Read the plain IDs while the instances are still bound,
+                    # then expunge; cleanup afterwards only touches primitives
+                    # so the final commit never trips on a detached instance.
+                    ids = {
+                        "buur_id": buur.id if buur else None,
+                        "buur_case_id": buur_case.id if buur_case else None,
+                        "buur_client_id": buur_client.id if buur_client else None,
+                        "case_id": case.id if case else None,
+                        "inv_id": inv.id if inv else None,
+                        "client_id": client.id if client else None,
+                    }
                     db.session.expunge_all()
-                    _cleanup(
-                        db,
-                        db.session,
-                        buur,
-                        buur_case,
-                        buur_client,
-                        case,
-                        inv,
-                        client,
-                    )
+                    _cleanup(db, db.session, **ids)
                     db.session.commit()
                     notes.append(
                         "corridor objects removed; ACME counters kept"
@@ -372,50 +371,42 @@ _CASE_CHILD_TABLES = (
 
 
 def _delete_bulk(session, table, column, value) -> None:
-    """Best-effort bulk DELETE for a corridor-owned row (skip if no such column)."""
-    try:
-        session.execute(
-            text(f"DELETE FROM {table} WHERE {column} = :value"),
-            {"value": value},
-        )
-    except Exception:
-        session.rollback()
+    session.execute(
+        text(f"DELETE FROM {table} WHERE {column} = :value"),
+        {"value": value},
+    )
 
 
-def _cleanup(db, session, buur, buur_case, buur_client, case, inv, client) -> None:
+def _cleanup(db, session, *, buur_id, buur_case_id, buur_client_id, case_id, inv_id, client_id) -> None:
     """Delete corridor-created rows under a full-bypass context.
 
-    Children-first SQL order (bulk, no ORM cascade) so parent deletes cannot
-    trip FK constraints or trigger loads; the neighbor-tenant counter rows
-    referencing ``tenants.id`` are removed before the tenant itself. The ACME
-    counter rows are left in place — numbers, once allocated, stay allocated
-    (ADR-0002 immutability).
+    Works on plain IDs only (no ORM instance attribute access) so it stays
+    correct after ``expunge_all()``. Children-first SQL order, no per-query
+    try/except that would poison the transaction.
     """
     set_tenant_context(db, None, bypass_rls=True)
 
-    buur_id = buur.id if buur is not None else None
     if buur_id:
-        if buur_case is not None:
+        if buur_case_id:
             for tbl, col in _CASE_CHILD_TABLES:
-                _delete_bulk(session, tbl, col, buur_case.id)
-            _delete_bulk(session, "cases", "id", buur_case.id)
-        _delete_bulk(session, "investigation_seq_counters", "tenant_id", buur_id)
-        _delete_bulk(session, "findings", "tenant_id", buur_id)
+                _delete_bulk(session, tbl, col, buur_case_id)
+            _delete_bulk(session, "cases", "id", buur_case_id)
+        if buur_client_id:
+            _delete_bulk(session, "clients", "id", buur_client_id)
         _delete_bulk(session, "investigations", "tenant_id", buur_id)
-        _delete_bulk(session, "clients", "id", buur_client.id if buur_client else None)
         _delete_bulk(session, "cases", "tenant_id", buur_id)
         _delete_bulk(session, "case_number_counters", "tenant_id", buur_id)
         _delete_bulk(session, "invoice_number_counters", "tenant_id", buur_id)
         _delete_bulk(session, "tenants", "id", buur_id)
 
-    if case is not None:
+    if case_id:
         for tbl, col in _CASE_CHILD_TABLES:
-            _delete_bulk(session, tbl, col, case.id)
-        _delete_bulk(session, "cases", "id", case.id)
-    if inv is not None:
-        _delete_bulk(session, "investigations", "id", inv.id)
-    if client is not None:
-        _delete_bulk(session, "clients", "id", client.id)
+            _delete_bulk(session, tbl, col, case_id)
+        _delete_bulk(session, "cases", "id", case_id)
+    if inv_id:
+        _delete_bulk(session, "investigations", "id", inv_id)
+    if client_id:
+        _delete_bulk(session, "clients", "id", client_id)
 
 
 def _finish_and_report(results, notes, artifact_path, project_dir, *, report) -> int:
