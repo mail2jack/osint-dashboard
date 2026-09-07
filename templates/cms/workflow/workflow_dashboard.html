@@ -25,12 +25,12 @@ input:-webkit-autofill:focus {
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
-    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Investigations</h1>
+    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('Cases') }}</h1>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
       <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('All findings register') }}</a>
     </p>
   </div>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ New investigation</a>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ {{ _('New case') }}</a>
 </div>
 
 {% if cases %}
@@ -59,9 +59,9 @@ input:-webkit-autofill:focus {
 {% else %}
 <div style="text-align:center;padding:3rem;color:var(--text-muted);">
   <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>
-  <h2>No investigations yet</h2>
-  <p>Start a new investigation to test the workflow.</p>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ New investigation</a>
+  <h2>{{ _('No cases yet') }}</h2>
+  <p>{{ _('Start a new case to test the workflow.') }}</p>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ {{ _('New case') }}</a>
 </div>
 {% endif %}
 {% endblock %}

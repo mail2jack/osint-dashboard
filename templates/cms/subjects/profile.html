@@ -121,7 +121,7 @@
   <button class="tab-btn" data-tab="financial" role="tab">Financial</button>
   <button class="tab-btn" data-tab="online" role="tab">Online</button>
   <button class="tab-btn" data-tab="relations" role="tab">Relations</button>
-  <button class="tab-btn" data-tab="investigation" role="tab">Investigation</button>
+  <button class="tab-btn" data-tab="investigation" role="tab">{{ _('Research actions') }}</button>
   <button class="tab-btn" data-tab="facts" role="tab">Facts</button>
   <button class="tab-btn" data-tab="findings" role="tab">Findings</button>
   <button class="tab-btn" data-tab="activity" role="tab">Activity</button>
@@ -634,7 +634,7 @@
     <form data-base-form data-method="POST" data-url="{{ url_for('cms.profile_add_relation', subject_id=subject.id) }}">
       <div class="form-grid">
         <div class="form-group"><label>Related subject</label>
-          <div class="autocomplete-wrap" data-autocomplete="relation-subject">
+          <div class="autocomplete-wrap" data-autocomplete="relation-subject" data-i18n-in-case="{{ _('In this case') }}">
             <input type="text" class="autocomplete-input" placeholder="{{ _('Search subjects…') }}" autocomplete="off">
             <input type="hidden" name="related_subject_id" required>
             <div class="autocomplete-list" style="display:none;"></div>
@@ -681,12 +681,12 @@
   {% endif %}
 </div>
 
-{# ────────────────────────── Investigation ────────────────────────── #}
+{# ────────────────────────── Research actions ────────────────────────── #}
 <div class="tab-panel" data-panel="investigation">
-  {# ── Propose Investigation ── #}
+  {# ── Propose action ── #}
   {% if can_edit and profile.cases %}
   <div class="card" style="margin-bottom:1rem;">
-    <div class="card-header"><h2>{{ _('Propose Investigation') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Propose action') }}</h2></div>
     <div style="padding:1rem;">
       <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem 0;">
         {{ _('Propose one or more research actions for review. Proposals appear in the case workflow where they can be started.') }}
@@ -932,7 +932,7 @@
   {% endif %}
 
   <div class="card">
-    <div class="card-header"><h2>{{ _('Investigation') }} <span class="badge badge-status-active">{{ profile.actions|length }} actions</span></h2></div>
+    <div class="card-header"><h2>{{ _('Research actions') }} <span class="badge badge-status-active">{{ profile.actions|length }} actions</span></h2></div>
     {% if profile.actions %}
     <table class="fact-table">
       <thead><tr><th>Action</th><th>Type</th><th>Case</th><th>Status</th><th>Findings</th><th>Created</th><th>Completed</th><th></th></tr></thead>
@@ -956,7 +956,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="empty-note">{{ _('No research actions yet. Use "Propose Investigation" above to create proposals, or start directly via "Quick Start Action".') }}</div>
+    <div class="empty-note">{{ _('No research actions yet. Use "Propose action" above to create proposals, or start directly via "Quick Start Action".') }}</div>
     {% endif %}
   </div>
   {% if profile.actions %}
@@ -1374,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var candidates = [];
     var sameCaseIds = [];
     var subjectId = '{{ subject.id }}';
+    var i18nInCase = picker.getAttribute('data-i18n-in-case') || '';
 
     function fetchCandidates(q) {
       var url = '/cms/api/profile/subjects/' + encodeURIComponent(subjectId) + '/relation-candidates?q=' + encodeURIComponent(q) + '&limit=30';
@@ -1417,7 +1418,7 @@ document.addEventListener('DOMContentLoaded', function () {
           list.appendChild(item);
         });
       }
-      addGroup('In this investigation', same);
+      addGroup(i18nInCase, same);
       addGroup('Other subjects', other);
       list.style.display = '';
     }

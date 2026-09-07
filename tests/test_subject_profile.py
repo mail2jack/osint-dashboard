@@ -107,7 +107,7 @@ class TestFlagGate:
             "Financial",
             "Online",
             "Relations",
-            "Investigation",
+            "Research actions",
             "Facts",
             "Findings",
         ):

@@ -18,9 +18,55 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: cms/routes/exports.py:40
-#, fuzzy
 msgid "Case Report"
-msgstr "Next"
+msgstr ""
+
+#: templates/cms/workflow/workflow_pv.html:57
+msgid "Case report"
+msgstr "Case report"
+
+msgid "New case"
+msgstr "New case"
+
+msgid "Person case"
+msgstr "Person case"
+
+msgid "Brief description of the case"
+msgstr "Brief description of the case"
+
+msgid "No cases yet"
+msgstr "No cases yet"
+
+msgid "Start a new case to test the workflow."
+msgstr "Start a new case to test the workflow."
+
+msgid "Legacy cases"
+msgstr "Legacy cases"
+
+msgid "Research actions"
+msgstr "Research actions"
+
+msgid "Propose action"
+msgstr "Propose action"
+
+#: templates/cms/subjects/profile.html:637
+msgid "In this case"
+msgstr ""
+
+msgid "Run research actions in Step 3 to generate findings."
+msgstr "Run research actions in Step 3 to generate findings."
+
+msgid "Generate after completing the case"
+msgstr "Generate after completing the case"
+
+msgid "Adjust the filters or refresh cases in the workflow."
+msgstr "Adjust the filters or refresh cases in the workflow."
+
+msgid "Link this case to a parent case to create a hierarchy of related cases."
+msgstr "Link this case to a parent case to create a hierarchy of related cases."
+
+msgid "No research actions yet. Use \"Propose action\" above to create proposals, or start directly via \"Quick Start Action\"."
+msgstr "No research actions yet. Use \"Propose action\" above to create proposals, or start directly via \"Quick Start Action\"."
 
 #: templates/cms/404.html:6
 msgid "Not Found"

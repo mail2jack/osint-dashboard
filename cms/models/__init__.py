@@ -115,9 +115,9 @@ class CaseStatus(PyEnum):
     """Case lifecycle statuses."""
 
     OPEN = "open"  # New case, not yet started
-    ACTIVE = "active"  # Investigation in progress
+    ACTIVE = "active"  # Case in progress
     SUSPENDED = "suspended"  # Temporarily paused
-    CLOSED = "closed"  # Investigation complete
+    CLOSED = "closed"  # Case complete
     ARCHIVED = "archived"  # Archived for compliance
 
 
@@ -620,7 +620,7 @@ class Client(db.Model):
 
 class Case(db.Model):
     """
-    Case model representing an investigation.
+    Case model representing a case (zaak/dossier).
 
     Includes workflow status, priority, and assignment tracking.
     """
