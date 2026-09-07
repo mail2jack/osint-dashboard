@@ -10,6 +10,8 @@ import logging
 import os
 import threading
 
+from cms.logging_utils import safe_url
+
 logger = logging.getLogger(__name__)
 
 _redis_client = None
@@ -33,7 +35,7 @@ def _get_redis():
 
                     _redis_client = _redis_mod.from_url(url, decode_responses=True)
                     _redis_client.ping()
-                    logger.info("Redis cache connected: %s", url)
+                    logger.info("Redis cache connected: %s", safe_url(url))
                 except Exception:
                     logger.warning(
                         "Redis unavailable, falling back to filesystem cache"

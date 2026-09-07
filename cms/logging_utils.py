@@ -1,8 +1,25 @@
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 perf_logger = logging.getLogger("performance")
 req_logger = logging.getLogger("requests")
 logger = logging.getLogger(__name__)
+
+
+def safe_url(url: str) -> str:
+    """URL zonder credentials — veilig om te loggen (password nooit mee)."""
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url)
+        netloc = parts.hostname or ""
+        if parts.port is not None:
+            netloc += f":{parts.port}"
+        return urlunsplit(
+            (parts.scheme, netloc, parts.path, parts.query, parts.fragment)
+        )
+    except ValueError:
+        return "<unparsable-url>"
 
 
 def log_performance(operation, duration, details=None):
@@ -36,4 +53,11 @@ def log_request(tool, query, status, found_count=0, checked=0):
     )
 
 
-__all__ = ["perf_logger", "req_logger", "logger", "log_performance", "log_request"]
+__all__ = [
+    "perf_logger",
+    "req_logger",
+    "logger",
+    "log_performance",
+    "log_request",
+    "safe_url",
+]
