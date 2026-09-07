@@ -280,6 +280,10 @@ def _run(args) -> int:
 
             finally:
                 try:
+                    # Detach the ORM instances before bulk-DELETE cleanup so
+                    # SQLAlchemy does not treat their rows as "deleted while
+                    # still in the identity map" on the final commit.
+                    db.session.expunge_all()
                     _cleanup(
                         db,
                         db.session,
