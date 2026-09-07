@@ -9,6 +9,9 @@ class BackgroundTask(db.Model):
     __tablename__ = "background_tasks"
 
     id = db.Column(db.String(64), primary_key=True)
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
     result = db.Column(SafeJSON)
     error = db.Column(db.Text)

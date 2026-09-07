@@ -84,10 +84,13 @@ def run_in_background(task_id: str, func: Callable, *args, **kwargs) -> None:
     db = _get_db()
     BackgroundTask = _get_model()
     try:
+        from flask import g as _g
+
         task = BackgroundTask(
             id=task_id,
             status="pending",
             task_name=func.__name__,
+            tenant_id=getattr(_g, "tenant_id", None),
         )
         db.session.add(task)
         db.session.commit()
@@ -105,6 +108,12 @@ def _run_task(task_id: str, func: Callable, *args, **kwargs) -> None:
     if ctx:
         ctx.push()
     try:
+        from cms.tenant_context import set_tenant_context
+
+        # Worker threads run outside any request/tenant context; open the
+        # RLS bypass so status updates reach the task row regardless of the
+        # tenant that enqueued it (mirrors the RQ worker path in tasks.py).
+        set_tenant_context(db, None, bypass_rls=True)
         _update_status(task_id, "running")
         result = func(*args, **kwargs)
         _update_status(task_id, "completed", result=result)
@@ -157,6 +166,12 @@ def cleanup_old_tasks(max_age_hours: int = 24) -> int:
         hours=max_age_hours
     )
     try:
+        from cms.tenant_context import set_tenant_context
+
+        # Startup/scheduler cleanup is tenant-agnostic: delete aged tasks
+        # regardless of which tenant owns them (rows may be NULL-tenant or
+        # belong to any tenant).
+        set_tenant_context(db, None, bypass_rls=True)
         deleted = BackgroundTask.query.filter(
             BackgroundTask.created_at < cutoff
         ).delete(synchronize_session="fetch")
