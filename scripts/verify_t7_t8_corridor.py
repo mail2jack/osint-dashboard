@@ -37,6 +37,13 @@ import subprocess
 import sys
 import uuid
 
+# The script may be invoked as ``python scripts/verify_t7_t8_corridor.py``
+# where only ``scripts/`` is on sys.path — add the project root so the app
+# package is importable regardless of ${PWD}.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 try:
     from app import app  # noqa: E402
     from cms.models import (  # noqa: E402,WPS433
@@ -350,29 +357,61 @@ def _count_for_tenant(db, tenant_id):
     }
 
 
+_CASE_CHILD_TABLES = (
+    ("investigation_seq_counters", "case_id"),
+    ("findings", "case_id"),
+    ("invoices", "case_id"),
+    ("documents", "case_id"),
+    ("financial_records", "case_id"),
+    ("case_subjects", "case_id"),
+)
+
+
+def _delete_bulk(session, table, column, value) -> None:
+    """Best-effort bulk DELETE for a corridor-owned row (skip if no such column)."""
+    try:
+        session.execute(
+            text(f"DELETE FROM {table} WHERE {column} = :value"),
+            {"value": value},
+        )
+    except Exception:
+        session.rollback()
+
+
 def _cleanup(db, session, buur, buur_case, buur_client, case, inv, client) -> None:
     """Delete corridor-created rows under a full-bypass context.
 
-    Child rows are removed before their parents; the neighbor-tenant counter
-    rows referencing ``tenants.id`` are deleted first so the tenant itself can
-    be dropped. The ACME counter rows are left in place — numbers, once
-    allocated, stay allocated (ADR-0002 immutability).
+    Children-first SQL order (bulk, no ORM cascade) so parent deletes cannot
+    trip FK constraints or trigger loads; the neighbor-tenant counter rows
+    referencing ``tenants.id`` are removed before the tenant itself. The ACME
+    counter rows are left in place — numbers, once allocated, stay allocated
+    (ADR-0002 immutability).
     """
     set_tenant_context(db, None, bypass_rls=True)
-    if buur is not None:
-        session.query(CaseNumberCounter).filter_by(tenant_id=buur.id).delete()
-        session.query(Investigation).filter_by(tenant_id=buur.id).delete()
+
+    buur_id = buur.id if buur is not None else None
+    if buur_id:
         if buur_case is not None:
-            session.delete(buur_case)
-        if buur_client is not None:
-            session.delete(buur_client)
-        session.delete(buur)
+            for tbl, col in _CASE_CHILD_TABLES:
+                _delete_bulk(session, tbl, col, buur_case.id)
+            _delete_bulk(session, "cases", "id", buur_case.id)
+        _delete_bulk(session, "investigation_seq_counters", "tenant_id", buur_id)
+        _delete_bulk(session, "findings", "tenant_id", buur_id)
+        _delete_bulk(session, "investigations", "tenant_id", buur_id)
+        _delete_bulk(session, "clients", "id", buur_client.id if buur_client else None)
+        _delete_bulk(session, "cases", "tenant_id", buur_id)
+        _delete_bulk(session, "case_number_counters", "tenant_id", buur_id)
+        _delete_bulk(session, "invoice_number_counters", "tenant_id", buur_id)
+        _delete_bulk(session, "tenants", "id", buur_id)
+
     if case is not None:
-        session.delete(case)
+        for tbl, col in _CASE_CHILD_TABLES:
+            _delete_bulk(session, tbl, col, case.id)
+        _delete_bulk(session, "cases", "id", case.id)
     if inv is not None:
-        session.delete(inv)
+        _delete_bulk(session, "investigations", "id", inv.id)
     if client is not None:
-        session.delete(client)
+        _delete_bulk(session, "clients", "id", client.id)
 
 
 def _finish_and_report(results, notes, artifact_path, project_dir, *, report) -> int:
