@@ -31,6 +31,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from cms.logging_config import enforce_root_level, setup_logging
+from cms.logging_utils import safe_url
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -202,7 +203,7 @@ if _redis_url:
         app.config["SESSION_REDIS"] = _redis_client
         app.config["SESSION_PERMANENT"] = True
         app.config["SESSION_SERIALIZATION_FORMAT"] = "json"
-        logger.info("Session backend: Redis (%s)", _redis_url)
+        logger.info("Session backend: Redis (%s)", safe_url(_redis_url))
     except Exception:
         logger.warning("Redis unavailable, falling back to filesystem sessions")
         _redis_url = None
