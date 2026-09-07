@@ -165,7 +165,7 @@
             {% endif %}
             <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
             <div class="nav-dropdown">
-              <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="entity-nav-menu">📁 {{ _('Entity') }}</button>
+              <button type="button" class="nav-dropdown-trigger" aria-expanded="false" aria-controls="entity-nav-menu">📁 {{ _('Entity') }}</button>
               <div class="nav-dropdown-menu" id="entity-nav-menu">
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
                 <a href="{{ url_for('workflow.dashboard') }}">{{ _('Cases') }}</a>
@@ -190,7 +190,7 @@
                 {% endif %}
                 {% if current_user.is_admin or current_user.has_role('senior_investigator') or current_user.is_super_admin %}
                 <div class="nav-dropdown">
-                  <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="super-nav-menu">🔱 {{ _('Super') }}</button>
+                  <button type="button" class="nav-dropdown-trigger" aria-expanded="false" aria-controls="super-nav-menu">🔱 {{ _('Super') }}</button>
                   <div class="nav-dropdown-menu" id="super-nav-menu">
                     {% if current_user.is_admin or current_user.has_role('senior_investigator') %}
                     <a href="{{ url_for('cms.analytics') }}">📊 {{ _('Analytics') }}</a>
@@ -565,8 +565,8 @@ setInterval(updateHealthLight, 300000);
             setOpen(dd, willOpen);
         });
         trigger.addEventListener('keydown', function(e) {
-            // ArrowDown opens; Escape closes. Enter/Space on a native <button>
-            // already fire 'click', so avoid double-toggling for buttons.
+            // ArrowDown opens and moves focus to the first item. Enter/Space on
+            // a native <button> already fire 'click', so no double-toggling.
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (!dd.classList.contains('is-open')) {
@@ -578,9 +578,18 @@ setInterval(updateHealthLight, 300000);
                     var first = m.querySelector('a,button');
                     if (first) first.focus();
                 }
-            } else if (e.key === 'Escape') {
-                setOpen(dd, false);
-                trigger.focus();
+            }
+        });
+        // Escape works from anywhere inside the open dropdown (link, trigger):
+        // close and return focus to the trigger.
+        dd.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && dd.classList.contains('is-open')) {
+                var f = document.activeElement;
+                if (f && dd.contains(f)) {
+                    e.preventDefault();
+                    setOpen(dd, false);
+                    trigger.focus();
+                }
             }
         });
         var menu = dd.querySelector('.nav-dropdown-menu');

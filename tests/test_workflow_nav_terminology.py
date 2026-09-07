@@ -96,13 +96,29 @@ class TestMainNav:
         html = resp.get_data(as_text=True)
 
         # Trigger is een echte <button> met ARIA-controller, geen lege <a href="#">.
-        assert 'class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="entity-nav-menu">' in html
+        assert 'class="nav-dropdown-trigger" aria-expanded="false" aria-controls="entity-nav-menu">' in html
         assert 'id="entity-nav-menu"' in html
+        # Geen aria-haspopup: dit is bewust een gewone navigatie-disclosure zonder
+        # menu-rollen (aria-expanded + aria-controls blijven).
+        assert 'aria-haspopup="true"' not in html
         # Toetsenbord: ArrowDown opent en verplaatst focus; Escape sluit.
         assert "e.key === 'ArrowDown'" in html
-        assert "Escape" in html
         # Open-state wordt ALLEEN door aria-expanded/is-open gestuurd (geen CSS-hover).
         assert ".nav-dropdown:hover .nav-dropdown-menu" not in html
+
+    def test_nav_dropdown_escape_from_open_menu(self, auth_client):
+        _set_lang(auth_client, "nl")
+        resp = auth_client.get("/cms/workflow/")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # Escape-handler hangt aan de dropdown-container, niet alleen aan de
+        # trigger: werkt dus ook met focus op een geopende menulink.
+        assert "dd.addEventListener('keydown', function(e)" in html
+        assert "e.key === 'Escape' && dd.classList.contains('is-open')" in html
+        # Sluit alleen als de focus binnen de dropdown zit en zet focus terug.
+        assert "dd.contains(f)" in html
+        assert "trigger.focus()" in html
 
     def test_nav_dropdown_no_fake_menu_roles(self, auth_client):
         _set_lang(auth_client, "nl")
