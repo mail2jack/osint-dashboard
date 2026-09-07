@@ -9,6 +9,9 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/spiderfoot
 Environment="PATH=/opt/spiderfoot/venv/bin"
+# Data (spiderfoot.db, cache, logs) lives in $HOME/.spiderfoot — keep it inside
+# /opt so ProtectHome can stay enabled (ProtectHome=true hides /home/osint).
+Environment="HOME=/opt/spiderfoot"
 # Listen on localhost only - Nginx reverse proxy handles external access
 ExecStart=/opt/spiderfoot/venv/bin/python3 /opt/spiderfoot/sf.py -l 127.0.0.1:5001
 Restart=always
