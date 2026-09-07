@@ -1,0 +1,11 @@
+[Unit]
+Description=Iveras OSINT Dashboard — post-reboot verification (one-shot)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/osint-dashboard/scripts/reboot_verify.sh
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

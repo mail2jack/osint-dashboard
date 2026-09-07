@@ -1,0 +1,10 @@
+[Unit]
+Description=Run planned OSINT dashboard kernel-reboot maintenance daily at 02:00 UTC
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=false
+Unit=osint-reboot-maintenance.service
+
+[Install]
+WantedBy=timers.target
