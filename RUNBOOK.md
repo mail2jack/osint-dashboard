@@ -77,12 +77,49 @@ wordt geëxposeerd via HTTP 503 (nginx kan dan eigen 503-server pagina's tonen).
    (haal de SHA uit `.deployed_sha` vóór de deploy of uit `git reflog`.)
 3. Schema-afwijkingen: `alembic downgrade` **alleen op expliciete, handmatige
    instructie** en nooit automatisch. Een downgrade is destructief; weeg
-   backup-restore (4) af tegen downgrade. Zet de app in onderhoud vóór je dit
+   backup-restore (6) af tegen downgrade. Zet de app in onderhoud vóór je dit
    doet.
 
 ---
 
-## 4. Incident
+## 4. Systemd-hardening (sandboxing)
+
+De `osint-dashboard`-unit draait met een systemd-sandbox-drop-in
+(`/etc/systemd/system/osint-dashboard.service.d/hardening.conf`) zodat een
+gecompromitteerde app-process beperkt is tot het strikt noodzakelijke:
+
+- `ProtectSystem=strict` — hele filesystem read-only, behalve
+  `ReadWritePaths`: `instance/` (sherlock-cache, finding_screenshots),
+  `flask_session/` (filesystem-sessies), `static/uploads/` en `reports/`.
+- `NoNewPrivileges`, `ProtectHome=read-only`, `PrivateTmp`, `PrivateDevices`,
+  `ProtectClock`, `ProtectKernel{...}`, `ProtectControlGroups`,
+  `ProtectHostname`, `ProtectProc=invisible`, `RestrictSUIDSGID`,
+  `RestrictRealtime`, `RestrictNamespaces`, `LockPersonality`,
+  `CapabilityBoundingSet=` (leeg), `SystemCallArchitectures=native`,
+  `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6`.
+- Zonder `SystemCallFilter=@system-service`: sherlock/holehe/spiderfoot-
+  subprocessen mogen syscalls buiten de baseline gebruiken. `UMask` blijft
+  0022 (nginx/www-data leest uploads). Geen `ProcSubset=pid` (psutil leest
+  `/proc/meminfo` voor `/health`).
+
+```bash
+# Installeren / herinstalleren (idempotent, fail-closed, toont exposure vóór/na):
+sudo /opt/osint-dashboard/scripts/install_dashboard_hardening.sh
+
+# Uitvoeren zonder wijzigingen:
+sudo /opt/osint-dashboard/scripts/install_dashboard_hardening.sh --dry-run
+
+# Verwijderen (drop-in is config-only; terugdraaien is veilig en géén code-rollback):
+sudo /opt/osint-dashboard/scripts/install_dashboard_hardening.sh --remove
+```
+
+`sync_units.sh` raakt de dashboard-drop-in bewust niet aan: een deploy kan de
+hardening dus niet uitwissen. Controleer na een deploy:
+`systemd-analyze security osint-dashboard | tail -1`.
+
+---
+
+## 5. Incident
 
 1. **Vaststellen**: `curl -s localhost:5000/health | head -c 500` → is de app
    ready? `systemctl status osint-dashboard`, `journalctl -u osint-dashboard -n 200`.
@@ -100,7 +137,7 @@ wordt geëxposeerd via HTTP 503 (nginx kan dan eigen 503-server pagina's tonen).
 
 ---
 
-## 5. Backup & restore
+## 6. Backup & restore
 
 ```bash
 # Backups: 4x per dag via /etc/cron.d/osint-dashboard-backup → /opt/osint-dashboard/backups
@@ -128,7 +165,7 @@ secundaire back-up (zie `license-server/README.md`).
 
 ---
 
-## 6. Secret rotation
+## 7. Secret rotation
 
 | Secret | Waar | Rotatie-impact |
 |---|---|---|
@@ -181,7 +218,7 @@ Rotatie-stappen in algemeen: (1) nieuwe waarde genereren, (2) in `.env` zetten
 
 ---
 
-## 7. Verwijzingen
+## 8. Verwijzingen
 
 - Architectuur: `AGENTS_ARCHITECTURE.md` · Monitoring: `AGENTS_MONITORING.md` ·
   OPSEC: `AGENTS_OPSEC.md` · License-server deploy: `license-server/README.md`.
