@@ -1,0 +1,8 @@
+[Unit]
+Description=Iveras OSINT Dashboard — planned kernel-reboot maintenance
+Wants=osint-reboot-maintenance.timer
+
+[Service]
+Type=oneshot
+ExecStart=/opt/osint-dashboard/scripts/reboot_maintenance.sh
+TimeoutStartSec=1800
