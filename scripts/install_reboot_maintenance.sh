@@ -26,6 +26,8 @@ if [ ! -d "$APP_DIR" ]; then
     exit 1
 fi
 
+chmod 0755 "$APP_DIR/scripts/reboot_maintenance.sh" "$APP_DIR/scripts/reboot_verify.sh"
+
 if [ "${1:-}" = "--disable" ]; then
     echo "=== Reboot-maintenance uitzetten ==="
     systemctl disable --now osint-reboot-maintenance.timer 2>/dev/null || true
