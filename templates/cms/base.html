@@ -41,6 +41,8 @@
 .nav-dropdown-menu a { display: block; margin-left: 0 !important; padding: 0.5rem 1rem; white-space: nowrap; }
 .nav-dropdown-menu a:hover { background: rgba(255,255,255,0.1); opacity: 1 !important; }
 .nav-dropdown:hover .nav-dropdown-menu { display: block !important; }
+.nav-dropdown.is-open .nav-dropdown-menu { display: block !important; }
+.nav-dropdown-trigger[aria-expanded="true"] { opacity: 0.8; }
 .nav-dropdown-menu::before { content: ''; position: absolute; top: -6px; left: 16px; width: 12px; height: 12px; background: var(--bg-header, #1a1a2e); transform: rotate(45deg); }
 </style>
     {% if g.use_bundle %}
@@ -164,21 +166,24 @@
             {% endif %}
             <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
             <div class="nav-dropdown">
-              <a href="#" class="nav-dropdown-trigger">📁 {{ _('Entity') }}</a>
-              <div class="nav-dropdown-menu">
-                <a href="{{ url_for('cms.cases') }}">{{ _('Cases') }}</a>
-                <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
-                <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
-                <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
-                {% if current_user.has_role('admin', 'senior_investigator') %}
-                <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
+              <a href="#" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">📁 {{ _('Entity') }}</a>
+              <div class="nav-dropdown-menu" role="menu">
+                {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
+                <a href="{{ url_for('workflow.dashboard') }}" role="menuitem">{{ _('Cases') }}</a>
                 {% endif %}
+                <a href="{{ url_for('cms.clients') }}" role="menuitem">{{ _('Clients') }}</a>
+                <a href="{{ url_for('cms.subjects') }}" role="menuitem">{{ _('Subjects') }}</a>
+                <a href="{{ url_for('cms.reminders') }}" role="menuitem">{{ _('Reminders') }}</a>
+                {% if current_user.has_role('admin', 'senior_investigator') %}
+                <a href="{{ url_for('cms.spiderfoot_index') }}" role="menuitem">SpiderFoot</a>
+                {% endif %}
+                <div style="border-top:1px solid rgba(255,255,255,0.15);margin:0.4rem 0.5rem;"></div>
+                <a href="{{ url_for('cms.cases') }}" role="menuitem">{{ _('Legacy cases') }}</a>
               </div>
             </div>
             {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Invoices') }}</a>{% endif %}
             <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
-                <a href="{{ url_for('workflow.dashboard') }}">🔬 {{ _('Investigations') }}</a>
                 <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('Findings') }}</a>
                 {% endif %}
                 {% if current_user.is_admin %}
@@ -534,6 +539,53 @@ function closeHealthModal() {
 // Init
 updateHealthLight();
 setInterval(updateHealthLight, 300000);
+
+// Nav dropdown toggle (hover + keyboard/touch)
+(function() {
+    function closeMenus(except) {
+        document.querySelectorAll('.nav-dropdown').forEach(function(dd) {
+            if (dd === except) return;
+            dd.classList.remove('is-open');
+            var t = dd.querySelector('.nav-dropdown-trigger');
+            if (t) t.setAttribute('aria-expanded', 'false');
+        });
+    }
+    function setOpen(dd, open) {
+        if (!dd) return;
+        dd.classList.toggle('is-open', open);
+        var t = dd.querySelector('.nav-dropdown-trigger');
+        if (t) t.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    document.querySelectorAll('.nav-dropdown').forEach(function(dd) {
+        var trigger = dd.querySelector('.nav-dropdown-trigger');
+        if (!trigger) return;
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            var willOpen = !dd.classList.contains('is-open');
+            closeMenus(dd);
+            setOpen(dd, willOpen);
+        });
+        trigger.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                closeMenus(dd);
+                setOpen(dd, !dd.classList.contains('is-open'));
+            } else if (e.key === 'Escape') {
+                setOpen(dd, false);
+                trigger.focus();
+            }
+        });
+        var menu = dd.querySelector('.nav-dropdown-menu');
+        if (menu) {
+            menu.addEventListener('click', function(e) {
+                if (e.target.closest('a')) setOpen(dd, false);
+            });
+        }
+    });
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nav-dropdown')) closeMenus(null);
+    });
+})();
 
 // Announcement modal
 (function() {

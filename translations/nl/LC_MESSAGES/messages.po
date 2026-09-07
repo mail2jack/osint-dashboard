@@ -18,8 +18,47 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: cms/routes/exports.py:40
-msgid "Case Report"
-msgstr "Dossier rapport"
+msgid "Case report"
+msgstr "Zaakverslag"
+
+msgid "New case"
+msgstr "Nieuwe zaak"
+
+msgid "Person case"
+msgstr "Persoonszaak"
+
+msgid "Brief description of the case"
+msgstr "Korte omschrijving van de zaak"
+
+msgid "No cases yet"
+msgstr "Nog geen zaken"
+
+msgid "Start a new case to test the workflow."
+msgstr "Start een nieuwe zaak om de werkstroom te testen."
+
+msgid "Legacy cases"
+msgstr "Legacy-zaken"
+
+msgid "Research actions"
+msgstr "Onderzoeksacties"
+
+msgid "Propose action"
+msgstr "Actie voorstellen"
+
+msgid "Run research actions in Step 3 to generate findings."
+msgstr "Voer in Stap 3 onderzoeksacties uit om bevindingen te genereren."
+
+msgid "Generate after completing the case"
+msgstr "Genereer na het afronden van de zaak"
+
+msgid "Adjust the filters or refresh cases in the workflow."
+msgstr "Pas de filters aan of ververs de zaken in de werkstroom."
+
+msgid "Link this case to a parent case to create a hierarchy of related cases."
+msgstr "Koppel deze zaak aan een bovenliggende zaak om een hiërarchie van gerelateerde zaken te creëren."
+
+msgid "No research actions yet. Use \"Propose action\" above to create proposals, or start directly via \"Quick Start Action\"."
+msgstr "Nog geen onderzoeksacties. Gebruik \"Actie voorstellen\" hierboven om voorstellen te maken, of start direct via \"Quick Start Action\"."
 
 #: templates/cms/404.html:6
 msgid "Not Found"

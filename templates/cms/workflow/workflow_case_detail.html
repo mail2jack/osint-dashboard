@@ -4,7 +4,7 @@
 <nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
     <span style="margin:0 0.35rem;">›</span>
-    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Cases') }}</a>
     <span style="margin:0 0.35rem;">›</span>
     <span style="color:var(--text-primary);">{{ case.case_number }}</span>
 </nav>
@@ -503,7 +503,7 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">3</span>
-    Investigation Actions
+    {{ _('Research actions') }}
     <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Click an action to start</span>
   </div>
   <div class="workflow-step-body">
@@ -647,7 +647,7 @@ input:-webkit-autofill:focus {
       {% else %}
       <div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
-        <p>Run investigation actions in Step 3 to generate findings.</p>
+        <p>{{ _('Run research actions in Step 3 to generate findings.') }}</p>
         <p style="font-size:0.85rem;">Each action adds realistic findings based on public sources.</p>
       </div>
       {% endif %}
@@ -659,7 +659,7 @@ input:-webkit-autofill:focus {
   <div class="workflow-step-header">
     <span class="step-nr">6</span>
     Report
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Generate after completing investigation</span>
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ _('Generate after completing the case') }}</span>
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">

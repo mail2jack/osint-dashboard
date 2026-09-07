@@ -4,7 +4,7 @@
 <nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
     <span style="margin:0 0.35rem;">›</span>
-    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Cases') }}</a>
     <span style="margin:0 0.35rem;">›</span>
     <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ case.case_number }}</a>
     <span style="margin:0 0.35rem;">›</span>
