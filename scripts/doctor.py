@@ -26,6 +26,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 APP_DIR = Path("/opt/osint-dashboard")
 SF_DIR = Path("/opt/spiderfoot")
@@ -637,17 +638,39 @@ def check_env_db_ssl_mode(dry: bool) -> bool:
 def check_redis(dry: bool) -> bool:
     log("Checking Redis...", end=" ")
     # Redis is optional: the app only uses it when REDIS_URL is set in .env.
-    if not _env_value("REDIS_URL"):
+    url = _env_value("REDIS_URL")
+    if not url:
         log(SKIP + " (REDIS_URL not set — session backend is filesystem)")
         return True
     if not shutil.which("redis-cli"):
         log(FAIL + " (redis-cli not installed)")
         return False
-    r = run(["redis-cli", "ping"], timeout=5)
+    try:
+        parsed = urlsplit(url)
+        host = parsed.hostname
+        port = parsed.port
+        db = parsed.path.lstrip("/") or "0"
+    except ValueError:
+        log(FAIL + " (REDIS_URL onjuist)")
+        return False
+    # Password via REDISCLI_AUTH env var, never on the command line (argv is
+    # visible in /proc and would leak the secret into process listings/logs).
+    cmd = ["redis-cli"]
+    if parsed.scheme in ("rediss",):
+        cmd.append("--tls")
+    if host:
+        cmd += ["-h", host]
+    if port:
+        cmd += ["-p", str(port)]
+    cmd += ["-n", db, "ping"]
+    env = dict(os.environ)
+    if parsed.password or parsed.username:
+        env["REDISCLI_AUTH"] = parsed.password or ""
+    r = run(cmd, timeout=5, env=env)
     if r.returncode == 0 and "PONG" in r.stdout:
         log(OK)
         return True
-    log(FAIL + " (redis-server not running)")
+    log(FAIL + " (Redis unreachable — redis-server down of REDIS_URL onjuist)")
     return False
 
 
