@@ -18,7 +18,8 @@ PREV_RESEARCH_FLOW = "f4e5d6c7b8a9"
 PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
-HEAD_REVISION = "a6b7c8d9e0f1"
+INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
+HEAD_REVISION = "e2f3a4b5c6d7"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -574,8 +575,11 @@ class TestMigrationCycle:
         )
         assert "downgrade" in output.lower() and "not safe" in output.lower()
 
-        # Nothing changed: still at the new head, counter table present and the
-        # composite unique constraint still in place (no partial downgrade).
+        # Nothing changed: the P1 counter/composite-unique schema is still in
+        # place and the invoice tables are untouched (no partial downgrade).
+        # The blocked downgrade rolls back only the leaf migrations above the
+        # P1 guard (currently just the background_tasks RLS migration), leaving
+        # the DB at its parent revision a6b7c8d9e0f1.
         conn = sqlite3.connect(db_file)
         revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
         tables = {
@@ -584,7 +588,7 @@ class TestMigrationCycle:
         }
         invoice_unique = _unique_index_columns(conn, "invoices")
         conn.close()
-        assert revision == HEAD_REVISION
+        assert revision == INVOICE_PREV_REVISION_DOWNSTREAM
         assert "invoice_number_counters" in tables
         assert ("tenant_id", "invoice_number") in invoice_unique
         assert ("invoice_number",) not in invoice_unique

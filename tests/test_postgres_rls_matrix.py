@@ -7,11 +7,9 @@ spiderfoot_scans (background jobs), and the super-admin tenant switch flow
 (``POST /cms/switch-tenant/<id>``). It also pins the actual FORCE-RLS table
 set so schema coverage stays a conscious decision.
 
-Known gap: ``background_tasks`` carries no ``tenant_id`` column and is not
-FORCE RLS yet, so persisted jobs are readable across tenants. That gap is
-documented with a strict-xfail guard (``test_background_tasks_are_force_rls``):
-it must be fixed with a migration (add ``tenant_id`` + RLS policy) and the
-xfail marker must then be removed.
+Known gap: none. ``background_tasks`` was added to FORCE RLS via
+``e2f3a4b5c6d7`` (tenant_id column + policy) — the previous strict-xfail
+guard was removed and replaced by a positive isolation test.
 """
 
 import os
@@ -22,6 +20,7 @@ import pytest
 from sqlalchemy import text
 
 from cms.models import (
+    BackgroundTask,
     Client,
     Document,
     Finding,
@@ -43,6 +42,7 @@ EXPECTED_FORCE_RLS_TABLES = {
     "addresses",
     "api_keys",
     "audit_logs",
+    "background_tasks",
     "case_number_counters",
     "cases",
     "clients",
@@ -103,16 +103,52 @@ class TestMultiTenantRLSMatrix:
         RLS coverage (additions/removals) are a conscious schema decision."""
         assert _force_rls_tables() == EXPECTED_FORCE_RLS_TABLES
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Known gap: background_tasks has no tenant_id column and is not "
-            "FORCE RLS. Persisted jobs are readable across tenants until a "
-            "migration adds tenant_id + RLS policy. Remove this xfail when fixed."
-        ),
-    )
     def test_background_tasks_are_force_rls(self):
+        """``background_tasks`` is now FORCE RLS (migration e2f3a4b5c6d7)."""
         assert "background_tasks" in _force_rls_tables()
+
+    def test_background_tasks_isolated_between_tenants(self, app):
+        """Persisted background jobs must be scoped to their owning tenant.
+
+        Covered now that ``background_tasks`` is FORCE RLS: a task enqueued by
+        tenant A is invisible as tenant B, and the web status endpoint only
+        exposes the current tenant's tasks (via the request RLS context).
+        """
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        task_a = BackgroundTask(
+            id=f"mat-bt-a-{uuid.uuid4().hex[:16]}",
+            status="completed",
+            task_name="async_email",
+            tenant_id=tenant_a,
+        )
+        task_b = BackgroundTask(
+            id=f"mat-bt-b-{uuid.uuid4().hex[:16]}",
+            status="completed",
+            task_name="async_email",
+            tenant_id=tenant_b,
+        )
+        db.session.add_all([task_a, task_b])
+        db.session.commit()
+        task_a_id, task_b_id = task_a.id, task_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert BackgroundTask.query.filter_by(id=task_a_id).count() == 1
+        assert BackgroundTask.query.filter_by(id=task_b_id).count() == 0
+
+        set_tenant_context(db, tenant_b)
+        db.session.expire_all()
+        assert BackgroundTask.query.filter_by(id=task_a_id).count() == 0
+        assert BackgroundTask.query.filter_by(id=task_b_id).count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert BackgroundTask.query.filter_by(id=task_a_id).count() == 0
+        assert BackgroundTask.query.filter_by(id=task_b_id).count() == 0
 
     def test_documents_isolated_between_tenants(self, app):
         admin = User.query.filter_by(username="admin").one()
