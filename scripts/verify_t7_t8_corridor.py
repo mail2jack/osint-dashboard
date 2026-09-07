@@ -362,6 +362,7 @@ def _count_for_tenant(db, tenant_id):
 
 _CASE_CHILD_TABLES = (
     ("investigation_seq_counters", "case_id"),
+    ("investigations", "case_id"),
     ("findings", "case_id"),
     ("invoices", "case_id"),
     ("documents", "case_id"),
