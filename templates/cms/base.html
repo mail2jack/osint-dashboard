@@ -35,12 +35,11 @@
     </script>
     <style nonce="{{ csp_nonce }}">
 .nav-dropdown { position: relative; display: inline-block; margin-left: 1.5rem; }
-.nav-dropdown-trigger { color: white; text-decoration: none; cursor: pointer; display: inline-block; }
+.nav-dropdown-trigger { color: white; text-decoration: none; cursor: pointer; display: inline-block; background: none; border: none; padding: 0; font: inherit; line-height: inherit; }
 .nav-dropdown-trigger:hover { opacity: 0.8; }
 .nav-dropdown-menu { display: none !important; position: absolute; top: 100%; left: 0; background: var(--bg-header, #1a1a2e); min-width: 200px; border-radius: 0 0 8px 8px; padding: 0.5rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; }
 .nav-dropdown-menu a { display: block; margin-left: 0 !important; padding: 0.5rem 1rem; white-space: nowrap; }
 .nav-dropdown-menu a:hover { background: rgba(255,255,255,0.1); opacity: 1 !important; }
-.nav-dropdown:hover .nav-dropdown-menu { display: block !important; }
 .nav-dropdown.is-open .nav-dropdown-menu { display: block !important; }
 .nav-dropdown-trigger[aria-expanded="true"] { opacity: 0.8; }
 .nav-dropdown-menu::before { content: ''; position: absolute; top: -6px; left: 16px; width: 12px; height: 12px; background: var(--bg-header, #1a1a2e); transform: rotate(45deg); }
@@ -166,19 +165,19 @@
             {% endif %}
             <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
             <div class="nav-dropdown">
-              <a href="#" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">📁 {{ _('Entity') }}</a>
-              <div class="nav-dropdown-menu" role="menu">
+              <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="entity-nav-menu">📁 {{ _('Entity') }}</button>
+              <div class="nav-dropdown-menu" id="entity-nav-menu">
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
-                <a href="{{ url_for('workflow.dashboard') }}" role="menuitem">{{ _('Cases') }}</a>
+                <a href="{{ url_for('workflow.dashboard') }}">{{ _('Cases') }}</a>
                 {% endif %}
-                <a href="{{ url_for('cms.clients') }}" role="menuitem">{{ _('Clients') }}</a>
-                <a href="{{ url_for('cms.subjects') }}" role="menuitem">{{ _('Subjects') }}</a>
-                <a href="{{ url_for('cms.reminders') }}" role="menuitem">{{ _('Reminders') }}</a>
+                <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
+                <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
+                <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
                 {% if current_user.has_role('admin', 'senior_investigator') %}
-                <a href="{{ url_for('cms.spiderfoot_index') }}" role="menuitem">SpiderFoot</a>
+                <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
                 {% endif %}
                 <div style="border-top:1px solid rgba(255,255,255,0.15);margin:0.4rem 0.5rem;"></div>
-                <a href="{{ url_for('cms.cases') }}" role="menuitem">{{ _('Legacy cases') }}</a>
+                <a href="{{ url_for('cms.cases') }}">{{ _('Legacy cases') }}</a>
               </div>
             </div>
             {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Invoices') }}</a>{% endif %}
@@ -191,8 +190,8 @@
                 {% endif %}
                 {% if current_user.is_admin or current_user.has_role('senior_investigator') or current_user.is_super_admin %}
                 <div class="nav-dropdown">
-                  <a href="#" class="nav-dropdown-trigger">🔱 {{ _('Super') }}</a>
-                  <div class="nav-dropdown-menu">
+                  <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="super-nav-menu">🔱 {{ _('Super') }}</button>
+                  <div class="nav-dropdown-menu" id="super-nav-menu">
                     {% if current_user.is_admin or current_user.has_role('senior_investigator') %}
                     <a href="{{ url_for('cms.analytics') }}">📊 {{ _('Analytics') }}</a>
                     {% endif %}
@@ -540,7 +539,7 @@ function closeHealthModal() {
 updateHealthLight();
 setInterval(updateHealthLight, 300000);
 
-// Nav dropdown toggle (hover + keyboard/touch)
+// Nav dropdown toggle (keyboard + touch; open state via aria-expanded only)
 (function() {
     function closeMenus(except) {
         document.querySelectorAll('.nav-dropdown').forEach(function(dd) {
@@ -560,16 +559,25 @@ setInterval(updateHealthLight, 300000);
         var trigger = dd.querySelector('.nav-dropdown-trigger');
         if (!trigger) return;
         trigger.addEventListener('click', function(e) {
-            e.preventDefault();
+            if (trigger.tagName === 'A') e.preventDefault();
             var willOpen = !dd.classList.contains('is-open');
             closeMenus(dd);
             setOpen(dd, willOpen);
         });
         trigger.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
+            // ArrowDown opens; Escape closes. Enter/Space on a native <button>
+            // already fire 'click', so avoid double-toggling for buttons.
+            if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                closeMenus(dd);
-                setOpen(dd, !dd.classList.contains('is-open'));
+                if (!dd.classList.contains('is-open')) {
+                    closeMenus(dd);
+                    setOpen(dd, true);
+                }
+                var m = dd.querySelector('.nav-dropdown-menu');
+                if (m) {
+                    var first = m.querySelector('a,button');
+                    if (first) first.focus();
+                }
             } else if (e.key === 'Escape') {
                 setOpen(dd, false);
                 trigger.focus();

@@ -89,18 +89,32 @@ class TestMainNav:
         html = resp.get_data(as_text=True)
         assert "Nieuwe zaak" in html
 
-    def test_nav_dropdown_keyboard_and_touch_accessibility(self, auth_client):
+    def test_nav_dropdown_semantics_and_keyboard(self, auth_client):
         _set_lang(auth_client, "nl")
         resp = auth_client.get("/cms/workflow/")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
 
-        assert 'aria-haspopup="true"' in html
-        assert 'aria-expanded="false"' in html
-        # Toggle-JS: Enter/Spatie en Escape; klik-buiten sluit menu.
-        assert "e.key === 'Enter'" in html
+        # Trigger is een echte <button> met ARIA-controller, geen lege <a href="#">.
+        assert 'class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="entity-nav-menu">' in html
+        assert 'id="entity-nav-menu"' in html
+        # Toetsenbord: ArrowDown opent en verplaatst focus; Escape sluit.
+        assert "e.key === 'ArrowDown'" in html
         assert "Escape" in html
-        assert "classList.toggle('is-open'" in html
+        # Open-state wordt ALLEEN door aria-expanded/is-open gestuurd (geen CSS-hover).
+        assert ".nav-dropdown:hover .nav-dropdown-menu" not in html
+
+    def test_nav_dropdown_no_fake_menu_roles(self, auth_client):
+        _set_lang(auth_client, "nl")
+        resp = auth_client.get("/cms/workflow/")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # Entity-dropdown is een gewone nav-disclosure: geen rol=menu/menuitem.
+        assert 'role="menu"' not in html
+        assert 'role="menuitem"' not in html
+        # Trigger is geen link-anker met dead href="#".
+        assert '<a href="#" class="nav-dropdown-trigger"' not in html
 
 
 class TestCaseCreate:
@@ -188,6 +202,23 @@ class TestPVReport:
         assert "<h1>Case report</h1>" in html
 
 
+class TestCaseExportNl:
+    """P1-regressie: exportverslag gebruikt de bestaande i18n-key 'Case Report'
+    (niet de nieuwe 'Case report'-key van de pv-titel), zodat de NL-export-tekst
+    behouden blijft."""
+
+    def test_nl_export_csv_uses_case_report_key(self, auth_client):
+        _set_lang(auth_client, "nl")
+        case = _case_with_subject(auth_client, title="Export NL")
+        resp = auth_client.get(f"/cms/cases/{case.id}/export?format=csv")
+        assert resp.status_code == 200
+        csv_data = resp.get_data(as_text=True)
+
+        # Eerste rij = gettext("Case Report") -> NL "Dossier rapport".
+        assert "Dossier rapport" in csv_data
+        assert "Case Report" not in csv_data
+
+
 class TestSubjectProfileResearchActions:
     def test_nl_profile_tab_labels(self, auth_client):
         _set_lang(auth_client, "nl")
@@ -202,6 +233,10 @@ class TestSubjectProfileResearchActions:
 
         assert "Onderzoeksacties" in html  # tab-label
         assert "Actie voorstellen" in html  # propose-card
+        # Autocomplete-group-label: i18n via data-attribuut (geen hardcoded JS-string).
+        assert 'data-autocomplete="relation-subject"' in html
+        assert 'data-i18n-in-case="In deze zaak"' in html
+        assert "'In this case'" not in html  # geen hardcoded EN-string in de JS
 
     def test_en_profile_tab_labels(self, auth_client):
         _set_lang(auth_client, "en")
@@ -216,3 +251,7 @@ class TestSubjectProfileResearchActions:
 
         assert "Research actions" in html
         assert "Propose action" in html
+        # Autocomplete-group-label in EN: data-attribuut vertaald als originaal msgid.
+        assert 'data-i18n-in-case="In this case"' in html
+        # De JS leest het attribuut (getAttribute), niet een hardcoded literal.
+        assert "getAttribute('data-i18n-in-case')" in html

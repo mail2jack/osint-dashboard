@@ -634,7 +634,7 @@
     <form data-base-form data-method="POST" data-url="{{ url_for('cms.profile_add_relation', subject_id=subject.id) }}">
       <div class="form-grid">
         <div class="form-group"><label>Related subject</label>
-          <div class="autocomplete-wrap" data-autocomplete="relation-subject">
+          <div class="autocomplete-wrap" data-autocomplete="relation-subject" data-i18n-in-case="{{ _('In this case') }}">
             <input type="text" class="autocomplete-input" placeholder="{{ _('Search subjects…') }}" autocomplete="off">
             <input type="hidden" name="related_subject_id" required>
             <div class="autocomplete-list" style="display:none;"></div>
@@ -1374,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var candidates = [];
     var sameCaseIds = [];
     var subjectId = '{{ subject.id }}';
+    var i18nInCase = picker.getAttribute('data-i18n-in-case') || '';
 
     function fetchCandidates(q) {
       var url = '/cms/api/profile/subjects/' + encodeURIComponent(subjectId) + '/relation-candidates?q=' + encodeURIComponent(q) + '&limit=30';
@@ -1417,7 +1418,7 @@ document.addEventListener('DOMContentLoaded', function () {
           list.appendChild(item);
         });
       }
-      addGroup('In this case', same);
+      addGroup(i18nInCase, same);
       addGroup('Other subjects', other);
       list.style.display = '';
     }

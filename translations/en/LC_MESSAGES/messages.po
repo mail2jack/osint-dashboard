@@ -17,6 +17,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+#: cms/routes/exports.py:40
+msgid "Case Report"
+msgstr ""
+
+#: templates/cms/workflow/workflow_pv.html:57
 msgid "Case report"
 msgstr "Case report"
 
@@ -43,6 +48,10 @@ msgstr "Research actions"
 
 msgid "Propose action"
 msgstr "Propose action"
+
+#: templates/cms/subjects/profile.html:637
+msgid "In this case"
+msgstr ""
 
 msgid "Run research actions in Step 3 to generate findings."
 msgstr "Run research actions in Step 3 to generate findings."

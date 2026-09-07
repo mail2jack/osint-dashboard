@@ -18,6 +18,10 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: cms/routes/exports.py:40
+msgid "Case Report"
+msgstr "Dossier rapport"
+
+#: templates/cms/workflow/workflow_pv.html:57
 msgid "Case report"
 msgstr "Zaakverslag"
 
@@ -44,6 +48,10 @@ msgstr "Onderzoeksacties"
 
 msgid "Propose action"
 msgstr "Actie voorstellen"
+
+#: templates/cms/subjects/profile.html:637
+msgid "In this case"
+msgstr "In deze zaak"
 
 msgid "Run research actions in Step 3 to generate findings."
 msgstr "Voer in Stap 3 onderzoeksacties uit om bevindingen te genereren."
