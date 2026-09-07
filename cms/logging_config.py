@@ -93,3 +93,20 @@ def setup_logging(app=None):
         child = logging.getLogger(name)
         child.setLevel(log_level)
         child.propagate = True
+
+
+def enforce_root_level():
+    """Re-assert the root log level after the full app import.
+
+    Third-party dependencies may reset the root logger to WARNING (or
+    disable existing loggers) during import, which drops request-time INFO
+    records (e.g. request-logging hooks) from the logging chain.
+    """
+    log_level = getattr(
+        logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO
+    )
+    root = logging.getLogger()
+    root.setLevel(log_level)
+    root.disabled = False
+    for child in ("performance", "requests"):
+        logging.getLogger(child).disabled = False

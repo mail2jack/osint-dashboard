@@ -236,6 +236,8 @@ def test_managed_gunicorn_does_not_configure_shadow_access_log():
     installer = (ROOT / "install.sh").read_text(encoding="utf-8")
     assert "--workers 2 --worker-class sync --threads 1" in installer
     assert "--access-logfile /var/log/osint-dashboard/access.log" not in installer
+    assert "--error-logfile /var/log/osint-dashboard/error.log" not in installer
+    assert 'Environment="LOG_FILE=/dev/null"' in installer
 
 
 def test_managed_runtime_binds_gunicorn_to_localhost_and_rebuild_is_atomic():

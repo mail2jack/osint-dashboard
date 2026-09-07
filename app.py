@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from cms.logging_config import setup_logging
+from cms.logging_config import enforce_root_level, setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -792,6 +792,8 @@ app.config["COMPRESS_ALGORITHM"] = "br"
 app.config["COMPRESS_BR_LEVEL"] = 4
 app.config["COMPRESS_MIN_SIZE"] = 500
 Compress(app)
+
+enforce_root_level()
 
 
 # =============================================================================
