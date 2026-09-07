@@ -19,9 +19,12 @@ from cms.telegram_bot import run_bot_polling
 
 def main():
     with app.app_context():
-        from cms.models import Setting
+        from cms.models import Setting, db
         from cms.telegram_bot import _check_enabled, _ensure_api_key
+        from cms.tenant_context import set_tenant_context
         import cms.telegram_bot as tb_mod
+
+        set_tenant_context(db, None, bypass_rls=True)
 
         if not _check_enabled():
             print("[run_bot] telegram_enabled != true, exiting")

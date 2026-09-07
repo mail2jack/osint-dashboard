@@ -10,6 +10,9 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
 Environment="PATH=/opt/osint-dashboard/venv/bin"
+# Keep $HOME outside /home so ProtectHome=true can stay enabled — this also
+# stops libpq from probing /home/osint/.postgresql for a client certificate.
+Environment="HOME=/opt/osint-dashboard"
 ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/run_bot.py
 Restart=always
 RestartSec=10s
