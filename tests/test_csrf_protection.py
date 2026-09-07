@@ -25,6 +25,9 @@ validation: a tokenless request is cut off with the app's CSRF ``400`` body
 ``{"error": "Validation failed"}``.
 """
 
+import re
+from pathlib import Path
+
 import pytest
 
 from cms.models import User
@@ -36,6 +39,55 @@ STATE_MUTATING_ROUTES = [
     "/cms/api/findings/from-interpol",
     "/api/username/rapidapi",
 ]
+
+EXPECTED_EXEMPT_FUNCTIONS = {
+    "csp_report",
+    "person_search_stream",
+    "person_search_json",
+    "email_lookup",
+    "ip_lookup",
+    "domain_lookup",
+    "openkvk_lookup",
+    "webcam_lookup",
+    "hibp_check",
+    "username_search_stream",
+    "email_search_stream",
+    "email_holehe",
+    "email_combined",
+    "email_cross_validated",
+    "username_search",
+    "ai_summarize",
+    "ai_analyze_query",
+    "ai_enrich_profile",
+    "phone_lookup_stored",
+    "phone_lookup",
+    "webhook",
+    "full_text_search",
+    "email_check",
+    "check_policie_data",
+    "kvk_lookup",
+    "kadaster_lookup",
+    "politiebureau_lookup",
+    "check_rdw_vehicle",
+    "vessel_lookup",
+}
+
+
+def _scan_exempt_functions():
+    root = Path(__file__).resolve().parents[1]
+    found = set()
+    for py in root.rglob("*.py"):
+        if ".venv" in str(py) or "node_modules" in str(py):
+            continue
+        lines = py.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if line.strip() == "@csrf.exempt":
+                for j in range(i + 1, min(i + 12, len(lines))):
+                    m = re.match(r"\s*def\s+(\w+)", lines[j])
+                    if m:
+                        found.add(m.group(1))
+                        break
+    return found
 
 
 @pytest.fixture
@@ -104,3 +156,64 @@ def test_state_mutating_routes_accept_with_valid_csrf(csrf_client, app, path):
     )
     body = resp.get_data(as_text=True)
     assert "Bad request" not in body, (resp.status_code, body)
+
+
+@pytest.mark.parametrize("path", STATE_MUTATING_ROUTES)
+def test_cross_origin_post_without_csrf_is_rejected(csrf_client, path):
+    """A cross-origin POST (evil Origin header, no token) is still rejected.
+
+    CSRF protection must not rely on the Origin header; enforcement comes from
+    the required token. The same CSRF ``400`` signature proves the token gate
+    ran first, even with a hostile ``Origin`` present.
+    """
+    resp = csrf_client.post(
+        path,
+        json={"kenteken": "AB-123-K"},
+        headers={"Origin": "https://evil.example"},
+    )
+    body = resp.get_data(as_text=True)
+    assert "Bad request" in body, (resp.status_code, body)
+    assert "Validation failed" not in body, (resp.status_code, body)
+
+
+def test_exempt_catalog_allowlist_in_sync():
+    """Every @csrf.exempt must be accounted for in the catalog allowlist.
+
+    Adding or removing an exemption without updating
+    ``docs/CSRF_EXEMPT_CATALOG.md`` AND ``EXPECTED_EXEMPT_FUNCTIONS`` fails
+    this guard, forcing a conscious catalog decision.
+    """
+    assert _scan_exempt_functions() == EXPECTED_EXEMPT_FUNCTIONS
+
+
+def test_csp_report_is_exempt_by_design(csrf_client):
+    """CSP violation reports arrive from the browser without a CSRF token."""
+    resp = csrf_client.post(
+        "/csp-report",
+        json={"csp-report": {"document-uri": "https://joost.iveras.com/"}},
+    )
+    body = resp.get_data(as_text=True)
+    assert "Bad request" not in body, (resp.status_code, body)
+
+
+def test_stripe_webhook_is_exempt_but_signature_gated(csrf_client):
+    """Stripe webhook is exempt from CSRF; without a valid signature it is
+    still rejected by Stripe's own check (never by the CSRF ``400``)."""
+    resp = csrf_client.post("/stripe/webhook", json={})
+    body = resp.get_data(as_text=True)
+    assert "Bad request" not in body, (resp.status_code, body)
+
+
+def test_production_session_cookie_is_strict():
+    from cms.config import ProductionConfig
+
+    assert ProductionConfig.SESSION_COOKIE_SAMESITE == "Strict"
+    assert ProductionConfig.SESSION_COOKIE_SECURE is True
+    assert ProductionConfig.WTF_CSRF_ENABLED is True
+
+
+def test_no_config_uses_samesite_none():
+    from cms.config import Config, DevelopmentConfig, ProductionConfig
+
+    for cls in (Config, DevelopmentConfig, ProductionConfig):
+        assert cls.SESSION_COOKIE_SAMESITE != "None"
