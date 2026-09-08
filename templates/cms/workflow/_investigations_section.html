@@ -3,7 +3,7 @@
   {{ _('Investigations') }}
   <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ investigations|length }} {{ _('investigations') }}</span>
   {% if can_write %}
-  <a href="#" onclick="var f=document.getElementById('addInvestigationForm');f.style.display=(f.style.display==='none'||f.style.display==='')?'block':'none';return false;" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
+  <a href="#" data-toggle-add-investigation style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
   {% endif %}
   <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
 </div>
@@ -49,7 +49,7 @@
     <p style="color:var(--text-muted);">{{ _('No investigations yet. Make the first investigation.') }}</p>
     {% if can_write %}
     <div style="margin-top:0.4rem;">
-      <button type="button" class="btn-cms primary small" onclick="var f=document.getElementById('addInvestigationForm');f.style.display=(f.style.display==='none'||f.style.display==='')?'block':'none';var t=document.getElementById('inv-title');if(t&&f.style.display==='block'){t.focus();}return false;">{{ _('Make the first investigation') }}</button>
+      <button type="button" class="btn-cms primary small" data-toggle-add-investigation>{{ _('Make the first investigation') }}</button>
     </div>
     {% endif %}
   {% endif %}
@@ -80,3 +80,21 @@
   </div>
   {% endif %}
 </div>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-toggle-add-investigation]');
+    if (!toggle) return;
+    e.preventDefault();
+    var form = document.getElementById('addInvestigationForm');
+    if (!form) return;
+    var open = form.style.display === 'none' || form.style.display === '';
+    form.style.display = open ? 'block' : 'none';
+    if (open) {
+      var title = document.getElementById('inv-title');
+      if (title) title.focus();
+    }
+  });
+})();
+</script>

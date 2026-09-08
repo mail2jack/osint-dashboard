@@ -46,18 +46,27 @@ Add a nullable column `research_actions.investigation_id` that references
 
 `research_actions.investigation_id` must never point to an investigation of a
 different case or tenant. Enforce at database level, mirroring
-`ADR-0002` D8:
+`ADR-0002` D8. A FK on `(investigation_id, tenant_id)` is **not**
+sufficient: it only proves the investigation exists and that both rows share a
+tenant — it does **not** tie the action to the same *case*. Two compliant
+options:
 
-- Composite FK `(case_id, investigation_id)` is insufficient alone
-  (`investigations.case_id` is not unique); use the established pattern:
-  a composite FK on `research_actions(investigation_id, tenant_id)` against
-  `investigations(id, tenant_id)` **or** a DB trigger enforcing
-  `investigation.case_id = research_actions.case_id` and
-  `investigation.tenant_id = research_actions.tenant_id`.
-- Requirement: the invariant must hold **even when RLS is bypassed**
-  (`app.bypass_rls`), like `ADR-0002` D8 — prove with a bypass-path test.
-- Service-side validation mirrors the DB check; writes only within the tenant
-  boundary.
+- **Option A (composite FK on a parent key):** a FK on
+  `research_actions(investigation_id, case_id, tenant_id)` referencing a
+  unique parent key `investigations(id, case_id, tenant_id)`. The composite
+  FK hard-locks the same-case relation at the schema level: every
+  `case_id`/`tenant_id` written must match the referenced investigation's own
+  case and tenant.
+- **Option B (DB trigger):** a trigger on `research_actions` (BEFORE
+  INSERT/UPDATE) that rejects any row where the referenced investigation's
+  `case_id`/`tenant_id` differ from the action's `case_id`/`tenant_id`.
+  A standalone FK on `(investigation_id)` alone is insufficient with this
+  option for the same reason as above.
+
+Requirement: the invariant must hold **even when RLS is bypassed**
+(`app.bypass_rls`), like `ADR-0002` D8 — prove with a bypass-path test.
+Service-side validation mirrors the DB check; writes only within the tenant
+boundary.
 
 ### D3. Authorization & audit
 
@@ -96,9 +105,11 @@ different case or tenant. Enforce at database level, mirroring
 
 ## Migration notes for the data PR (not part of PR2)
 
-- Add nullable `research_actions.investigation_id` (FK), composite/parent
-  unique key on `investigations(id, tenant_id)` if the composite-FK route is
-  chosen, plus FORCE RLS re-check and rollback migration.
+- Add nullable `research_actions.investigation_id`; if the composite-FK route
+  (D2 Option A) is chosen, add the unique parent key
+  `investigations(id, case_id, tenant_id)` and the matching composite FK on
+  `research_actions(investigation_id, case_id, tenant_id)` — or implement the
+  D2 Option B trigger instead. Plus FORCE RLS re-check and rollback migration.
 - Tests: JSON-type must build in `test_postgres_integration.py`,
   migration up/down in `test_migration_cycle.py`, invariant tests for the
   normal and bypass-RLS paths, RLS/authorization tests, audit log entries.

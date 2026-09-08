@@ -230,6 +230,23 @@ class TestZaakAlsWerkruimte:
         # Onderzoeksacties (stap 4) zitten tussen onderzoeken (3) en findings (5).
         assert i3 < html.index("Zaakbrede onderzoeksacties") < i5
 
+    def test_csp_safe_toggle_and_focus_on_inv_title(self, auth_client):
+        _set_lang(auth_client, "nl")
+        case = _case_with_subject(auth_client, title="CSP NL")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # PR2-P1: geen inline onclick (CSP-safe) — de aanmaak-toggle loopt via
+        # data-attribuut + event-delegatie in een nonce-script.
+        assert 'onclick="var f=document.getElementById' not in html
+        assert "data-toggle-add-investigation" in html
+        assert "closest('[data-toggle-add-investigation]')" in html
+        assert "form.style.display = open ? 'block' : 'none'" in html
+        # Bij openen gaat de focus naar het titelveld (inv-title).
+        assert "getElementById('inv-title')" in html
+        assert "title.focus()" in html
+
 
 class TestChildInvestigationsOverview:
     def test_nl_overview_breadcrumb_and_section(self, auth_client):

@@ -274,7 +274,7 @@
     <div id="findingsContainer">
       <div style="text-align:center;padding:2rem;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
-<p>Run research actions in Step 4 to generate findings.</p>
+<p>{{ _('Run research actions in Step 4 to generate findings.') }}</p>
         <p style="font-size:0.85rem;">Each action adds findings with screenshots (date/time/link).</p>
       </div>
     </div>
@@ -373,7 +373,7 @@ function renderFindings() {
   totalEl.innerHTML = '📋 ' + FINDINGS_MAP.length + ' findings';
   
   if (FINDINGS_MAP.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run research actions in Step 4 to generate findings.</p></div>';
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>' + {{ _('Run research actions in Step 4 to generate findings.')|tojson }} + '</p></div>';
     return;
   }
   
