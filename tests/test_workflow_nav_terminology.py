@@ -247,6 +247,19 @@ class TestZaakAlsWerkruimte:
         assert "getElementById('inv-title')" in html
         assert "title.focus()" in html
 
+    def test_nl_polling_js_findings_empty_i18n(self, auth_client):
+        _set_lang(auth_client, "nl")
+        case = _case_with_subject(auth_client, title="Polling NL")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # De dynamisch ingevoegde finding-empty-state in de embedded polling-JS
+        # is i18n via tojson — geen hardcoded Engelse fallback in de NL-renderer.
+        assert "Voer in Stap 4 onderzoeksacties uit om bevindingen te genereren." in html
+        assert "Run investigation actions in Step 4" not in html
+        assert "Run research actions in Step 4" not in html
+
 
 class TestChildInvestigationsOverview:
     def test_nl_overview_breadcrumb_and_section(self, auth_client):
