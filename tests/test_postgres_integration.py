@@ -57,7 +57,8 @@ class TestPostgreSQLIntegration:
         # Keep this assertion aligned with the current Alembic head.
         # a6b7c8d9e0f1 (P1) adds the per-tenant invoice number counter.
         # e2f3a4b5c6d7 adds tenant RLS coverage for background_tasks.
-        assert revision == "e2f3a4b5c6d7"
+        # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
+        assert revision == "f5a6b7c8d9e0"
 
         protected = db.session.execute(
             text(
@@ -1138,7 +1139,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "e2f3a4b5c6d7"
+        assert revision == "f5a6b7c8d9e0"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
