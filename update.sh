@@ -13,9 +13,8 @@
 #   6. Health check
 #
 # The helper functions below are source-friendly: tests `source` this file
-# (skipping the main flow via the BASH_SOURCE guard) to exercise the
-# fail-closed migration step and the .deployed_sha recording without touching
-# a real server.
+# (skipping the main flow via the BASH_SOURCE guard) to exercise the helper
+# functions without touching a real server.
 # =============================================================================
 
 set -e
@@ -25,6 +24,45 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# ---------- Git pull + self-restart ----------
+# Pulls the latest code. If the pull updated `update.sh` itself, the script
+# restarts itself with the new version: bash may have buffered the tail of the
+# currently running script, which would silently execute stale code (for
+# example skipping a freshly added record_deployed_sha call). Git-only logic,
+# so it is fully testable via `source`.
+# UPDATE_SH_SELF_EXECUTED=1 marks the re-run (skips backup + pull, breaks the
+# restart loop).
+# $1 (optional): explicit path of the script to re-exec after a pull that
+# changed it. Production passes no argument and re-execs $0; tests inject the
+# pulled clone/update.sh to prove the new script version actually runs.
+pull_latest_and_maybe_self_restart() {
+    local script_path="${1:-$0}"
+    local project_dir="${PROJECT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+    if [ ! -d "$project_dir/.git" ]; then
+        echo -e "  ${RED}Not a git repository — skipping git pull${NC}"
+        return 0
+    fi
+    local branch="${CURRENT_BRANCH:-$(git -C "$project_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)}"
+    # If the remote branch no longer exists, fall back to master
+    if ! git -C "$project_dir" ls-remote --heads origin "$branch" 2>/dev/null | grep -q .; then
+        echo -e "  ${YELLOW}Branch '$branch' no longer exists on remote — switching to master${NC}"
+        branch="master"
+        git -C "$project_dir" checkout master
+    fi
+    local pre_sha post_sha
+    pre_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || echo none)"
+    git -C "$project_dir" fetch origin
+    git -C "$project_dir" fetch origin
+    git -C "$project_dir" checkout "$branch"
+    git -C "$project_dir" pull origin "$branch"
+    post_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || echo none)"
+    echo -e "  ✅ Git pull complete ($branch)"
+    if [ "$pre_sha" != "$post_sha" ] && [ "${UPDATE_SH_SELF_EXECUTED-}" != "1" ]; then
+        echo -e "  ${BLUE}Deploy script updated — restarting with the new version${NC}"
+        exec env UPDATE_SH_SELF_EXECUTED=1 bash "$script_path"
+    fi
+}
 
 # ---------- DB migration step ----------
 # Fail-closed: importing the app runs the boot-time Alembic upgrade inside
@@ -72,45 +110,36 @@ echo ""
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
-# ---------- Step 1: Backup ----------
-echo -e "${YELLOW}[1/6] Backing up database and config...${NC}"
+# ---------- Step 1+2: Backup + Git Pull ----------
+# Only in the first instantiation. A pull that updates update.sh itself
+# self-restarts below (pull_latest_and_maybe_self_restart), which re-enters
+# this script with UPDATE_SH_SELF_EXECUTED=1 and skips straight to the
+# remaining steps on the new code.
+if [ "${UPDATE_SH_SELF_EXECUTED-}" != "1" ]; then
+    echo -e "${YELLOW}[1/6] Backing up database and config...${NC}"
 
-BACKUP_DIR="$PROJECT_DIR/backups/$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$BACKUP_DIR"
+    BACKUP_DIR="$PROJECT_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$BACKUP_DIR"
 
-# PostgreSQL backup (pg_dump) or SQLite fallback
-if command -v pg_dump &>/dev/null && grep -q "postgresql://" "$PROJECT_DIR/.env" 2>/dev/null; then
-    DB_URL=$(grep "^DATABASE_URL=" "$PROJECT_DIR/.env" | cut -d= -f2-)
-    if [ -n "$DB_URL" ]; then
-        pg_dump "$DB_URL" > "$BACKUP_DIR/db.sql" 2>/dev/null && echo "  ✅ PostgreSQL database backed up"
+    # PostgreSQL backup (pg_dump) or SQLite fallback
+    if command -v pg_dump &>/dev/null && grep -q "postgresql://" "$PROJECT_DIR/.env" 2>/dev/null; then
+        DB_URL=$(grep "^DATABASE_URL=" "$PROJECT_DIR/.env" | cut -d= -f2-)
+        if [ -n "$DB_URL" ]; then
+            pg_dump "$DB_URL" > "$BACKUP_DIR/db.sql" 2>/dev/null && echo "  ✅ PostgreSQL database backed up"
+        fi
+    elif [ -f "$PROJECT_DIR/cms.db" ]; then
+        cp "$PROJECT_DIR/cms.db" "$BACKUP_DIR/cms.db"
+        echo "  ✅ Database backed up to $BACKUP_DIR/cms.db"
     fi
-elif [ -f "$PROJECT_DIR/cms.db" ]; then
-    cp "$PROJECT_DIR/cms.db" "$BACKUP_DIR/cms.db"
-    echo "  ✅ Database backed up to $BACKUP_DIR/cms.db"
-fi
 
-if [ -f "$PROJECT_DIR/.env" ]; then
-    cp "$PROJECT_DIR/.env" "$BACKUP_DIR/.env"
-    echo "  ✅ .env backed up"
-fi
-
-# ---------- Step 2: Git Pull ----------
-echo -e "${YELLOW}[2/6] Pulling latest code...${NC}"
-if [ -d "$PROJECT_DIR/.git" ]; then
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
-    # If the remote branch no longer exists, fall back to master
-    if ! git ls-remote --heads origin "$CURRENT_BRANCH" 2>/dev/null | grep -q .; then
-        echo -e "  ${YELLOW}Branch '$CURRENT_BRANCH' no longer exists on remote — switching to master${NC}"
-        CURRENT_BRANCH="master"
-        git checkout master
+    if [ -f "$PROJECT_DIR/.env" ]; then
+        cp "$PROJECT_DIR/.env" "$BACKUP_DIR/.env"
+        echo "  ✅ .env backed up"
     fi
-    git fetch origin
-    git fetch origin
-    git checkout "$CURRENT_BRANCH"
-    git pull origin "$CURRENT_BRANCH"
-    echo -e "  ✅ Git pull complete ($CURRENT_BRANCH)"
-else
-    echo -e "  ${RED}Not a git repository — skipping git pull${NC}"
+
+    echo -e "${YELLOW}[2/6] Pulling latest code...${NC}"
+    CURRENT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
+    pull_latest_and_maybe_self_restart
 fi
 
 # ---------- Step 3: Get current/latest version ----------
