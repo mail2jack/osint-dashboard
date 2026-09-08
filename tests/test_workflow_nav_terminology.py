@@ -163,8 +163,10 @@ class TestCaseDetail:
         html = resp.get_data(as_text=True)
 
         assert "Zaken" in html  # breadcrumb naar werkvoorraad
-        assert "Onderzoeksacties" in html  # Step 3 (research actions)
-        assert "Onderzoeken" in html  # Step 4: child-object-label
+        assert "Zaakbrede onderzoeksacties" in html  # Step 4 (research actions, case-wide)
+        assert "Onderzoeken" in html  # Step 3: child-object-label
+        # Zaak-als-werkruimte: "Onderzoeken" (stap 3) staat vóór de acties (stap 4).
+        assert html.index("Onderzoeken") < html.index("Zaakbrede onderzoeksacties")
 
     def test_en_detail_breadcrumb_steps_child_label(self, auth_client):
         _set_lang(auth_client, "en")
@@ -174,8 +176,59 @@ class TestCaseDetail:
         html = resp.get_data(as_text=True)
 
         assert "Cases" in html
-        assert "Research actions" in html
+        assert "Case-wide research actions" in html
         assert "Investigations" in html  # child-object-label (EN)
+        # Zaak-als-werkruimte: "Investigations" (stap 3) vóór de acties (stap 4).
+        assert html.index("Investigations") < html.index("Case-wide research actions")
+
+
+class TestZaakAlsWerkruimte:
+    """PR2 (ADR-0005, UI-only) — case-detail lege-state en eerlijke case-brede
+    onderzoeksacties: geen pseudo-koppeling, geen verstoring van bestaande
+    functionaliteit (acties blijven zichtbaar zonder child-onderzoeken)."""
+
+    def test_nl_empty_state_en_acties_zichtbaar(self, auth_client):
+        _set_lang(auth_client, "nl")
+        case = _case_with_subject(auth_client, title="Werkruimte NL")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # Lege-state met primaire CTA in de nieuwe stap-3-sectie.
+        assert "Nog geen onderzoeken. Maak het eerste onderzoek aan." in html
+        assert ">Maak het eerste onderzoek aan</button>" in html
+        # Regressie: zonder child-onderzoek blijven de acties zichtbaar (geen lock).
+        assert "Zaakbrede onderzoeksacties" in html
+        # i18n: geen vertaalde EN-msgid in de NL-rendering.
+        assert "No investigations yet." not in html
+
+    def test_en_empty_state_en_acties_zichtbaar(self, auth_client):
+        _set_lang(auth_client, "en")
+        case = _case_with_subject(auth_client, title="Workspace EN")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        assert "No investigations yet. Make the first investigation." in html
+        assert ">Make the first investigation</button>" in html
+        assert "Case-wide research actions" in html
+
+    def test_case_detail_step_order(self, auth_client):
+        _set_lang(auth_client, "nl")
+        case = _case_with_subject(auth_client, title="Werkruimte VLG NL")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # Zaak-als-werkruimte: volledige werktegat-volgorde 1..6 via de
+        # feitelijke step-nrs (labels van Findings/Report zijn hardcoded EN).
+        i3 = html.index('<span class="step-nr">3</span>')
+        i4 = html.index('<span class="step-nr">4</span>')
+        i5 = html.index('<span class="step-nr">5</span>')
+        i6 = html.index('<span class="step-nr">6</span>')
+        assert i3 < i4 < i5 < i6
+        # Onderzoeksacties (stap 4) zitten tussen onderzoeken (3) en findings (5).
+        assert i3 < html.index("Zaakbrede onderzoeksacties") < i5
 
 
 class TestChildInvestigationsOverview:

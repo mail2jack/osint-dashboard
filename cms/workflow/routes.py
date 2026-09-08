@@ -1053,7 +1053,7 @@ def case_detail(case_id):
             investigations=investigations,
             created_by_names=created_by_names,
             can_write=_current_user_is_investigator(),
-            step_number=4,
+            step_number=3,
             action_types=ACTION_REGISTRY,
             action_credits=action_credits,
             subject_presets=SUBJECT_TYPE_PRESETS,
@@ -1082,7 +1082,7 @@ def investigations_index(case_id):
         created_by_names=created_by_names,
         show_archived=show_archived,
         can_write=_current_user_is_investigator(),
-        step_number=4,
+        step_number=3,
     )
 
 

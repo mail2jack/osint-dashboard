@@ -1,5 +1,5 @@
 <div class="workflow-step-header">
-  <span class="step-nr">{{ step_number|default(4) }}</span>
+  <span class="step-nr">{{ step_number|default(3) }}</span>
   {{ _('Investigations') }}
   <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ investigations|length }} {{ _('investigations') }}</span>
   {% if can_write %}
@@ -46,7 +46,12 @@
     </div>
     {% endfor %}
   {% else %}
-    <p style="color:var(--text-muted);">{{ _('No investigations yet.') }}</p>
+    <p style="color:var(--text-muted);">{{ _('No investigations yet. Make the first investigation.') }}</p>
+    {% if can_write %}
+    <div style="margin-top:0.4rem;">
+      <button type="button" class="btn-cms primary small" onclick="var f=document.getElementById('addInvestigationForm');f.style.display=(f.style.display==='none'||f.style.display==='')?'block':'none';var t=document.getElementById('inv-title');if(t&&f.style.display==='block'){t.focus();}return false;">{{ _('Make the first investigation') }}</button>
+    </div>
+    {% endif %}
   {% endif %}
 
   {% if can_write %}
