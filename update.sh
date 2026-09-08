@@ -11,6 +11,11 @@
 #   4. Apply DB migrations
 #   5. Restart services
 #   6. Health check
+#
+# The helper functions below are source-friendly: tests `source` this file
+# (skipping the main flow via the BASH_SOURCE guard) to exercise the
+# fail-closed migration step and the .deployed_sha recording without touching
+# a real server.
 # =============================================================================
 
 set -e
@@ -20,6 +25,44 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# ---------- DB migration step ----------
+# Fail-closed: importing the app runs the boot-time Alembic upgrade inside
+# create_cms_module(). A real failure MUST abort the deploy, so this runs
+# without a pipe (a pipe masks the true exit status under `set -e`) and
+# returns non-zero instead of echoing success unconditionally.
+# PYTHON_BIN can be overridden from the environment (tests inject a stub).
+run_migration_step() {
+    local project_dir="${PROJECT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+    local venv_dir="${VENV_DIR:-$project_dir/venv}"
+    local pybin="${PYTHON_BIN:-$venv_dir/bin/python3}"
+    if [ ! -f "$pybin" ]; then
+        pybin="python3"
+    fi
+    echo -e "${YELLOW}[4/6] Running database migrations...${NC}"
+    if ! $pybin -c "from app import app; from cms.models import db; from cms import create_cms_module; create_cms_module(app); print('✅ Migrations OK')"; then
+        echo -e "  ${RED}Database migration step failed — aborting deploy${NC}" >&2
+        return 1
+    fi
+    echo -e "  ✅ Migrations applied"
+}
+
+# Record the successfully deployed commit in .deployed_sha (see RUNBOOK.md).
+record_deployed_sha() {
+    local project_dir="${PROJECT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+    local sha
+    sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || echo "unknown")"
+    if [ "$sha" = "unknown" ]; then
+        echo -e "  ${YELLOW}Could not resolve git HEAD — .deployed_sha not updated${NC}"
+        return 0
+    fi
+    echo "$sha" > "$project_dir/.deployed_sha"
+    echo -e "  ✅ Deployed commit recorded in .deployed_sha ($sha)"
+}
+
+# ---------- Main deployment flow ----------
+# Skipped when this file is `source`d by tests (see BASH_SOURCE check).
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
 echo -e "${BLUE}╔══════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Iveras OSINT Dashboard Update      ║${NC}"
@@ -91,20 +134,7 @@ $VENV_PIP install -r "$PROJECT_DIR/requirements.txt" --upgrade
 echo -e "  ✅ Packages updated"
 
 # ---------- Step 5: DB Migrations ----------
-echo -e "${YELLOW}[4/6] Running database migrations...${NC}"
-PYTHON_BIN="$VENV_DIR/bin/python3"
-if [ ! -f "$PYTHON_BIN" ]; then
-    PYTHON_BIN="python3"
-fi
-# Fail-closed: importing the app runs the boot-time Alembic upgrade inside
-# create_cms_module(). Any real failure here MUST abort the deploy, so run it
-# without a pipe (a pipe masks the true exit status under `set -e`) and exit
-# on error instead of echoing success unconditionally.
-if ! $PYTHON_BIN -c "from app import app; from cms.models import db; from cms import create_cms_module; create_cms_module(app); print('✅ Migrations OK')"; then
-    echo -e "  ${RED}Database migration step failed — aborting deploy${NC}" >&2
-    exit 1
-fi
-echo -e "  ✅ Migrations applied"
+run_migration_step
 
 # ---------- Step 6: Restart Services ----------
 echo -e "${YELLOW}[5/6] Restarting services...${NC}"
@@ -130,6 +160,7 @@ STATUS=$(echo "$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin
 
 if [ "$STATUS" = "ok" ]; then
     echo -e "  ✅ Health check passed"
+    record_deployed_sha
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║   Update complete!                    ║${NC}"
@@ -141,4 +172,6 @@ else
     echo ""
     echo -e "${RED}Update completed but health check failed. Check server logs.${NC}"
     exit 1
+fi
+
 fi
