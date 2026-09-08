@@ -1947,6 +1947,17 @@ class Screenshot(db.Model):
 
 class ResearchAction(db.Model):
     __tablename__ = "research_actions"
+    __table_args__ = (
+        # Hard same-case/same-tenant invariant (ADR-0005 D2, Option A): a linked
+        # investigation must belong to exactly this action's case and tenant —
+        # enforced by the DB even under an RLS bypass. NULL investigation_id
+        # (case-wide by explicit semantics) is always valid.
+        db.ForeignKeyConstraint(
+            ["investigation_id", "case_id", "tenant_id"],
+            ["investigations.id", "investigations.case_id", "investigations.tenant_id"],
+            name="fk_research_actions_investigation_case_tenant",
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -1957,6 +1968,9 @@ class ResearchAction(db.Model):
     )
     subject_id = db.Column(
         db.String(36), db.ForeignKey("subjects.id"), nullable=True, index=True
+    )
+    investigation_id = db.Column(
+        db.String(36), nullable=True, index=True, default=None
     )
     target_kind = db.Column(db.String(20))
     target_snapshot = db.Column(db.Text)
@@ -1978,6 +1992,7 @@ class ResearchAction(db.Model):
 
     case = db.relationship("Case", backref="research_actions")
     subject = db.relationship("Subject", foreign_keys=[subject_id])
+    investigation = db.relationship("Investigation", foreign_keys=[investigation_id])
     findings = db.relationship(
         "Finding", secondary="action_findings", backref="research_actions"
     )
@@ -2025,6 +2040,7 @@ class ResearchAction(db.Model):
             "id": self.id,
             "case_id": self.case_id,
             "subject_id": self.subject_id,
+            "investigation_id": self.investigation_id,
             "target_kind": self.target_kind,
             "target_snapshot": self.target_snapshot_data,
             "action_type": self.action_type,
@@ -2078,6 +2094,15 @@ class Investigation(db.Model):
             "case_id",
             "sequence_no",
             name="uq_investigation_seq_per_case",
+        ),
+        # ADR-0005 parent key: lets research_actions(investigation_id,
+        # case_id, tenant_id) reference an investigation only when the
+        # action's case and tenant match the investigation's own (D2 A).
+        db.UniqueConstraint(
+            "id",
+            "case_id",
+            "tenant_id",
+            name="uq_investigations_id_case_tenant",
         ),
         # Hard tenant invariant (ADR-0002 D8): the referenced case must belong
         # to the same tenant — enforced by the DB even under an RLS bypass.
