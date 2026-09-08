@@ -78,6 +78,77 @@ def test_update_sh_record_deployed_sha_not_git_repo(tmp_path):
     assert not (tmp_path / ".deployed_sha").exists()
 
 
+def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
+    """A pull that updates update.sh itself must self-restart instead of
+    continuing on stale (buffered) code — otherwise newly added steps like
+    record_deployed_sha() silently never run."""
+    origin = tmp_path / "origin.git"
+    subprocess.run(
+        ["git", "init", "-q", "--bare", "--initial-branch=master", str(origin)],
+        check=True,
+    )
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True)
+    _git_config(clone)
+
+    (clone / "a.txt").write_text("a")
+    subprocess.run(["git", "add", "a.txt"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
+
+    v1 = (ROOT / "update.sh").read_text()
+    marker = "UPDATE_SELF_RESTART_MARKER_NEW"
+    (clone / "update.sh").write_text(v1)
+    subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "v1 updater"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
+    v1_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=clone, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Newer update.sh on the remote, clone stays on the older commit.
+    (clone / "update.sh").write_text(v1 + f"\n# {marker}\n")
+    subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "v2 updater"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
+    subprocess.run(["git", "reset", "-q", "--hard", v1_sha], cwd=clone, check=True)
+
+    runner = tmp_path / "runner.sh"
+    runner.write_text(
+        "#!/bin/bash\n"
+        "source \"${UPDATE_SH_PATH}\"\n"
+        "if [ \"${UPDATE_SH_SELF_EXECUTED-}\" = \"1\" ]; then\n"
+        "    echo SELF_RESTART_OK\n"
+        "    exit 0\n"
+        "fi\n"
+        "pull_latest_and_maybe_self_restart\n"
+        "echo NO_RESTART_UNEXPECTED\n"
+        "exit 3\n"
+    )
+    runner.chmod(0o755)
+    env = {
+        **os.environ,
+        "UPDATE_SH_PATH": str(ROOT / "update.sh"),
+        "PROJECT_DIR": str(clone),
+        "CURRENT_BRANCH": "master",
+    }
+    result = subprocess.run(
+        ["bash", str(runner)],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "SELF_RESTART_OK" in result.stdout, result.stdout
+    assert "NO_RESTART_UNEXPECTED" not in result.stdout
+    assert marker in (clone / "update.sh").read_text()
+
+
+def _git_config(repo: Path) -> None:
+    subprocess.run(["git", "config", "user.email", "ci@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "CI"], cwd=repo, check=True)
+
+
 def _init_git_repo(tmp_path: Path) -> str:
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     subprocess.run(["git", "config", "user.email", "ci@example.com"], cwd=tmp_path, check=True)
