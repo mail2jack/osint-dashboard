@@ -198,7 +198,23 @@ class TestListInvestigations:
         _, case_id = _make_client_and_case()
         resp = auth_client.get(f"/cms/workflow/case/{case_id}/investigations")
         assert resp.status_code == 200
-        assert b"No investigations yet." in resp.data
+        assert b"No investigations yet. Make the first investigation." in resp.data
+        assert b">Make the first investigation</button>" in resp.data
+
+    def test_add_form_toggle_is_csp_safe(self, app, auth_client):
+        """PR2-P1: de aanmaak-toggle op de standalone route is CSP-safe —
+        data-attribuut + event-delegatie met focus op inv-title, geen inline
+        onclick (zoals de oude "var f=document.getElementById"-toggle)."""
+        _, case_id = _make_client_and_case()
+        resp = auth_client.get(f"/cms/workflow/case/{case_id}/investigations")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        assert 'onclick="var f=document.getElementById' not in html
+        assert "data-toggle-add-investigation" in html
+        assert "closest('[data-toggle-add-investigation]')" in html
+        assert "getElementById('inv-title')" in html
+        assert "title.focus()" in html
 
 
 class TestCaseAndTenantIsolation:
@@ -262,7 +278,9 @@ class TestViewerAccess:
         assert read.status_code == 200
         assert b"Viewer mag dit lezen" in read.data
         assert b"+ add" not in read.data
-        assert b"addInvestigationForm" not in read.data
+        # Geen formulier (schrijf-UI) voor viewers; de JS-referentie naar de
+        # (niet-rendered) div in het nonce-script heeft geen schrijf-effect.
+        assert b'id="addInvestigationForm"' not in read.data
         detail = client.get(f"/cms/workflow/case/{case_id}")
         assert detail.status_code == 403
 

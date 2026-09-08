@@ -46,6 +46,12 @@ msgstr "Legacy-zaken"
 msgid "Research actions"
 msgstr "Onderzoeksacties"
 
+msgid "Case-wide research actions"
+msgstr "Zaakbrede onderzoeksacties"
+
+msgid "Actions run at case level. Findings appear in the findings section."
+msgstr "Acties draaien op zaakniveau. Resultaten verschijnen in de bevindingen-sectie."
+
 msgid "Propose action"
 msgstr "Actie voorstellen"
 
@@ -55,6 +61,15 @@ msgstr "In deze zaak"
 
 msgid "Run research actions in Step 3 to generate findings."
 msgstr "Voer in Stap 3 onderzoeksacties uit om bevindingen te genereren."
+
+msgid "Run research actions in Step 4 to generate findings."
+msgstr "Voer in Stap 4 onderzoeksacties uit om bevindingen te genereren."
+
+msgid "No investigations yet. Make the first investigation."
+msgstr "Nog geen onderzoeken. Maak het eerste onderzoek aan."
+
+msgid "Make the first investigation"
+msgstr "Maak het eerste onderzoek aan"
 
 msgid "Generate after completing the case"
 msgstr "Genereer na het afronden van de zaak"

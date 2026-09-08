@@ -377,7 +377,7 @@ function updateFindings(findings, actions) {
   });
 
   if (findings.length === 0) {
-    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
+    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>' + {{ _('Run research actions in Step 4 to generate findings.')|tojson }} + '</p></div>';
     return;
   }
 

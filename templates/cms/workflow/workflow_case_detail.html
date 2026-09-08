@@ -501,9 +501,14 @@ input:-webkit-autofill:focus {
 </div>
 
 <div class="workflow-step">
+  {% include "cms/workflow/_investigations_section.html" %}
+</div>
+
+<div class="workflow-step">
   <div class="workflow-step-header">
-    <span class="step-nr">3</span>
-    {{ _('Research actions') }}
+    <span class="step-nr">4</span>
+    {{ _('Case-wide research actions') }}
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">{{ _('Actions run at case level. Findings appear in the findings section.') }}</span>
     <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Click an action to start</span>
   </div>
   <div class="workflow-step-body">
@@ -546,10 +551,6 @@ input:-webkit-autofill:focus {
       <div id="proposalsList"></div>
     </div>
   </div>
-</div>
-
-<div class="workflow-step">
-  {% include "cms/workflow/_investigations_section.html" %}
 </div>
 
 <div class="workflow-step">
@@ -647,7 +648,7 @@ input:-webkit-autofill:focus {
       {% else %}
       <div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
-        <p>{{ _('Run research actions in Step 3 to generate findings.') }}</p>
+        <p>{{ _('Run research actions in Step 4 to generate findings.') }}</p>
         <p style="font-size:0.85rem;">Each action adds realistic findings based on public sources.</p>
       </div>
       {% endif %}
