@@ -96,7 +96,14 @@ PYTHON_BIN="$VENV_DIR/bin/python3"
 if [ ! -f "$PYTHON_BIN" ]; then
     PYTHON_BIN="python3"
 fi
-$PYTHON_BIN -c "from app import app; from cms.models import db; from cms.__init__ import create_cms_module; create_cms_module(app); print('✅ Migrations OK')" 2>&1 | tail -1
+# Fail-closed: importing the app runs the boot-time Alembic upgrade inside
+# create_cms_module(). Any real failure here MUST abort the deploy, so run it
+# without a pipe (a pipe masks the true exit status under `set -e`) and exit
+# on error instead of echoing success unconditionally.
+if ! $PYTHON_BIN -c "from app import app; from cms.models import db; from cms import create_cms_module; create_cms_module(app); print('✅ Migrations OK')"; then
+    echo -e "  ${RED}Database migration step failed — aborting deploy${NC}" >&2
+    exit 1
+fi
 echo -e "  ✅ Migrations applied"
 
 # ---------- Step 6: Restart Services ----------

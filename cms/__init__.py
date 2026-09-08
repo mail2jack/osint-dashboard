@@ -88,6 +88,17 @@ def create_cms_module(app: Flask):
     Args:
         app: Flask application instance
     """
+    # Idempotent guard: the app is imported (creating the Flask app at
+    # module import time triggers create_cms_module) and then explicitly
+    # re-initialized by scripts such as update.sh's migration step. Without
+    # this guard, the second call re-registers the Flask-SQLAlchemy / Flask-
+    # Migrate instances and raises
+    #     RuntimeError: A 'SQLAlchemy' instance has already been registered
+    # so every re-initialization must be a no-op.
+    if app.extensions.get("cms_module_initialized"):
+        app.logger.debug("create_cms_module already initialized — skipping duplicate init")
+        return app
+
     # Initialize extensions
     from .auth import login_manager
     from .background import init_background
@@ -465,6 +476,7 @@ def create_cms_module(app: Flask):
                         linked,
                     )
 
+    app.extensions["cms_module_initialized"] = True
     init_telemetry(app)
     return app
 
