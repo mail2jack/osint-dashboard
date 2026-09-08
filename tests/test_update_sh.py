@@ -79,9 +79,13 @@ def test_update_sh_record_deployed_sha_not_git_repo(tmp_path):
 
 
 def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
-    """A pull that updates update.sh itself must self-restart instead of
-    continuing on stale (buffered) code — otherwise newly added steps like
-    record_deployed_sha() silently never run."""
+    """A pull that updates update.sh must self-restart and run the NEW script
+    version: pull_latest_and_maybe_self_restart() re-execs the pulled script
+    path, and only the pulled version prints the marker. Stale (buffered)
+    code would print the old marker instead."""
+    stale_marker = "UPDATE_SCRIPT_STALE_MARKER"
+    new_marker = "UPDATE_SCRIPT_NEW_MARKER"
+
     origin = tmp_path / "origin.git"
     subprocess.run(
         ["git", "init", "-q", "--bare", "--initial-branch=master", str(origin)],
@@ -96,9 +100,7 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=clone, check=True)
     subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
 
-    v1 = (ROOT / "update.sh").read_text()
-    marker = "UPDATE_SELF_RESTART_MARKER_NEW"
-    (clone / "update.sh").write_text(v1)
+    (clone / "update.sh").write_text(f"#!/bin/bash\necho {stale_marker}\n")
     subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "v1 updater"], cwd=clone, check=True)
     subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
@@ -107,7 +109,7 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
     ).stdout.strip()
 
     # Newer update.sh on the remote, clone stays on the older commit.
-    (clone / "update.sh").write_text(v1 + f"\n# {marker}\n")
+    (clone / "update.sh").write_text(f"#!/bin/bash\necho {new_marker}\n")
     subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "v2 updater"], cwd=clone, check=True)
     subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
@@ -117,11 +119,7 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
     runner.write_text(
         "#!/bin/bash\n"
         "source \"${UPDATE_SH_PATH}\"\n"
-        "if [ \"${UPDATE_SH_SELF_EXECUTED-}\" = \"1\" ]; then\n"
-        "    echo SELF_RESTART_OK\n"
-        "    exit 0\n"
-        "fi\n"
-        "pull_latest_and_maybe_self_restart\n"
+        "pull_latest_and_maybe_self_restart \"${REEXEC_SCRIPT}\"\n"
         "echo NO_RESTART_UNEXPECTED\n"
         "exit 3\n"
     )
@@ -131,6 +129,7 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
         "UPDATE_SH_PATH": str(ROOT / "update.sh"),
         "PROJECT_DIR": str(clone),
         "CURRENT_BRANCH": "master",
+        "REEXEC_SCRIPT": str(clone / "update.sh"),
     }
     result = subprocess.run(
         ["bash", str(runner)],
@@ -139,9 +138,11 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "SELF_RESTART_OK" in result.stdout, result.stdout
+    assert new_marker in result.stdout, result.stdout
+    assert stale_marker not in result.stdout, result.stdout
+    assert "Deploy script updated" in result.stdout, result.stdout
     assert "NO_RESTART_UNEXPECTED" not in result.stdout
-    assert marker in (clone / "update.sh").read_text()
+    assert new_marker in (clone / "update.sh").read_text()
 
 
 def _git_config(repo: Path) -> None:

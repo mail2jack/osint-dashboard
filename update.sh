@@ -33,7 +33,11 @@ NC='\033[0m' # No Color
 # so it is fully testable via `source`.
 # UPDATE_SH_SELF_EXECUTED=1 marks the re-run (skips backup + pull, breaks the
 # restart loop).
+# $1 (optional): explicit path of the script to re-exec after a pull that
+# changed it. Production passes no argument and re-execs $0; tests inject the
+# pulled clone/update.sh to prove the new script version actually runs.
 pull_latest_and_maybe_self_restart() {
+    local script_path="${1:-$0}"
     local project_dir="${PROJECT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
     if [ ! -d "$project_dir/.git" ]; then
         echo -e "  ${RED}Not a git repository — skipping git pull${NC}"
@@ -56,7 +60,7 @@ pull_latest_and_maybe_self_restart() {
     echo -e "  ✅ Git pull complete ($branch)"
     if [ "$pre_sha" != "$post_sha" ] && [ "${UPDATE_SH_SELF_EXECUTED-}" != "1" ]; then
         echo -e "  ${BLUE}Deploy script updated — restarting with the new version${NC}"
-        exec env UPDATE_SH_SELF_EXECUTED=1 bash "$0"
+        exec env UPDATE_SH_SELF_EXECUTED=1 bash "$script_path"
     fi
 }
 
