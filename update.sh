@@ -45,7 +45,7 @@ pull_latest_and_maybe_self_restart() {
     fi
     local branch="${CURRENT_BRANCH:-$(git -C "$project_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)}"
     # If the remote branch no longer exists, fall back to master
-    if ! git ls-remote --heads origin "$branch" 2>/dev/null | grep -q .; then
+    if ! git -C "$project_dir" ls-remote --heads origin "$branch" 2>/dev/null | grep -q .; then
         echo -e "  ${YELLOW}Branch '$branch' no longer exists on remote — switching to master${NC}"
         branch="master"
         git -C "$project_dir" checkout master

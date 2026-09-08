@@ -145,6 +145,77 @@ def test_update_sh_self_restarts_after_pull_updates_script(tmp_path):
     assert new_marker in (clone / "update.sh").read_text()
 
 
+def test_update_sh_self_restart_uses_clone_remote_and_branch(tmp_path):
+    """The git calls must run against PROJECT_DIR (`git -C`), including the
+    branch-existence check. Run from the main repo (whose origin is
+    irrelevant) against a clone whose remote only has a bespoke branch; the
+    pull+self-restart must use that remote and branch, not fall back to a
+    branch from the main repo's remote."""
+    fbranch = "branch-ci-clonetest-a1b2c3"
+    stale_marker = "UPDATE_SCRIPT_STALE_MARKER"
+    new_marker = "UPDATE_SCRIPT_NEW_MARKER"
+
+    origin = tmp_path / "origin.git"
+    subprocess.run(
+        ["git", "init", "-q", "--bare", "--initial-branch=master", str(origin)],
+        check=True,
+    )
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True)
+    _git_config(clone)
+
+    (clone / "a.txt").write_text("a")
+    subprocess.run(["git", "add", "a.txt"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "origin", "master"], cwd=clone, check=True)
+
+    subprocess.run(["git", "checkout", "-q", "-b", fbranch], cwd=clone, check=True)
+    (clone / "update.sh").write_text(f"#!/bin/bash\necho {stale_marker}\n")
+    subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "v1 updater"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "-u", "origin", fbranch], cwd=clone, check=True)
+    v1_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=clone, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    (clone / "update.sh").write_text(f"#!/bin/bash\necho {new_marker}\n")
+    subprocess.run(["git", "add", "update.sh"], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "v2 updater"], cwd=clone, check=True)
+    subprocess.run(["git", "push", "-q", "origin", fbranch], cwd=clone, check=True)
+    subprocess.run(["git", "reset", "-q", "--hard", v1_sha], cwd=clone, check=True)
+
+    runner = tmp_path / "runner.sh"
+    runner.write_text(
+        "#!/bin/bash\n"
+        "source \"${UPDATE_SH_PATH}\"\n"
+        "pull_latest_and_maybe_self_restart \"${REEXEC_SCRIPT}\"\n"
+        "echo NO_RESTART_UNEXPECTED\n"
+        "exit 3\n"
+    )
+    runner.chmod(0o755)
+    env = {
+        **os.environ,
+        "UPDATE_SH_PATH": str(ROOT / "update.sh"),
+        "PROJECT_DIR": str(clone),
+        "CURRENT_BRANCH": fbranch,
+        "REEXEC_SCRIPT": str(clone / "update.sh"),
+    }
+    result = subprocess.run(
+        ["bash", str(runner)],
+        cwd=str(ROOT),  # cwd of the main repo: its origin must be irrelevant
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert new_marker in result.stdout, result.stdout
+    assert stale_marker not in result.stdout, result.stdout
+    assert "Deploy script updated" in result.stdout, result.stdout
+    assert "no longer exists" not in result.stdout, result.stdout
+    assert "switching to master" not in result.stdout, result.stdout
+    assert "NO_RESTART_UNEXPECTED" not in result.stdout
+
+
 def _git_config(repo: Path) -> None:
     subprocess.run(["git", "config", "user.email", "ci@example.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "CI"], cwd=repo, check=True)
