@@ -72,13 +72,51 @@ def _boot_lock(app: Flask):
 
 
 def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
-    """Run a boot-time schema migration under a cross-process lock.
+    """Run a schema migration under a cross-process lock.
 
-    Thin wrapper over :func:`_boot_lock` kept for backward compatibility with
-    any external callers that relied on the previous helper signature.
+    Retained for the controlled migration paths (scripts/migrate.sh / tests).
+    NOT called from the app- or timer-start path: boot must never run DDL (P0).
     """
     with _boot_lock(app):
         fn()
+
+
+def _check_schema_sync(app: Flask) -> bool:
+    """Read-only check: is the DB's Alembic head equal to the repo head(s)?
+
+    Never writes, never stamps, never migrates — P0 requires that schema DDL is
+    executed ONLY via the controlled deploy flow (update.sh / migrate.sh).
+
+    Fail-closed: returns True only when the check runs AND the DB revision
+    already equals the repo head(s). Any mismatch — or any failure while
+    performing the check itself — returns False, so the caller must abort
+    startup rather than run on an uncontrolled/unknown schema.
+    """
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        from sqlalchemy import inspect, text
+
+        alembic_cfg = Config(
+            os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        )
+        tree_heads = set(ScriptDirectory.from_config(alembic_cfg).get_heads())
+        table_names = set(inspect(db.engine).get_table_names())
+        db_heads: set[str] = set()
+        if "alembic_version" in table_names:
+            db_heads = set(
+                db.session.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalars()
+            )
+        return db_heads == tree_heads
+    except Exception as exc:  # pragma: no cover - defensive
+        app.logger.error(
+            "Schema sync-check kon niet uitgevoerd worden (%s) — behandeld "
+            "als out-of-sync; start afgebroken (P0: geen DDL op boot)",
+            exc,
+        )
+        return False
 
 
 def create_cms_module(app: Flask):
@@ -105,6 +143,33 @@ def create_cms_module(app: Flask):
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Read-only schema consistency check. A normal app- or timer-start NEVER
+    # runs DDL: migrations are executed exclusively via the controlled deploy
+    # flow (scripts/update.sh step 6/8 or explicit `scripts/migrate.sh`), never
+    # automatically from the application (P0 after incident 20260909).
+    # Fail-closed: when the check reports a mismatch or cannot complete, we
+    # abort startup with RuntimeError BEFORE any blueprint registration,
+    # background worker or seeding starts — we never "fix" it by running DDL,
+    # and never continue on an unknown/uncontrolled schema.
+    with app.app_context():
+        if _check_schema_sync(app):
+            app.logger.info(
+                "Schema OK: DB op Alembic-head — boot voert geen migraties uit (P0)"
+            )
+        else:
+            app.logger.error(
+                "Schema out of sync — boot voert GEEN migraties uit (P0). "
+                "Draai eerst de gecontroleerde deploy-flow: scripts/update.sh "
+                "of scripts/migrate.sh (alembic upgrade head)."
+            )
+            raise RuntimeError(
+                "Schema out of sync: DB staat niet op Alembic-head en boot "
+                "voert NOOIT migraties uit (P0). Draai eerst de gecontroleerde "
+                "deploy-flow: scripts/update.sh (stap 6/8) of scripts/migrate.sh "
+                "(alembic upgrade head)."
+            )
+
     login_manager.init_app(app)
     csrf.init_app(app)
     init_background(app)
@@ -191,45 +256,10 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"license_state": None}
 
-    # Schema management via Alembic — serialized across gunicorn workers so
-    # concurrent `upgrade` calls cannot deadlock on DDL or corrupt the
-    # alembic_version table.
+    # All start-up data seeding below happens under the same cross-process lock
+    # so that concurrent gunicorn workers cannot race on UNIQUE constraints
+    # (default tenant, admin user, default settings) on a fresh database.
     with app.app_context():
-        from alembic import command
-        from alembic.config import Config
-        from sqlalchemy import inspect
-
-        alembic_cfg = Config(
-            os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
-        )
-
-        def _upgrade() -> None:
-            inspector = inspect(db.engine)
-            has_alembic = "alembic_version" in inspector.get_table_names()
-            has_app_tables = bool(
-                [
-                    t
-                    for t in inspector.get_table_names()
-                    if t not in ("alembic_version",)
-                ]
-            )
-
-            if has_alembic:
-                # Normal incremental migration path
-                command.upgrade(alembic_cfg, "head")
-            elif has_app_tables:
-                # Existing DB (pre-Alembic) — stamp head without running migrations
-                app.logger.info("Existing DB detected — stamping Alembic head")
-                command.stamp(alembic_cfg, "head")
-            else:
-                # Fresh DB — create all tables from migration
-                command.upgrade(alembic_cfg, "head")
-
-        _run_schema_upgrade_serialized(_upgrade, app)
-
-        # All data seeding below runs under the same cross-process lock so that
-        # concurrent gunicorn workers cannot race on UNIQUE constraints
-        # (default tenant, admin user, default settings) on a fresh database.
         with _boot_lock(app):
 
             # All schema migrations are now managed by Alembic.

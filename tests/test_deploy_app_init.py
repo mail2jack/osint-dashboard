@@ -35,14 +35,21 @@ def test_create_cms_module_is_idempotent(app):
 
 
 def test_update_sh_migration_one_liner_exits_cleanly(tmp_path):
-    """Exact update.sh route: import app (triggers init), then explicit
-    create_cms_module(app) again. Must exit 0 and print the marker."""
+    """Exact update.sh route: eerst `alembic upgrade head` via de gecontroleerde
+    deploy-flow, DÁN pas app-import/init. Boot mag nooit zelf migreren (P0).
+    Moet exit 0 geven en de marker printen."""
     db_path = tmp_path / "migration_step.db"
+    db_uri = f"sqlite:///{db_path}"
     env = {
         **os.environ,
-        "DATABASE_URL": f"sqlite:///{db_path}",
+        "DATABASE_URL": db_uri,
     }
     one_liner = (
+        "import os; "
+        "from alembic.config import Config; "
+        "from alembic import command; "
+        f"cfg = Config('{PROJECT_ROOT / 'alembic.ini'}'); "
+        "command.upgrade(cfg, 'head'); "
         "from app import app; "
         "from cms.models import db; "
         "from cms import create_cms_module; "

@@ -207,26 +207,27 @@ def check_alembic(dry: bool) -> bool:
 
     # Compare the database's current revision against the repo's heads. We must
     # NOT use 'alembic check' here: it reports model-vs-DB drift, not pending
-    # migrations, so 'alembic upgrade head' could never actually fix it.
+    # migrations.
     current = revision_ids(["current"])
     heads = revision_ids(["heads"])
     if current is not None and heads is not None and current == heads:
         log(OK)
         return True
-    # Try upgrade
     log(FAIL + " (pending migrations)")
+    # P0: doctor.py never runs DDL. Migrations are executed exclusively via the
+    # controlled deploy flow (scripts/update.sh step 6/8 or scripts/migrate.sh),
+    # never by a diagnostic tool that could be triggered by a timer or operator
+    # without the full deploy context.
     if dry:
-        return False
-    r2 = run(
-        [python, "-m", "alembic", "upgrade", "head"],
-        cwd=str(APP_DIR),
-        env=env,
-        timeout=60,
-    )
-    if r2.returncode == 0:
-        log(f"  {FIXED} (upgrade OK)")
-        return True
-    log(f"  {FAIL} {r2.stderr.strip()[:200]}")
+        log(
+            "  P0: schema-migratie niet uitgevoerd (alleen melding) — draai "
+            "scripts/update.sh of scripts/migrate.sh via de deploy-flow."
+        )
+    else:
+        log(
+            "  P0: doctor.py voert GEEN migraties uit (incident 20260909). "
+            "Draai scripts/update.sh of scripts/migrate.sh via de deploy-flow."
+        )
     return False
 
 
