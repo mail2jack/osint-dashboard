@@ -703,9 +703,9 @@
           </select>
         </div>
         <div class="form-group">
-          <label>{{ _('Research (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">{{ _('— or Zaakbreed') }}</span></label>
+          <label>{{ _('Investigation (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">— {{ _('or case-wide') }}</span></label>
           <select id="propose-investigation-id" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
-            <option value="">🌐 {{ _('Zaakbreed') }}</option>
+            <option value="">🌐 {{ _('Case-wide') }}</option>
           </select>
         </div>
         <div class="form-group">
@@ -737,7 +737,7 @@
       invEl.innerHTML = '';
       const wide = document.createElement('option');
       wide.value = '';
-      wide.textContent = '🌐 Zaakbreed';
+      wide.textContent = '🌐 ' + {{ _('Case-wide')|tojson }};
       invEl.appendChild(wide);
       list.forEach(function(i) {
         const opt = document.createElement('option');
@@ -803,9 +803,9 @@
           </select>
         </div>
         <div class="form-group">
-          <label>{{ _('Research (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">{{ _('— or Zaakbreed') }}</span></label>
+          <label>{{ _('Investigation (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">— {{ _('or case-wide') }}</span></label>
           <select id="action-investigation-id" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
-            <option value="">🌐 {{ _('Zaakbreed') }}</option>
+            <option value="">🌐 {{ _('Case-wide') }}</option>
           </select>
         </div>
         <div class="form-group">
@@ -858,7 +858,7 @@
       invEl.innerHTML = '';
       const wide = document.createElement('option');
       wide.value = '';
-      wide.textContent = '🌐 Zaakbreed';
+      wide.textContent = '🌐 ' + {{ _('Case-wide')|tojson }};
       invEl.appendChild(wide);
       list.forEach(function(i) {
         const opt = document.createElement('option');
@@ -1000,7 +1000,7 @@
             <td><strong>{{ a.label }}</strong>{% if a.error %}<div style="font-size:0.75rem;color:#dc2626;">{{ a.error[:120] }}</div>{% endif %}</td>
             <td><code style="font-size:0.78rem;">{{ a.action_type }}</code></td>
             <td><a href="{{ url_for('workflow.case_detail', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
-            <td>{% if a.investigation_id %}<span class="scope-badge" title="{{ a.investigation_title or 'Gekoppeld onderzoek' }}">🔗 {{ a.investigation_number or ('#' + a.investigation_id[:8]) }}</span>{% else %}<span class="scope-badge scope-badge-wide" title="Actie geldt voor de hele zaak">🌐 Zaakbreed</span>{% endif %}</td>
+            <td>{% if a.investigation_id %}<span class="scope-badge" title="{{ a.investigation_title or _('Linked investigation') }}">🔗 {{ a.investigation_number or ('#' + a.investigation_id[:8]) }}</span>{% else %}<span class="scope-badge scope-badge-wide" title="{{ _('This action applies to the whole case') }}">🌐 {{ _('Case-wide') }}</span>{% endif %}</td>
           <td>{{ status_badge(a.status) }}</td>
           <td>{{ a.findings_count }}</td>
           <td>{{ a.created_at[:10] if a.created_at else '-' }}</td>

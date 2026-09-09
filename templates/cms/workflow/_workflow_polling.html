@@ -152,15 +152,15 @@ function proposalHtml(a) {
 function scopeBadgeHtml(a) {
   if (a.investigation_id) {
     var num = a.investigation_number || scopeLabel(a.investigation_id);
-    return '<span class="scope-badge" title="' + esc(a.investigation_title || 'Gekoppeld onderzoek') + '">🔗 ' + esc(num) + '</span>';
+    return '<span class="scope-badge" title="' + esc(a.investigation_title || '{{ _('Linked investigation') }}') + '">🔗 ' + esc(num) + '</span>';
   }
-  return '<span class="scope-badge scope-badge-wide" title="Actie geldt voor de hele zaak">🌐 Zaakbreed</span>';
+  return '<span class="scope-badge scope-badge-wide" title="{{ _('This action applies to the whole case') }}">🌐 {{ _('Case-wide') }}</span>';
 }
 function scopeLinkSelectHtml(a) {
   // Viewers only see the read-only badge; mutation controls need write rights.
   if (!CAN_WRITE) return '';
   var cur = a.investigation_id || '';
-  var opts = '<option value="">🌐 Zaakbreed</option>';
+  var opts = '<option value="">🌐 {{ _('Case-wide') }}</option>';
   var hasCur = false;
   OPEN_INVESTIGATIONS.forEach(function(i) {
     var selected = String(i.id) === String(cur) ? ' selected' : '';
@@ -169,12 +169,12 @@ function scopeLinkSelectHtml(a) {
   });
   // Historical links to archived investigations stay visible & current.
   if (cur && !hasCur) {
-    opts += '<option value="' + esc(cur) + '" selected>🔗 ' + esc(scopeLabel(cur)) + ' (gearchiveerd)</option>';
+    opts += '<option value="' + esc(cur) + '" selected>🔗 ' + esc(scopeLabel(cur)) + ' ({{ _('Archived') }})</option>';
   }
-  return '<select class="scope-link" data-action-id="' + esc(a.id) + '" title="Koppel actie aan een open onderzoek">' + opts + '</select>';
+  return '<select class="scope-link" data-action-id="' + esc(a.id) + '" title="{{ _('Link this action to an open investigation') }}">' + opts + '</select>';
 }
 
-// ── PR-C/ADR-0005: client-side scope filter (Alle / Zaakbreed / onderzoek) ──
+// ── PR-C/ADR-0005: client-side scope filter (All / Case-wide / investigation) ──
 var scopeFilter = '';
 function scopeMatches(a) {
   if (!scopeFilter) return true;
@@ -491,7 +491,7 @@ function updateFindings(findings, actions) {
 
   if (html === '') {
     html = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.85rem;">' +
-      'Geen bevindingen voor dit filter.</div>';
+      {{ _('No findings for this filter.')|tojson }} + '</div>';
   }
 
   container.innerHTML = html;

@@ -13,7 +13,9 @@ renders and posts, all read-only at the template level:
 - the subject profile embeds ``investigation_options`` (only OPEN,
   non-archived) and the Propose / Quick Start pickers post ``investigation_id``
   through the API;
-- the profile action table shows a scope badge column.
+- the profile action table shows a scope badge column;
+- every new scope string (markup and JS alike) is rendered from the Babel
+  catalog, verified in NL and EN.
 """
 
 import json
@@ -154,6 +156,22 @@ def _embed_json(html, var_name):
     return json.loads(m.group(1))
 
 
+def _set_lang(client, lang):
+    with client.session_transaction() as sess:
+        sess["lang"] = lang
+    from flask import g
+
+    g.pop("_flask_babel", None)
+    return client
+
+
+def _get_localized(auth_client, path, lang):
+    _set_lang(auth_client, lang)
+    resp = auth_client.get(path)
+    assert resp.status_code == 200, resp.status_code
+    return resp.get_data(as_text=True)
+
+
 class TestCaseStatusScopePayload:
     def test_action_payload_carries_investigation_fields(
         self, auth_client, admin_tenant_id
@@ -206,7 +224,7 @@ class TestCaseDetailScopeUi:
         assert 'id="scopeFilter"' in html
         assert f'value="{open_inv.id}"' in html
         assert f'value="{archived_inv.id}"' in html
-        assert "(gearchiveerd)" in html
+        assert "(Archived)" in html
 
         # JS config exposes all investigations.
         assert f'"id": "{open_inv.id}"' in html
@@ -228,9 +246,9 @@ class TestCaseDetailScopeUi:
         resp = auth_client.get(f"/cms/workflow/case/{case.id}")
         html = resp.get_data(as_text=True)
 
-        # Badged with the investigation's human number; case-wide stays Zaakbreed.
+        # Badged with the investigation's human number; case-wide stays Case-wide.
         assert f">🔗 {inv.human_number}<" in html
-        assert "🌐 Zaakbreed" in html
+        assert "🌐 Case-wide" in html
         # Writers get both the per-group link/unlink selector and the JS const.
         assert 'class="scope-link"' in html
         assert "const CAN_WRITE = true" in html
@@ -299,7 +317,7 @@ class TestCaseDetailScopeUi:
         # the current (archived-flagged) option.
         assert f">🔗 {inv.human_number}<" in html
         assert f'value="{inv.id}" selected' in html
-        assert "(gearchiveerd)" in html
+        assert "(Archived)" in html
 
 
 class TestSubjectProfileScopePickerXss:
@@ -376,7 +394,7 @@ class TestSubjectProfileScopeUi:
         html = resp.get_data(as_text=True)
 
         assert f">🔗 {inv.human_number}<" in html
-        assert "🌐 Zaakbreed" in html
+        assert "🌐 Case-wide" in html
 
     def test_run_action_scopes_to_investigation(
         self, auth_client, admin_tenant_id
@@ -420,3 +438,101 @@ class TestSubjectProfileScopeUi:
         assert resp.status_code == 200
         action = db.session.get(ResearchAction, resp.get_json()["ids"][0])
         assert action.investigation_id == inv.id
+
+
+class TestScopeUiI18n:
+    """PR-C scope UI must come from the server-side i18n catalog, in NL and EN.
+
+    Both the server-rendered markup (filter select, badges, tooltips) and the
+    JS-injected strings (picker label, scopeSelect default, scopeLabel fallback,
+    empty-filter message, toasts) are rendered from Flask-Babel ``_()``, so the
+    served page carries exactly one language and no hardcoded Dutch remains.
+    """
+
+    def _scope_case(self, admin_tenant_id):
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case, seq=1)
+        _mk_investigation(case, seq=2, archived=True)
+        linked = _mk_action(case, investigation_id=inv.id)
+        wide = _mk_action(case, action_type="osint")
+        db.session.commit()
+        admin = User.query.filter_by(username="admin").first()
+        _mk_finding(case, linked, admin.id)
+        _mk_finding(case, wide, admin.id)
+        db.session.commit()
+        return case
+
+    # ── Case detail ──
+
+    def test_case_detail_renders_dutch(self, auth_client, admin_tenant_id):
+        case = self._scope_case(admin_tenant_id)
+        html = _get_localized(
+            auth_client, f"/cms/workflow/case/{case.id}", "nl"
+        )
+
+        assert "Alle scopes" in html
+        assert "🌐 Zaakbreed" in html
+        assert "(Gearchiveerd)" in html
+        assert 'title="Filter op scope"' in html
+        assert 'title="Koppel deze actie aan een open onderzoek"' in html
+        assert "Actie geldt voor de hele zaak" in html
+
+        # JS strings are served from the catalog, not hardcoded Dutch.
+        assert "🔗 Onderzoek (optioneel)" in html
+        assert "Zaakbreed (geen onderzoek)" in html
+        assert "return 'Zaakbreed';" in html
+        assert "Geen bevindingen voor dit filter." in html
+        assert "Actie gekoppeld aan onderzoek" in html
+        assert "Actie terug naar Zaakbreed" in html
+
+    def test_case_detail_renders_english(self, auth_client, admin_tenant_id):
+        case = self._scope_case(admin_tenant_id)
+        html = _get_localized(
+            auth_client, f"/cms/workflow/case/{case.id}", "en"
+        )
+
+        assert "All scopes" in html
+        assert "🌐 Case-wide" in html
+        assert "(Archived)" in html
+        assert 'title="Filter by scope"' in html
+        assert 'title="Link this action to an open investigation"' in html
+        assert "This action applies to the whole case" in html
+        assert "Linked investigation" in html
+        assert "No findings for this filter." in html
+        assert "Action linked to investigation" in html
+        assert "Action reset to case-wide" in html
+
+    # ── Subject profile ──
+
+    def _profile_case(self, admin_tenant_id):
+        _enable_flag(admin_tenant_id)
+        subject = _mk_subject(admin_tenant_id)
+        case = _mk_case(admin_tenant_id, subject=subject)
+        inv = _mk_investigation(case, seq=1)
+        _mk_investigation(case, seq=2, archived=True)
+        _mk_action(case, investigation_id=inv.id, subject_id=subject.id)
+        _mk_action(case, action_type="osint", subject_id=subject.id)
+        db.session.commit()
+        return subject, case
+
+    def test_profile_renders_dutch(self, auth_client, admin_tenant_id):
+        subject, _ = self._profile_case(admin_tenant_id)
+        html = _get_localized(auth_client, f"/cms/subjects/{subject.id}/profile", "nl")
+
+        assert "Onderzoek (optioneel)" in html
+        assert "of zaakbreed" in html
+        assert "🌐 Zaakbreed" in html
+        assert "Actie geldt voor de hele zaak" in html
+
+        # The JS picker wide-option is served from the catalog via tojson.
+        assert "'🌐 ' + \"Zaakbreed\"" in html
+
+    def test_profile_renders_english(self, auth_client, admin_tenant_id):
+        subject, _ = self._profile_case(admin_tenant_id)
+        html = _get_localized(auth_client, f"/cms/subjects/{subject.id}/profile", "en")
+
+        assert "Investigation (optional)" in html
+        assert "or case-wide" in html
+        assert "🌐 Case-wide" in html
+        assert "This action applies to the whole case" in html
+        assert "'🌐 ' + \"Case-wide\"" in html

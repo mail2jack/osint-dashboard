@@ -560,6 +560,54 @@ msgstr "Status"
 msgid "Archived"
 msgstr "Gearchiveerd"
 
+#: templates/cms/workflow/_workflow_events.html templates/cms/workflow/workflow_case_detail.html
+msgid "Action linked to investigation"
+msgstr "Actie gekoppeld aan onderzoek"
+
+#: templates/cms/workflow/_workflow_events.html
+msgid "Action reset to case-wide"
+msgstr "Actie terug naar Zaakbreed"
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "All scopes"
+msgstr "Alle scopes"
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html
+msgid "Case-wide"
+msgstr "Zaakbreed"
+
+#: templates/cms/workflow/_workflow_picker.html
+msgid "Case-wide (no investigation)"
+msgstr "Zaakbreed (geen onderzoek)"
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "Filter by scope"
+msgstr "Filter op scope"
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html
+msgid "Investigation (optional)"
+msgstr "Onderzoek (optioneel)"
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "Link this action to an open investigation"
+msgstr "Koppel deze actie aan een open onderzoek"
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "Linked investigation"
+msgstr "Gekoppeld onderzoek"
+
+#: templates/cms/workflow/_workflow_polling.html
+msgid "No findings for this filter."
+msgstr "Geen bevindingen voor dit filter."
+
+#: templates/cms/subjects/profile.html
+msgid "or case-wide"
+msgstr "of zaakbreed"
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "This action applies to the whole case"
+msgstr "Actie geldt voor de hele zaak"
+
 #: templates/cms/cases/list.html:27
 msgid "All Priority"
 msgstr "Alle prioriteiten"

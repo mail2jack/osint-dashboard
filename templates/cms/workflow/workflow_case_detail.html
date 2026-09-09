@@ -587,11 +587,11 @@ input:-webkit-autofill:focus {
     <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
     {% if investigations_meta %}
     <span class="scope-filter-wrap">
-      <select id="scopeFilter" title="Filter op scope">
-        <option value="">Alle scopes</option>
-        <option value="__wide">🌐 Zaakbreed</option>
+      <select id="scopeFilter" title="{{ _('Filter by scope') }}">
+        <option value="">{{ _('All scopes') }}</option>
+        <option value="__wide">🌐 {{ _('Case-wide') }}</option>
         {% for i in investigations_meta %}
-        <option value="{{ i.id }}">🔗 {{ i.human_number }}{% if i.archived %} (gearchiveerd){% endif %}</option>
+        <option value="{{ i.id }}">🔗 {{ i.human_number }}{% if i.archived %} ({{ _('Archived') }}){% endif %}</option>
         {% endfor %}
       </select>
     </span>
@@ -638,18 +638,18 @@ input:-webkit-autofill:focus {
                <span class="toggle-icon">▶</span>
                 <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
 <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}{% if act.dork_label %} — {{ act.dork_label }}{% endif %}</span>
-                <span class="scope-badge{% if not act.investigation_id %} scope-badge-wide{% endif %}" title="{% if act.investigation_id %}{{ (inv_meta.get(act.investigation_id).title if act.investigation_id in inv_meta else '') or 'Gekoppeld onderzoek' }}{% else %}Actie geldt voor de hele zaak{% endif %}">{% if act.investigation_id %}🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }}{% else %}🌐 Zaakbreed{% endif %}</span>
+                <span class="scope-badge{% if not act.investigation_id %} scope-badge-wide{% endif %}" title="{% if act.investigation_id %}{{ (inv_meta.get(act.investigation_id).title if act.investigation_id in inv_meta else '') or _('Linked investigation') }}{% else %}{{ _('This action applies to the whole case') }}{% endif %}">{% if act.investigation_id %}🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }}{% else %}🌐 {{ _('Case-wide') }}{% endif %}</span>
                 {% if investigations_meta %}
                 {% if can_write %}
-                <select class="scope-link" data-action-id="{{ act.id }}" title="Koppel actie aan een open onderzoek">
-                  <option value="">🌐 Zaakbreed</option>
+                <select class="scope-link" data-action-id="{{ act.id }}" title="{{ _('Link this action to an open investigation') }}">
+                  <option value="">🌐 {{ _('Case-wide') }}</option>
                   {% for i in investigations_meta %}
                     {% if i.id in open_ids %}
                     <option value="{{ i.id }}"{% if act.investigation_id and i.id == act.investigation_id %} selected{% endif %}>{{ i.human_number }}</option>
                     {% endif %}
                   {% endfor %}
                   {% if act.investigation_id and act.investigation_id not in open_ids %}
-                  <option value="{{ act.investigation_id }}" selected>🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }} (gearchiveerd)</option>
+                  <option value="{{ act.investigation_id }}" selected>🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }} ({{ _('Archived') }})</option>
                   {% endif %}
                 </select>
                 {% endif %}

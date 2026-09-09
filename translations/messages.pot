@@ -498,6 +498,54 @@ msgstr ""
 msgid "Archived"
 msgstr ""
 
+#: templates/cms/workflow/_workflow_events.html templates/cms/workflow/workflow_case_detail.html
+msgid "Action linked to investigation"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_events.html
+msgid "Action reset to case-wide"
+msgstr ""
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "All scopes"
+msgstr ""
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html
+msgid "Case-wide"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_picker.html
+msgid "Case-wide (no investigation)"
+msgstr ""
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "Filter by scope"
+msgstr ""
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html
+msgid "Investigation (optional)"
+msgstr ""
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_picker.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "Link this action to an open investigation"
+msgstr ""
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "Linked investigation"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_polling.html
+msgid "No findings for this filter."
+msgstr ""
+
+#: templates/cms/subjects/profile.html
+msgid "or case-wide"
+msgstr ""
+
+#: templates/cms/subjects/profile.html templates/cms/workflow/_workflow_polling.html templates/cms/workflow/workflow_case_detail.html
+msgid "This action applies to the whole case"
+msgstr ""
+
 #: templates/cms/cases/list.html:27
 msgid "All Priority"
 msgstr ""

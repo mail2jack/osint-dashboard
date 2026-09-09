@@ -2,18 +2,18 @@
 
 // ── PR-C/ADR-0005: optional investigation scope ──
 function scopeLabel(invId) {
-  if (!invId) return 'Zaakbreed';
+  if (!invId) return '{{ _('Case-wide') }}';
   var inv = INVESTIGATIONS.find(function(i) { return String(i.id) === String(invId); });
   return inv ? inv.human_number : String(invId).slice(0, 8);
 }
 function scopeSelectHtml(selectedId) {
-  var opts = '<option value="">Zaakbreed (geen onderzoek)</option>';
+  var opts = '<option value="">{{ _('Case-wide (no investigation)') }}</option>';
   OPEN_INVESTIGATIONS.forEach(function(i) {
     var selected = String(i.id) === String(selectedId || '') ? ' selected' : '';
     opts += '<option value="' + esc(i.id) + '"' + selected + '>' + esc(i.human_number + ' — ' + i.title) + '</option>';
   });
   return '<div style="margin-bottom:0.6rem;">' +
-    '<label style="display:block;font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.25rem;">🔗 Onderzoek (optioneel)</label>' +
+    '<label style="display:block;font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.25rem;">🔗 {{ _('Investigation (optional)') }}</label>' +
     '<select class="scope-select" style="width:100%;padding:0.45rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:0.85rem;">' + opts + '</select>' +
   '</div>';
 }
