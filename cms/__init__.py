@@ -85,8 +85,12 @@ def _check_schema_sync(app: Flask) -> bool:
     """Read-only check: is the DB's Alembic head equal to the repo head(s)?
 
     Never writes, never stamps, never migrates — P0 requires that schema DDL is
-    executed ONLY via the controlled deploy flow (update.sh / migrate.sh), so a
-    normal app- or timer-start only reports sync state.
+    executed ONLY via the controlled deploy flow (update.sh / migrate.sh).
+
+    Fail-closed: returns True only when the check runs AND the DB revision
+    already equals the repo head(s). Any mismatch — or any failure while
+    performing the check itself — returns False, so the caller must abort
+    startup rather than run on an uncontrolled/unknown schema.
     """
     try:
         from alembic.config import Config
@@ -106,9 +110,13 @@ def _check_schema_sync(app: Flask) -> bool:
                 ).scalars()
             )
         return db_heads == tree_heads
-    except Exception as exc:  # pragma: no cover - defensive, never blocks boot
-        app.logger.warning("Schema sync-check skipped (%s) — no DDL on boot", exc)
-        return True
+    except Exception as exc:  # pragma: no cover - defensive
+        app.logger.error(
+            "Schema sync-check kon niet uitgevoerd worden (%s) — behandeld "
+            "als out-of-sync; start afgebroken (P0: geen DDL op boot)",
+            exc,
+        )
+        return False
 
 
 def create_cms_module(app: Flask):
@@ -135,6 +143,33 @@ def create_cms_module(app: Flask):
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Read-only schema consistency check. A normal app- or timer-start NEVER
+    # runs DDL: migrations are executed exclusively via the controlled deploy
+    # flow (scripts/update.sh step 6/8 or explicit `scripts/migrate.sh`), never
+    # automatically from the application (P0 after incident 20260909).
+    # Fail-closed: when the check reports a mismatch or cannot complete, we
+    # abort startup with RuntimeError BEFORE any blueprint registration,
+    # background worker or seeding starts — we never "fix" it by running DDL,
+    # and never continue on an unknown/uncontrolled schema.
+    with app.app_context():
+        if _check_schema_sync(app):
+            app.logger.info(
+                "Schema OK: DB op Alembic-head — boot voert geen migraties uit (P0)"
+            )
+        else:
+            app.logger.error(
+                "Schema out of sync — boot voert GEEN migraties uit (P0). "
+                "Draai eerst de gecontroleerde deploy-flow: scripts/update.sh "
+                "of scripts/migrate.sh (alembic upgrade head)."
+            )
+            raise RuntimeError(
+                "Schema out of sync: DB staat niet op Alembic-head en boot "
+                "voert NOOIT migraties uit (P0). Draai eerst de gecontroleerde "
+                "deploy-flow: scripts/update.sh (stap 6/8) of scripts/migrate.sh "
+                "(alembic upgrade head)."
+            )
+
     login_manager.init_app(app)
     csrf.init_app(app)
     init_background(app)
@@ -221,25 +256,10 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"license_state": None}
 
-    # Read-only schema consistency check. A normal app- or timer-start NEVER
-    # runs DDL: migrations are executed exclusively via the controlled deploy
-    # flow (scripts/update.sh step 6/8 or explicit `scripts/migrate.sh`), never
-    # automatically from the application (P0 after incident 20260909).
+    # All start-up data seeding below happens under the same cross-process lock
+    # so that concurrent gunicorn workers cannot race on UNIQUE constraints
+    # (default tenant, admin user, default settings) on a fresh database.
     with app.app_context():
-        if _check_schema_sync(app):
-            app.logger.info(
-                "Schema OK: DB op Alembic-head — boot voert geen migraties uit (P0)"
-            )
-        else:
-            app.logger.error(
-                "Schema out of sync — boot voert GEEN migraties uit (P0). "
-                "Draai eerst de gecontroleerde deploy-flow: scripts/update.sh "
-                "of scripts/migrate.sh (alembic upgrade head)."
-            )
-
-        # All data seeding below runs under the same cross-process lock so that
-        # concurrent gunicorn workers cannot race on UNIQUE constraints
-        # (default tenant, admin user, default settings) on a fresh database.
         with _boot_lock(app):
 
             # All schema migrations are now managed by Alembic.
