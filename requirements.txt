@@ -63,7 +63,8 @@ pydantic>=2.0,<3.0
 curl_cffi>=0.7.0
 
 # PDF generation
-weasyprint>=69.0
+# >=70.0 vereist: 69.0 kent CVE-2026-55073 (fix in 70.0).
+weasyprint>=70.0
 
 Flask-Babel>=4.0
 flask-compress>=1.24
