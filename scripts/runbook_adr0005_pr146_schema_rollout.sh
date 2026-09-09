@@ -4,17 +4,21 @@
 # `research_actions.investigation_id` + composite FK op productie.
 #
 # Fail-closed: stopt bij ELKE afwijking en voert NOOIT een deploy uit zonder de
-# expliciete vlag `--confirm`. Zonder die vlag draaien ALLEEN preflight,
-# TARGET_SHA-resolve/-bewijs, baseline-snapshot, verse backup + verplichte
-# verificatie (fail-closed gate) — daarna STOPT het script (droogloop).
+# expliciete vlag `--confirm`. Zonder die vlag draait een beoogde preflight
+# ZONDER deploy: TARGET_SHA-resolve/-bewijs, baseline-snapshot, verse backup +
+# verplichte verificatie en een logbestand — dit wijzigt dus wél dingen (backup
+# aanmaken, logschrijven); het is geen wijzigingsvrije droogloop. Daarna STOPT
+# het script bij de DEPLOY-GATE.
 #
 # Gebruik (als root, op de VPS):
-#   sudo bash scripts/runbook_adr0005_pr146_schema_rollout.sh            # preflight + dry-run
-#   sudo bash scripts/runbook_adr0005_pr146_schema_rollout.sh --confirm  # preflight + dry-run + deploy + post-checks
+#   sudo bash scripts/runbook_adr0005_pr146_schema_rollout.sh            # preflight zonder deploy
+#   sudo bash scripts/runbook_adr0005_pr146_schema_rollout.sh --confirm  # + deploy + post-checks
 #
-# Optionele env-overschrijvingen:
-#   DB_BYPASS_URL=<read-only|bypass-url>   # URL voor struct/data-checks
-#                                          # (standaard: DATABASE_URL uit .env)
+# Verplichte env-overschrijving (geen fallback op DATABASE_URL!):
+#   DB_BYPASS_URL=<bypass-rol-url>   # URL voor struct/data-checks via een rol
+#                                    # die FORCE RLS kan omzeilen (data-eigenaar
+#                                    # of read-only-rol); het script stopt als
+#                                    # deze ontbreekt of de app-rol blijkt te zijn
 #
 # Vóór het venster: dit bestand handmatig naar de VPS kopiëren (bv. scp naar
 # /opt/osint-dashboard/scripts/) en daar als root draaien; het staat nog niet
@@ -42,7 +46,7 @@ LOG_FILE="$LOG_DIR/runbook-adr0005-pr146-$TS.log"
 for arg in "$@"; do
     case "$arg" in
         --confirm) CONFIRM_DEPLOY=1 ;;
-        -h | --help) sed -n '2,28p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,30p' "$0"; exit 0 ;;
         *) echo "ERROR: onbekend argument '$arg'" >&2; exit 2 ;;
     esac
 done
@@ -86,17 +90,37 @@ fi
 mkdir -p "$LOG_DIR"
 trap '' PIPE
 exec > >(tee -a "$LOG_FILE") 2>&1
-echo "==== runbook start $TS (mode=$([ "$CONFIRM_DEPLOY" -eq 1 ] && echo CONFIRM || echo DRY-RUN)) ===="
+echo "==== runbook start $TS (mode=$([ "$CONFIRM_DEPLOY" -eq 1 ] && echo CONFIRM || echo 'PREFLIGHT-ZONDER-DEPLOY')) ===="
 
 DB_URL=""
 [ -f "$ENV_FILE" ] && DB_URL=$(grep -m1 '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2- || true)
 [ -n "$DB_URL" ] || fail "geen DATABASE_URL gevonden in .env"
-DB_BYPASS_URL="${DB_BYPASS_URL:-$DB_URL}"
+# Struct- en data-checks draaien in een EXPLICIT GERVERIFIEERDE bypass-context.
+# Geen fallback naar DATABASE_URL: met FORCE RLS kan die sessie rijen filteren
+# en zijn pre/post-tellingen geen volledig bewijs. Met datacluster-bypass via
+# pg_dump/psql als de data-eigenaar, of een read-only replica-rol.
+DB_BYPASS_URL="${DB_BYPASS_URL:-}"
+[ -n "$DB_BYPASS_URL" ] || fail "DB_BYPASS_URL is verplicht (lees: geen fallback op DATABASE_URL — FORCE RLS kan rijen filteren)"
+
+# Bypass-sessie moet live zijn én geen app-rol zijn, anders zijn tellingen geen
+# volledig bewijs.
+BYPASS_USER="$(psql -v ON_ERROR_STOP=1 -Atc 'SELECT current_user;' "$DB_BYPASS_URL" 2>/dev/null || true)"
+[ -n "$BYPASS_USER" ] || fail "DB_BYPASS_URL-sessie niet bereikbaar — controleer de bypass-context"
+echo "DB_BYPASS_URL-sessie actief als: $BYPASS_USER"
+
+# App-rol uit DATABASE_URL extraheren (postgres://user:pw@host/db, evt. met
+# optionele mooie URL-vorm). Als de bypass-rol gelijk is aan de app-rol, is het
+# bewijs onvolledig onder FORCE RLS.
+APP_ROLE="$(echo "$DB_URL" | sed -E 's#^postgres(ql)?://([^:/@]+)(:[^@]*)?@.*#\2#')"
+if [ "$BYPASS_USER" = "$APP_ROLE" ]; then
+    fail "DB_BYPASS_URL gebruikt de app-rol ($BYPASS_USER) — onder FORCE RLS geen volledig bewijs; kies een echte bypass-rol"
+fi
+note "bypass-context onafhankelijk van app-rol ($BYPASS_USER != $APP_ROLE)"
 
 # ---------------------------------------------------------------------------
 # 1/8 Basis-gate (preflight.sh) — read-only, fail-closed
 # ---------------------------------------------------------------------------
-echo "=== 1/8 Preflight ("$([ "$CONFIRM_DEPLOY" -eq 1 ] && echo CONFIRM || echo dry)" — read-only) ==="
+echo "=== 1/8 Preflight ("$([ "$CONFIRM_DEPLOY" -eq 1 ] && echo CONFIRM || echo 'preflight-zonder-deploy')" — read-only) ==="
 [ -x "$PROJECT_DIR/scripts/preflight.sh" ] || fail "preflight.sh ontbreekt"
 bash "$PROJECT_DIR/scripts/preflight.sh" || fail "preflight niet groen"
 note "preflight.sh"
@@ -157,11 +181,30 @@ echo "research_actions gekoppeld (pre): $RA_LINKED_PRE"
 # 5/8 Verse backup + verplichte verificatie (fail-closed gate)
 # ---------------------------------------------------------------------------
 echo "=== 5/8 Verse backup + verify_backup (fail-closed) ==="
-sudo -u osint bash "$PROJECT_DIR/scripts/backup.sh" "$PROJECT_DIR/backups" \
+BACKUP_DIR="$PROJECT_DIR/backups"
+BACKUP_START_TS="$(date -u +%Y%m%dT%H%M%SZ)"
+# Inventaris vóór de backup: alleen archieven waarvan we zeker weten dat ze in
+# DEZE run zijn ontstaan, zijn straks acceptabel. Slim "nieuwste bestaande"
+# pikken kan een ouder archief treffen bij afwijkend backupgedrag.
+PRE_EXISTING="$(find "$BACKUP_DIR" -maxdepth 1 -name 'iveras_backup_*.tar.gz.gpg' -type f 2>/dev/null | sort)"
+sudo -u osint bash "$PROJECT_DIR/scripts/backup.sh" "$BACKUP_DIR" \
     || fail "backup.sh mislukt — venster stopt"
-ARCHIVE="$(ls -t "$PROJECT_DIR"/backups/iveras_backup_*.tar.gz.gpg 2>/dev/null | head -1 || true)"
-[ -n "$ARCHIVE" ] || fail "geen verse backup-archief gevonden"
-echo "vers backup-archief: $ARCHIVE"
+
+ARCHIVE=""
+for f in $(find "$BACKUP_DIR" -maxdepth 1 -name 'iveras_backup_*.tar.gz.gpg' -type f 2>/dev/null | sort); do
+    if ! echo "$PRE_EXISTING" | grep -qxF "$f"; then
+        ARCHIVE="$f"
+        break
+    fi
+done
+if [ -z "$ARCHIVE" ]; then
+    fail "geen NIEUW backup-archief gevonden na backup.sh (deze run heeft geen archief aangemaakt)"
+fi
+# Extra harding: zetje dat het archief werkelijk tijdens deze run is gemaakt.
+ARCHIVE_MTIME="$(stat -c '%Y' "$ARCHIVE" 2>/dev/null || stat -f '%m' "$ARCHIVE")"
+BACKUP_START_EPOCH="$(date -j -u -f '%Y%m%dT%H%M%SZ' "$BACKUP_START_TS" +%s 2>/dev/null || date -u -d "$BACKUP_START_TS" +%s)"
+[ "${ARCHIVE_MTIME:-0}" -ge "${BACKUP_START_EPOCH:-0}" ] || fail "backup-archief ouder dan deze run (mtime $ARCHIVE_MTIME < start $BACKUP_START_TS)"
+echo "vers backup-archief (nieuw in deze run): $ARCHIVE"
 sudo -u osint bash "$PROJECT_DIR/scripts/verify_backup.sh" "$ARCHIVE" \
     || fail "verify_backup niet groen — venster stopt (geen update.sh)"
 note "backup + verificatie groen (fail-closed gate gepasseerd)"
@@ -172,17 +215,21 @@ note "backup + verificatie groen (fail-closed gate gepasseerd)"
 echo ""
 echo "===== DEPLOY-GATE ====="
 if [ "$CONFIRM_DEPLOY" -eq 0 ]; then
-    echo "DRY-RUN: alle preflight-, resolutie-, baseline- en backup-gates groen."
-    echo "Deploy NIET uitgevoerd — herstart met --confirm voor de daadwerkelijke uitrol."
-    echo "==== runbook DRY-RUN GROEN $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
+    echo "PREFLIGHT ZONDER DEPLOY: alle resolutie-, baseline- en backup-gates groen."
+    echo "Deploy NIET uitgevoerd (bewust: preflight maakt wél backup + log aan)."
+    echo "Herstart met --confirm voor de daadwerkelijke uitrol."
+    echo "==== runbook PREFLIGHT-ZONDER-DEPLOY GROEN $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
     echo "Log: $LOG_FILE"
     exit 0
 fi
 
-# Re-check merge-freeze direct vóór deploy: TARGET_SHA mag niet zijn opgeschoven.
+# Merge-freeze hard controleren direct vóór deploy: verse fetch + eis dat
+# origin/master onveranderd == TARGET_SHA. Alleen rev-parse zonder fetch is
+# onvoldoende — update.sh pullt anders een nieuwere commit binnen dan TARGET_SHA.
+sudo -u osint git -C "$PROJECT_DIR" fetch origin || fail "git fetch origin mislukt (merge-freeze-recheck)"
 CUR_SHA="$(sudo -u osint git -C "$PROJECT_DIR" rev-parse origin/master)"
 [ "$CUR_SHA" = "$TARGET_SHA" ] || fail "origin/master veranderd tijdens venster (was $TARGET_SHA, nu $CUR_SHA) — merge-freeze geschonden"
-note "merge-freeze gehouden (origin/master nog steeds == TARGET_SHA)"
+note "merge-freeze gehandhaafd (verse fetch: origin/master nog steeds == TARGET_SHA)"
 
 # ---------------------------------------------------------------------------
 # 7/8 Deploy via bestaand update.sh (patroon PR #145)
