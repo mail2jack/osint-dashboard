@@ -180,7 +180,7 @@ echo "Merge-freeze: géén master-mutatie tot na het venster (re-check bij deplo
 # 3/8 Alembic pre-head check (read-only)
 # ---------------------------------------------------------------------------
 echo "=== 3/8 Alembic pre-head (moet $PREV_REV zijn, single head) ==="
-ALEMBIC_CUR="$(sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic current 2>&1 || true)"
+ALEMBIC_CUR="$(cd "$PROJECT_DIR" && sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic current 2>&1 || true)"
 echo "alembic current: $ALEMBIC_CUR"
 echo "$ALEMBIC_CUR" | grep -q "$PREV_REV" || fail "alembic current != $PREV_REV (pre)"
 echo "$ALEMBIC_CUR" | grep -q "$TARGET_REV" && fail "migratie f5a6b7c8d9e0 al toegepast — niet mid-run"
@@ -192,7 +192,15 @@ note "alembic-head pre = $PREV_REV"
 echo "=== 4/8 Baseline data-snapshot ==="
 psql_ro() { psql -v ON_ERROR_STOP=1 -Atc "$1" "$DB_BYPASS_URL"; }
 RA_TOTAL_PRE="$(psql_ro 'SELECT count(*) FROM research_actions;')"
-RA_LINKED_PRE="$(psql_ro 'SELECT count(investigation_id) FROM research_actions;')"
+# Pre-migratie bestaat investigation_id (nog) niet; alleen tellen als de kolom
+# er is, anders linked_pre=0 (geen backfill) zodat post-compare klopt.
+RA_COL_EXISTS="$(psql_ro "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='research_actions' AND column_name='investigation_id';")"
+if [ "$RA_COL_EXISTS" = "1" ]; then
+    RA_LINKED_PRE="$(psql_ro 'SELECT count(investigation_id) FROM research_actions;')"
+else
+    RA_LINKED_PRE="0"
+    echo "note: kolom investigation_id ontbreekt pre-migratie — linked_pre=0 (geen backfill)"
+fi
 echo "research_actions totaal (pre): $RA_TOTAL_PRE"
 echo "research_actions gekoppeld (pre): $RA_LINKED_PRE"
 
@@ -202,6 +210,7 @@ echo "research_actions gekoppeld (pre): $RA_LINKED_PRE"
 echo "=== 5/8 Verse backup + verify_backup (fail-closed) ==="
 BACKUP_DIR="$PROJECT_DIR/backups"
 BACKUP_START_TS="$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP_START_EPOCH="$(date +%s)"
 # Inventaris vóór de backup: alleen archieven waarvan we zeker weten dat ze in
 # DEZE run zijn ontstaan, zijn straks acceptabel. Slim "nieuwste bestaande"
 # pikken kan een ouder archief treffen bij afwijkend backupgedrag.
@@ -221,8 +230,7 @@ if [ -z "$ARCHIVE" ]; then
 fi
 # Extra harding: zetje dat het archief werkelijk tijdens deze run is gemaakt.
 ARCHIVE_MTIME="$(stat -c '%Y' "$ARCHIVE" 2>/dev/null || stat -f '%m' "$ARCHIVE")"
-BACKUP_START_EPOCH="$(date -j -u -f '%Y%m%dT%H%M%SZ' "$BACKUP_START_TS" +%s 2>/dev/null || date -u -d "$BACKUP_START_TS" +%s)"
-[ "${ARCHIVE_MTIME:-0}" -ge "${BACKUP_START_EPOCH:-0}" ] || fail "backup-archief ouder dan deze run (mtime $ARCHIVE_MTIME < start $BACKUP_START_TS)"
+[ "${ARCHIVE_MTIME:-0}" -ge "$BACKUP_START_EPOCH" ] || fail "backup-archief ouder dan deze run (mtime $ARCHIVE_MTIME < start $BACKUP_START_TS)"
 echo "vers backup-archief (nieuw in deze run): $ARCHIVE"
 sudo -u osint bash "$PROJECT_DIR/scripts/verify_backup.sh" "$ARCHIVE" \
     || fail "verify_backup niet groen — venster stopt (geen update.sh)"
@@ -261,7 +269,7 @@ note "update.sh geslaagd"
 # 8/8 Post-deploychecks (fail-closed, in volgorde)
 # ---------------------------------------------------------------------------
 echo "=== 8/8a Alembic-head post (moet $TARGET_REV zijn, single head) ==="
-ALEMBIC_CUR2="$(sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic current 2>&1 || true)"
+ALEMBIC_CUR2="$(cd "$PROJECT_DIR" && sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic current 2>&1 || true)"
 echo "alembic current: $ALEMBIC_CUR2"
 echo "$ALEMBIC_CUR2" | grep -q "$TARGET_REV" || fail "alembic current != $TARGET_REV (post)"
 echo "$ALEMBIC_CUR2" | grep -q "$PREV_REV" && fail "PREV_REV $PREV_REV nog head (post) — downgrade-fout"
