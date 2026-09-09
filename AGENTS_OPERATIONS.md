@@ -37,11 +37,12 @@
   - `integration-postgres` job: verplichte PostgreSQL 16-check met RLS-, tenant- en worker-contexttests
 
 ### Schema management
+- **P0 (incident 20260909-Voorloper)**: Boot/import van `app` voert NOOIT schema-DDL uit. `create_cms_module()` doet alleen een read-only schema sync-check (`cms/__init__.py:_check_schema_sync`); bij mismatch logt hij een ERROR en faalt fail-closed — hij migreert niet. Dit geldt ook voor timer-starts zoals `osint-health-refresh.service`. DDL/migraties lopen uitsluitend via de gecontroleerde deploy-flow: `scripts/update.sh` (stap 6/8) of expliciet `scripts/migrate.sh`. `scripts/doctor.py` meldt schema-mismatch maar upgrade nooit.
 - Schema via **Alembic** (`migrations/`):
   - **New DB** (no tables): `alembic upgrade head`
   - **Existing DB** (tables, no `alembic_version`): `alembic stamp head`
   - **Already migrated**: idempotent
-- Admin (`admin@localhost`/`changeme123`) created by `cms/__init__.py` data migration.
+- Admin (`admin@localhost`/`changeme123`) created by `init_default_settings()` data seed (geen DDL).
 - **Alembic CLI**: `DATABASE_URL="sqlite:///test.db" python3 -m alembic upgrade head` (no Flask CLI needed).
 - **New migration**: `DATABASE_URL="..." python3 -m alembic revision --autogenerate -m "description"`.
 

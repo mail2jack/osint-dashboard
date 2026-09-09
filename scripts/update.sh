@@ -135,6 +135,8 @@ sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:
     || fail "frontend build mislukt"
 
 # --- 6/8 Database migrations ---
+# P0: deze stap is één van de slechts twee plekken waar Alembic DDL draait
+# (naast scripts/migrate.sh). App- en timer-starts migreren NOOIT.
 echo "=== 6/8 Migraties draaien ==="
 if [ -n "$DB_URL" ]; then
     sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic upgrade head \

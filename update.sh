@@ -65,11 +65,17 @@ pull_latest_and_maybe_self_restart() {
 }
 
 # ---------- DB migration step ----------
-# Fail-closed: importing the app runs the boot-time Alembic upgrade inside
-# create_cms_module(). A real failure MUST abort the deploy, so this runs
-# without a pipe (a pipe masks the true exit status under `set -e`) and
-# returns non-zero instead of echoing success unconditionally.
-# PYTHON_BIN can be overridden from the environment (tests inject a stub).
+# P0 (incident 20260909): schema DDL runs ONLY from the controlled deploy
+# flow — never from an app-/timer-start. create_cms_module() is now read-only
+# and fail-closed (it raises RuntimeError when the DB is out of sync instead
+# of migrating), so this step must run `alembic upgrade head` explicitly,
+# exactly like scripts/migrate.sh does. Importing the app here would:
+#   - on a synced DB: do nothing (create_cms_module no longer writes DDL), and
+#   - on an out-of-sync DB: raise RuntimeError and abort the deploy.
+# A real migration failure MUST abort the deploy, so this runs without a pipe
+# (a pipe masks the true exit status under `set -e`) and returns non-zero
+# instead of echoing success unconditionally. PYTHON_BIN can be overridden
+# from the environment (tests inject a stub).
 run_migration_step() {
     local project_dir="${PROJECT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
     local venv_dir="${VENV_DIR:-$project_dir/venv}"
@@ -77,8 +83,16 @@ run_migration_step() {
     if [ ! -f "$pybin" ]; then
         pybin="python3"
     fi
+    # Alembic leest DATABASE_URL uit de omgeving (migrations/env.py), niet uit
+    # .env. Eerder laadde `import app` het .env indirect via load_dotenv(); nu
+    # we expliciet `alembic upgrade head` draaien, exporteren we het zelf —
+    # dezelfde manier als scripts/update.sh en install.sh het doen.
+    if [ -z "${DATABASE_URL-}" ] && [ -f "$project_dir/.env" ]; then
+        export DATABASE_URL
+        DATABASE_URL="$(grep '^DATABASE_URL=' "$project_dir/.env" | head -n1 | cut -d= -f2-)"
+    fi
     echo -e "${YELLOW}[4/6] Running database migrations...${NC}"
-    if ! $pybin -c "from app import app; from cms.models import db; from cms import create_cms_module; create_cms_module(app); print('✅ Migrations OK')"; then
+    if ! ( cd "$project_dir" && $pybin -m alembic upgrade head ); then
         echo -e "  ${RED}Database migration step failed — aborting deploy${NC}" >&2
         return 1
     fi

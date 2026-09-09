@@ -6,17 +6,40 @@ import atexit
 import pytest
 
 _tmp_db = None
-if not os.environ.get("DATABASE_URL"):
+# P0/xdist: de pytest-controller (geen xdist-worker) importeert conftest als
+# eerste en zet DATABASE_URL. xdist-workers erven die variabele en zouden zo
+# allemaal hetzelfde sqlite-bestand delen — worker-teardowns (DROP TABLE uit de
+# app-fixture) slopen dan elkaars schema mid-test ("no such table"). Daarom
+# krijgt élke worker die de door de controller aangemaakte sqlite erft een eigen
+# tijdelijk bestand. Echte externe DATABASE_URL (bijv. CI-postgres) blijft ongewijzigd.
+if os.environ.get("PYTEST_XDIST_WORKER") and os.environ.get("_CMS_TEST_DB_AUTOGEN"):
     _tmp_db = tempfile.NamedTemporaryFile(
         suffix=".db", delete=False, delete_on_close=False
     )
     os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
+elif not os.environ.get("DATABASE_URL"):
+    _tmp_db = tempfile.NamedTemporaryFile(
+        suffix=".db", delete=False, delete_on_close=False
+    )
+    os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
+    os.environ["_CMS_TEST_DB_AUTOGEN"] = "1"
 os.environ["FLASK_SECRET_KEY"] = secrets.token_hex(32)
 os.environ["CMS_ENCRYPTION_KEY"] = base64.urlsafe_b64encode(
     secrets.token_bytes(32)
 ).decode()
 os.environ["CMS_FINGERPRINT_KEY"] = secrets.token_hex(32)
 os.environ["LICENSE_ENFORCEMENT"] = "off"
+
+# P0: create_cms_module() runs a read-only schema sync-check on import and NEVER
+# runs DDL. Tests must therefore bring the schema up to "head" BEFORE importing
+# the app (this mirrors the deploy flow, where migrations run via update.sh).
+from alembic import command
+from alembic.config import Config
+
+_alembic_cfg = Config(
+    os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+)
+command.upgrade(_alembic_cfg, "head")
 
 from app import app as _app
 from cms.models import db, User, init_default_settings
@@ -38,13 +61,16 @@ def app():
     _app.config["SERVER_NAME"] = "localhost"
 
     with _app.app_context():
-        from alembic.config import Config
         from alembic import command
+        from alembic.config import Config
 
-        alembic_cfg = Config(
+        # Idempotent safety net: module-level upgrade al draait; deze no-op
+        # garandeert dat zelfs bij gedeelde/meerwerkers-runs het schema head is
+        # voordat seeding/admin-aanmaak draait (P0: boot zelf migreert nooit).
+        _alembic_cfg = Config(
             os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
         )
-        command.upgrade(alembic_cfg, "head")
+        command.upgrade(_alembic_cfg, "head")
         init_default_settings()
         from cms.services.invoice_service import seed_service_rates
 
