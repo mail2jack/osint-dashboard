@@ -802,18 +802,20 @@ def profile_run_action(subject_id: str) -> flask.Response:
     db.session.flush()
 
     scope = f"linked to investigation {investigation_id}" if investigation_id else "case-wide"
-    AuditLog.log(
+    from cms.services.action_scope import log_scope_audit
+
+    log_scope_audit(
+        action=action,
+        audit_action="create",
         user_id=current_user.id,
-        action="create",
-        entity_type="research_action",
-        entity_id=action.id,
         ip_address=request.remote_addr,
         case_id=case_id,
-        new_values={"investigation_id": investigation_id},
         description=(
             f"Started {action_type} action from subject profile on {subject.name} "
             f"({scope})"
         ),
+        old_investigation_id=None,
+        new_investigation_id=investigation_id,
     )
     db.session.commit()
 

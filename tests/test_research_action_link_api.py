@@ -252,6 +252,47 @@ class TestLinkUnlinkEndpoints:
             == before
         )
 
+    def test_re_link_to_archived_investigation_is_still_idempotent(
+        self, auth_client, admin_tenant_id
+    ):
+        """An already-linked action re-linked to the SAME (now archived)
+        investigation must succeed idempotently — archiving keeps history, so a
+        historical link stays valid and must not be suddenly rejected."""
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        action = _mk_case_wide_action(case)
+        action.investigation_id = inv.id
+        db.session.commit()
+
+        inv.status = InvestigationStatus.ARCHIVED.value
+        inv.archived_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+        before = AuditLog.query.filter_by(
+            entity_id=action.id, entity_type="research_action"
+        ).count()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/actions/{action.id}/link",
+            json={"investigation_id": inv.id},
+        )
+        assert resp.status_code == 200
+        assert (
+            AuditLog.query.filter_by(
+                entity_id=action.id, entity_type="research_action"
+            ).count()
+            == before
+        )
+        # A DIFFERENT (archived) target is still refused (new links must be open).
+        other_inv = _mk_investigation(case, seq=2)
+        other_inv.status = InvestigationStatus.ARCHIVED.value
+        other_inv.archived_at = datetime.now(timezone.utc)
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/actions/{action.id}/link",
+            json={"investigation_id": other_inv.id},
+        )
+        assert resp.status_code == 400
+
     def test_unlink_back_to_case_wide(self, auth_client, admin_tenant_id):
         case = _mk_case(admin_tenant_id)
         inv = _mk_investigation(case)

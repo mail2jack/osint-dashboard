@@ -1444,14 +1444,17 @@ def link_action_to_investigation(case_id, action_id):
     if not investigation_id:
         return jsonify({"error": "investigation_id is required"}), 400
 
+    # Idempotent re-link first: an action already linked to X must succeed
+    # even when X is now archived (archiving keeps history — historical links
+    # stay valid). Only a NEW link target needs the open-status validation.
+    if action.investigation_id == investigation_id:
+        return jsonify({"ok": True, "investigation_id": investigation_id})
+
     _, err, err_status = get_linkable_investigation(
         investigation_id, case=case, tenant_id=current_user.tenant_id
     )
     if err:
         return jsonify({"error": err}), err_status
-
-    if action.investigation_id == investigation_id:
-        return jsonify({"ok": True, "investigation_id": investigation_id})
 
     previous = action.investigation_id
     action.investigation_id = investigation_id
