@@ -72,7 +72,7 @@ echo "== 2/4 doctor.py (diagnostisch — er wordt niets gewijzigd) =="
 if sudo python3 "$APP_DIR/scripts/doctor.py" --dry-run; then
     echo "  OK: doctor.py --dry-run"
 else
-    echo "  FAIL: doctor.py meldt problemen — draai eerst doctor.py zonder --dry-run"
+    echo "  FAIL: doctor.py meldt problemen — lossen via de deploy-flow: draai scripts/update.sh (migraties alleen via deploy-flow, nooit via doctor.py)"
     FAILED=1
 fi
 

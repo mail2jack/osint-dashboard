@@ -621,6 +621,13 @@ fi
 
 print_success "Systemd services created"
 
+print_step "Migrerend database schema (alembic upgrade head)..."
+cd "$APP_DIR"
+DB_URL_FOR_MIGRATION=$(grep -m1 "^DATABASE_URL=" "$APP_DIR/.env" | cut -d= -f2-)
+sudo -u osint env DATABASE_URL="$DB_URL_FOR_MIGRATION" ./venv/bin/python3 -m alembic upgrade head \
+    || { print_error "alembic upgrade head mislukt"; exit 1; }
+print_success "Database schema up-to-date (alembic head)"
+
 # ============================================================================
 # STEP 13: Store SpiderFoot Settings in Database
 # ============================================================================
@@ -638,7 +645,8 @@ from app import app
 from cms.models import Setting, db
 
 with app.app_context():
-    # Tables already exist from create_cms_module() → Alembic upgrade
+    # Tables exist because the controlled deploy-flow ran 'alembic upgrade head'
+    # above; app-/timer-starts NEVER migrate (P0).
     Setting.set('spiderfoot_url', 'http://127.0.0.1:5001',
                description='SpiderFoot server URL', category='spiderfoot')
     Setting.set('spiderfoot_username', 'admin',
