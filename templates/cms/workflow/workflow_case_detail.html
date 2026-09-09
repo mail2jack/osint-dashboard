@@ -640,6 +640,7 @@ input:-webkit-autofill:focus {
 <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}{% if act.dork_label %} — {{ act.dork_label }}{% endif %}</span>
                 <span class="scope-badge{% if not act.investigation_id %} scope-badge-wide{% endif %}" title="{% if act.investigation_id %}{{ (inv_meta.get(act.investigation_id).title if act.investigation_id in inv_meta else '') or 'Gekoppeld onderzoek' }}{% else %}Actie geldt voor de hele zaak{% endif %}">{% if act.investigation_id %}🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }}{% else %}🌐 Zaakbreed{% endif %}</span>
                 {% if investigations_meta %}
+                {% if can_write %}
                 <select class="scope-link" data-action-id="{{ act.id }}" title="Koppel actie aan een open onderzoek">
                   <option value="">🌐 Zaakbreed</option>
                   {% for i in investigations_meta %}
@@ -651,6 +652,7 @@ input:-webkit-autofill:focus {
                   <option value="{{ act.investigation_id }}" selected>🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }} (gearchiveerd)</option>
                   {% endif %}
                 </select>
+                {% endif %}
                 {% endif %}
                 <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
                <span class="fg-count">{{ group.findings|length }}</span>

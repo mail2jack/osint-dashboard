@@ -186,6 +186,14 @@ boundary.
   link/unlink `<select>` that calls `POST / DELETE …/actions/<id>/link`
   (idempotent, audited — D7). Selecting the current value is a no-op; the
   select is rebuilt from the `case_status` polling payload.
+- The scope `<select>` is **writer-only**: it renders only when `can_write` is
+  true (CaseDetail is behind `_investigator_required` anyway), and the polling
+  JS skips drawing it whenever `CAN_WRITE` is false. Viewers keep the read-only
+  badge. The API itself validates every change (PR-B), so this is pure UX.
+- Picker `<option>`s (case workflow + subject profile) are built with the DOM
+  API (`document.createElement('option')` + `textContent`), never `innerHTML`:
+  the user-entered investigation title can therefore only render as text, and
+  is additionally shipped to the browser as `tojson` (escaped) data.
 
 ### D10. Non-goals
 

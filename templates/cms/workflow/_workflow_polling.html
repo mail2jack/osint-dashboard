@@ -157,6 +157,8 @@ function scopeBadgeHtml(a) {
   return '<span class="scope-badge scope-badge-wide" title="Actie geldt voor de hele zaak">🌐 Zaakbreed</span>';
 }
 function scopeLinkSelectHtml(a) {
+  // Viewers only see the read-only badge; mutation controls need write rights.
+  if (!CAN_WRITE) return '';
   var cur = a.investigation_id || '';
   var opts = '<option value="">🌐 Zaakbreed</option>';
   var hasCur = false;

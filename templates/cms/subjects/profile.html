@@ -732,8 +732,19 @@
     const invEl = document.getElementById('propose-investigation-id');
     function refreshInvestigationOptions() {
       const list = INVESTIGATION_OPTIONS[String(caseEl.value)] || [];
-      invEl.innerHTML = '<option value="">🌐 Zaakbreed</option>' +
-        list.map(function(i) { return '<option value="' + i.id + '">🔗 ' + i.human_number + ' — ' + i.title + '</option>'; }).join('');
+      // XSS-proof: build <option> via DOM APIs, never via innerHTML, so a
+      // malicious investigation title (user input) renders as text only.
+      invEl.innerHTML = '';
+      const wide = document.createElement('option');
+      wide.value = '';
+      wide.textContent = '🌐 Zaakbreed';
+      invEl.appendChild(wide);
+      list.forEach(function(i) {
+        const opt = document.createElement('option');
+        opt.value = i.id;
+        opt.textContent = '🔗 ' + i.human_number + ' — ' + i.title;
+        invEl.appendChild(opt);
+      });
     }
     refreshInvestigationOptions();
     caseEl.addEventListener('change', refreshInvestigationOptions);
@@ -842,8 +853,19 @@
     const INVESTIGATION_OPTIONS = {{ investigation_options|tojson }};
     function refreshInvestigationOptions() {
       const list = INVESTIGATION_OPTIONS[String(caseEl.value)] || [];
-      invEl.innerHTML = '<option value="">🌐 Zaakbreed</option>' +
-        list.map(function(i) { return '<option value="' + i.id + '">🔗 ' + i.human_number + ' — ' + i.title + '</option>'; }).join('');
+      // XSS-proof: build <option> via DOM APIs, never via innerHTML, so a
+      // malicious investigation title (user input) renders as text only.
+      invEl.innerHTML = '';
+      const wide = document.createElement('option');
+      wide.value = '';
+      wide.textContent = '🌐 Zaakbreed';
+      invEl.appendChild(wide);
+      list.forEach(function(i) {
+        const opt = document.createElement('option');
+        opt.value = i.id;
+        opt.textContent = '🔗 ' + i.human_number + ' — ' + i.title;
+        invEl.appendChild(opt);
+      });
     }
     refreshInvestigationOptions();
     caseEl.addEventListener('change', refreshInvestigationOptions);

@@ -1,4 +1,7 @@
 const CASE_ID = '{{ case.id }}';
+// PR-C: write rights gate mutating UI (link/unlink scope-select); the badge is
+// read-only and stays visible to viewers.
+const CAN_WRITE = {{ can_write|tojson }};
 const POLL_INTERVAL = 2000;
 const CREDIT_LIMITS = {tiktok: 50, instagram: 10, linkedin: 50, twitter: 1000, facebook: 30};
 let pollTimer = null;

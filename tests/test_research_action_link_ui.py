@@ -84,13 +84,13 @@ def _mk_subject(admin_tenant_id):
     return subject
 
 
-def _mk_investigation(case, seq=1, archived=False):
+def _mk_investigation(case, seq=1, archived=False, title="UI linked investigation"):
     inv = Investigation(
         id=str(uuid.uuid4()),
         tenant_id=case.tenant_id,
         case_id=case.id,
         sequence_no=seq,
-        title="UI linked investigation",
+        title=title,
     )
     if archived:
         inv.status = InvestigationStatus.ARCHIVED.value
@@ -231,8 +231,55 @@ class TestCaseDetailScopeUi:
         # Badged with the investigation's human number; case-wide stays Zaakbreed.
         assert f">🔗 {inv.human_number}<" in html
         assert "🌐 Zaakbreed" in html
-        # The per-group link/unlink selector is server-rendered too.
+        # Writers get both the per-group link/unlink selector and the JS const.
         assert 'class="scope-link"' in html
+        assert "const CAN_WRITE = true" in html
+
+    def test_link_select_is_writer_only(self, app, auth_client, admin_tenant_id):
+        """Writers get the mutation selector; viewers can't reach the page at
+        all (route-level ``_investigator_required``), and the client script
+        additionally swallows the selector when ``CAN_WRITE`` is false."""
+        admin = User.query.filter_by(username="admin").first()
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        linked = _mk_action(case, investigation_id=inv.id)
+        db.session.commit()
+        _mk_finding(case, linked, admin.id)
+        db.session.commit()
+
+        viewer = User(
+            username="viewer-ui",
+            email="viewer-ui@localhost",
+            full_name="Viewer Ui",
+            role="viewer",
+            is_active=True,
+            tenant_id=admin_tenant_id,
+        )
+        viewer.set_password("Test1234!")
+        db.session.add(viewer)
+        db.session.flush()
+        case.investigators.append(viewer)
+        db.session.commit()
+
+        # 1. Viewer: 403 on the whole page — no mutation UI (nor badge) reaches
+        #    them. The API additionally validates every change (PR-B tests).
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(viewer.id)
+            sess["_fresh"] = True
+            sess["_remember"] = "set"
+        resp = client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 403
+
+        # 2. Writer: the selector renders and the JS const is true.
+        html = auth_client.get(f"/cms/workflow/case/{case.id}").get_data(
+            as_text=True
+        )
+        assert 'class="scope-link"' in html
+        assert "const CAN_WRITE = true" in html
+        # 3. Defense-in-depth: even if a future route renders this page for a
+        #    non-writer, the client guard skips drawing the selector.
+        assert "if (!CAN_WRITE) return '';" in html
 
     def test_historical_archived_link_keeps_badge_and_select_option(
         self, auth_client, admin_tenant_id
@@ -253,6 +300,40 @@ class TestCaseDetailScopeUi:
         assert f">🔗 {inv.human_number}<" in html
         assert f'value="{inv.id}" selected' in html
         assert "(gearchiveerd)" in html
+
+
+class TestSubjectProfileScopePickerXss:
+    """Malicious investigation titles (user input) must render as text only."""
+
+    def test_malicious_title_never_becomes_markup(
+        self, auth_client, admin_tenant_id
+    ):
+        _enable_flag(admin_tenant_id)
+        subject = _mk_subject(admin_tenant_id)
+        case = _mk_case(admin_tenant_id, subject=subject)
+        payload = '<img src=x onerror="window.__xss=1">'
+        _mk_investigation(case, seq=1, title=payload)
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/subjects/{subject.id}/profile")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # The raw tag form never appears in the served page (a photo-less
+        # subject side-steps the only legit <img in the template).
+        assert "<img src=x" not in html
+
+        # The title still reaches the picker, but only via the JS-safe JSON
+        # embed (tojson escapes '<' as \u003c, so it is inert text).
+        assert "\\u003cimg" in html
+
+        # Options are built via DOM APIs: the interpolated title/human_number
+        # now flows through .textContent, and the old innerHTML-option string
+        # ('<option value="' + i.id + '">…') is gone.
+        assert "document.createElement('option')" in html
+        assert "opt.textContent = '🔗 ' + i.human_number" in html
+        assert "opt.textContent = '🔗 ' + i.human_number + ' — ' + i.title" in html
+        assert "'<option value=\"" not in html
 
 
 class TestSubjectProfileScopeUi:
