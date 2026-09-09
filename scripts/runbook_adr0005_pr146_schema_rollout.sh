@@ -16,9 +16,13 @@
 #
 # Verplichte env-overschrijving (geen fallback op DATABASE_URL!):
 #   DB_BYPASS_URL=<bypass-rol-url>   # URL voor struct/data-checks via een rol
-#                                    # die FORCE RLS kan omzeilen (data-eigenaar
-#                                    # of read-only-rol); het script stopt als
-#                                    # deze ontbreekt of de app-rol blijkt te zijn
+#                                    # die FORCE RLS echt omzeilt (rolsuper of
+#                                    # rolbypassrls); het script stopt als de
+#                                    # URL ontbreekt, de rol gefilterd is of
+#                                    # geen van beide eigenschappen heeft. Let
+#                                    # op: een read-only-rol is NIET genoeg —
+#                                    # die kan nog steeds door RLS gefilterd
+#                                    # worden zonder een volledige telling.
 #
 # Vóór het venster: dit bestand handmatig naar de VPS kopiëren (bv. scp naar
 # /opt/osint-dashboard/scripts/) en daar als root draaien; het staat nog niet
@@ -116,6 +120,21 @@ if [ "$BYPASS_USER" = "$APP_ROLE" ]; then
     fail "DB_BYPASS_URL gebruikt de app-rol ($BYPASS_USER) — onder FORCE RLS geen volledig bewijs; kies een echte bypass-rol"
 fi
 note "bypass-context onafhankelijk van app-rol ($BYPASS_USER != $APP_ROLE)"
+
+# Harde FORCE-RLS-bewijs: de rol moet rolsuper of rolbypassrls hebben.
+# Anders kan een 'read-only-rol' alsnog volledig door RLS worden gefilterd en
+# zijn pre-/post-tellingen geen volledig bewijs.
+BYPASS_FLAGS="$(psql -v ON_ERROR_STOP=1 -Atc "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;" "$DB_BYPASS_URL" 2>/dev/null || true)"
+[ -n "$BYPASS_FLAGS" ] || fail "kan pg_roles-attributen voor '$BYPASS_USER' niet lezen"
+echo "pg_roles (rolsuper, rolbypassrls) = $BYPASS_FLAGS"
+case "$BYPASS_FLAGS" in
+    "t|t" | "t|f" | "f|t")
+        note "FORCE-RLS-bypass bewezen (rolsuper of rolbypassrls waar)"
+        ;;
+    *)
+        fail "DB_BYPASS_URL-rol '$BYPASS_USER' heeft noch rolbypassrls noch rolsuper — onder FORCE RLS onvoldoende bewijs"
+        ;;
+esac
 
 # ---------------------------------------------------------------------------
 # 1/8 Basis-gate (preflight.sh) — read-only, fail-closed
