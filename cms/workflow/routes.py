@@ -32,6 +32,11 @@ from cms.models import (
 )
 from cms.routes.dashboard import _get_cached_health
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
+from cms.services.action_scope import (
+    action_scope_label,
+    get_linkable_investigation,
+    log_scope_audit,
+)
 from cms.services.invoice_service import auto_invoice_case_created
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
@@ -1286,12 +1291,21 @@ def run_action(case_id):
     action_type = body.get("action_type", "")
     data_value = body.get("data_value") or ""
     subject_id = body.get("subject_id") or None
+    investigation_id = body.get("investigation_id") or None
     mode = body.get("mode") or "run"
 
     if mode not in ("run", "proposal"):
         return jsonify({"error": "Unknown mode"}), 400
     if action_type not in ACTION_REGISTRY:
         return jsonify({"error": f"Unknown action: {action_type}"}), 400
+
+    # ADR-0005: when given, the investigation must be an open investigation of
+    # exactly this case and tenant (mirrors the composite FK, plus "open only").
+    _, err, err_status = get_linkable_investigation(
+        investigation_id, case=case, tenant_id=current_user.tenant_id
+    )
+    if err:
+        return jsonify({"error": err}), err_status
 
     # ADR-0001 D1.6: paid channels are off by default behind explicit tenant
     # config (FeatureFlag "paid_channels"). Block both immediate runs and
@@ -1324,6 +1338,7 @@ def run_action(case_id):
             id=str(uuid.uuid4()),
             case_id=case_id,
             subject_id=subject_id,
+            investigation_id=investigation_id,
             target_kind="subject" if subject_id else "case",
             action_type=action_type,
             data_value=data_value,
@@ -1335,6 +1350,16 @@ def run_action(case_id):
             action.build_target_snapshot(subject, data_value)
         )
         db.session.add(action)
+        db.session.commit()
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Proposed {action_type} action ({action_scope_label(action)})",
+            new_investigation_id=investigation_id,
+        )
         db.session.commit()
         return jsonify({"id": action.id, "status": "proposal"})
 
@@ -1360,6 +1385,7 @@ def run_action(case_id):
         id=str(uuid.uuid4()),
         case_id=case_id,
         subject_id=subject_id,
+        investigation_id=investigation_id,
         target_kind="subject" if subject_id else "case",
         action_type=action_type,
         data_value=data_value,
@@ -1374,8 +1400,109 @@ def run_action(case_id):
     db.session.commit()
     action_id = action.id
 
+    # Audit the scope end-to-end (ADR-0005 D3): run_action historically had
+    # no AuditLog entry; every create now records the explicit scope.
+    log_scope_audit(
+        action=action,
+        audit_action="create",
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Started {action_type} action ({action_scope_label(action)})",
+        new_investigation_id=investigation_id,
+    )
+    db.session.commit()
+
     start_action_async(action_id)
     return jsonify({"id": action_id, "status": "started"})
+
+
+@workflow_bp.route("/api/case/<case_id>/actions/<action_id>/link", methods=["POST"])
+@login_required
+@_investigator_required
+def link_action_to_investigation(case_id, action_id):
+    """Link an action to an open investigation of the same case/tenant.
+
+    Body: {"investigation_id": "<id>"}. A non-empty id must belong to an open
+    investigation of exactly this case and tenant; setting one is an
+    audit-logged scope write (ADR-0005 D3). Calling with the current value is
+    idempotent (no new audit entry).
+    """
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_case_access(case)
+
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if not action or action.case_id != case_id:
+        return jsonify({"error": "Action not found"}), 404
+
+    body = request.get_json(silent=True) or {}
+    investigation_id = body.get("investigation_id") or None
+    if not investigation_id:
+        return jsonify({"error": "investigation_id is required"}), 400
+
+    _, err, err_status = get_linkable_investigation(
+        investigation_id, case=case, tenant_id=current_user.tenant_id
+    )
+    if err:
+        return jsonify({"error": err}), err_status
+
+    if action.investigation_id == investigation_id:
+        return jsonify({"ok": True, "investigation_id": investigation_id})
+
+    previous = action.investigation_id
+    action.investigation_id = investigation_id
+    log_scope_audit(
+        action=action,
+        audit_action="link",
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description="Linked action to investigation",
+        old_investigation_id=previous,
+        new_investigation_id=investigation_id,
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "investigation_id": investigation_id})
+
+
+@workflow_bp.route("/api/case/<case_id>/actions/<action_id>/link", methods=["DELETE"])
+@login_required
+@_investigator_required
+def unlink_action_from_investigation(case_id, action_id):
+    """Unlink an action: back to explicit case-wide semantics (NULL).
+
+    Audit-logged with both the previous and the new (NULL) scope, mirroring
+    the link direction (ADR-0005 D3/D5). Archiving never unlinks; this is a
+    deliberate operator write only.
+    """
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_case_access(case)
+
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if not action or action.case_id != case_id:
+        return jsonify({"error": "Action not found"}), 404
+
+    previous = action.investigation_id
+    if previous is None:
+        return jsonify({"ok": True, "investigation_id": None})
+
+    action.investigation_id = None
+    log_scope_audit(
+        action=action,
+        audit_action="unlink",
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description="Unlinked action; scope back to case-wide",
+        old_investigation_id=previous,
+        new_investigation_id=None,
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "investigation_id": None})
 
 
 @workflow_bp.route("/api/case/<case_id>/proposals", methods=["POST"])
@@ -1396,6 +1523,7 @@ def create_proposals(case_id):
 
     body = request.get_json(silent=True) or {}
     subject_id = body.get("subject_id") or None
+    investigation_id = body.get("investigation_id") or None
     action_types = body.get("action_types") or []
 
     if not action_types:
@@ -1405,6 +1533,14 @@ def create_proposals(case_id):
     unknown = [t for t in action_types if t not in ACTION_REGISTRY]
     if unknown:
         return jsonify({"error": f"Unknown action: {unknown[0]}"}), 400
+
+    # ADR-0005: one shared scope for all proposed actions; must be an open
+    # investigation of exactly this case and tenant.
+    _, err, err_status = get_linkable_investigation(
+        investigation_id, case=case, tenant_id=current_user.tenant_id
+    )
+    if err:
+        return jsonify({"error": err}), err_status
 
     skipped = [t for t in action_types if is_paid_action(t)]
     action_types = [t for t in action_types if not is_paid_action(t)]
@@ -1436,6 +1572,7 @@ def create_proposals(case_id):
             id=str(uuid.uuid4()),
             case_id=case_id,
             subject_id=subject_id,
+            investigation_id=investigation_id,
             target_kind="subject" if subject_id else "case",
             action_type=action_type,
             label=ACTION_REGISTRY[action_type]["label"],
@@ -1454,7 +1591,11 @@ def create_proposals(case_id):
         entity_id=",".join(created),
         ip_address=request.remote_addr,
         case_id=case_id,
-        description=f"Proposed {len(created)} investigation action(s) for the case",
+        new_values={"investigation_id": investigation_id},
+        description=(
+            f"Proposed {len(created)} investigation action(s) "
+            f"({'linked to investigation ' + investigation_id if investigation_id else 'case-wide'})"
+        ),
     )
     return jsonify({"ok": True, "ids": created, "skipped": skipped})
 

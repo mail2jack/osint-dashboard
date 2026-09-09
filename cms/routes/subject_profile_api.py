@@ -728,6 +728,7 @@ def profile_run_action(subject_id: str) -> flask.Response:
     action_type = body.get("action_type", "")
     data_value = body.get("data_value") or ""
     case_id = body.get("case_id") or ""
+    investigation_id = body.get("investigation_id") or None
 
     if not action_type:
         return api_error("action_type is required", 400)
@@ -740,6 +741,16 @@ def profile_run_action(subject_id: str) -> flask.Response:
     if not case:
         return api_error("Case not found", 404)
     ensure_case_access(case)
+
+    # ADR-0005: when given, the investigation must be open and belong to
+    # exactly this case and tenant (mirrors the composite FK).
+    from cms.services.action_scope import get_linkable_investigation
+
+    _, err, err_status = get_linkable_investigation(
+        investigation_id, case=case, tenant_id=current_user.tenant_id
+    )
+    if err:
+        return api_error(err, err_status)
 
     # Verify subject is linked to this case
     from cms.workflow.models import WorkflowSubject as WSubject
@@ -778,6 +789,7 @@ def profile_run_action(subject_id: str) -> flask.Response:
         id=str(uuid.uuid4()),
         case_id=case_id,
         subject_id=subject_id,
+        investigation_id=investigation_id,
         target_kind="subject",
         action_type=action_type,
         data_value=data_value,
@@ -789,13 +801,19 @@ def profile_run_action(subject_id: str) -> flask.Response:
     db.session.add(action)
     db.session.commit()
 
+    scope = f"linked to investigation {investigation_id}" if investigation_id else "case-wide"
     AuditLog.log(
         user_id=current_user.id,
         action="create",
         entity_type="research_action",
         entity_id=action.id,
         ip_address=request.remote_addr,
-        description=f"Started {action_type} action from subject profile on {subject.name}",
+        case_id=case_id,
+        new_values={"investigation_id": investigation_id},
+        description=(
+            f"Started {action_type} action from subject profile on {subject.name} "
+            f"({scope})"
+        ),
     )
     db.session.commit()
 

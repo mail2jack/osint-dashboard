@@ -113,3 +113,48 @@ boundary.
 - Tests: JSON-type must build in `test_postgres_integration.py`,
   migration up/down in `test_migration_cycle.py`, invariant tests for the
   normal and bypass-RLS paths, RLS/authorization tests, audit log entries.
+
+## Addendum 1 — Implementation status (PR-A merged, PR-B drafted)
+
+### D6. Link targets are open, non-archived investigations
+
+- An action may only be linked to an investigation that is **open**
+  (`status = "open"` **and** `archived_at IS NULL`). Archived investigations
+  are refused at the service layer with a clean 400 (the composite FK cannot
+  express this rule).
+- **Archiving never unlinks**: historical links on already-linked actions are
+  kept; only a deliberate link/unlink write changes scope (D4 stays intact).
+
+### D7. Link/unlink endpoint contract
+
+- `POST /api/case/<case_id>/actions/<action_id>/link` with
+  `{"investigation_id": "<id>"}` and `DELETE …/link` (back to case-wide):
+  both must confirm that the **action** and the **investigation** belong to
+  the route `case_id` and tenant, otherwise 404 (missing/mismatched action or
+  investigation) / 400 (wrong case, wrong tenant, archived). Idempotent
+  re-links produce no new audit entry.
+
+### D8. Create-path audit (incl. pre-existing gap)
+
+- `run_action` historically created actions **without** an `AuditLog` entry;
+  all create paths now log the explicit scope (`investigation <id>` or
+  `case-wide`) with old/new values — scope is auditable end-to-end.
+- `investigation_id` is forwarded from the request body on the user-driven
+  create paths (`run_action`, `create_proposals`, subject-profile run-action);
+  system/synthetic creates (e.g. `manual_entry`) always stay NULL.
+
+### Execution notes
+
+- **PR-A** (data PR, PR #146, merged): nullable `investigation_id` +
+  composite FK `fk_research_actions_investigation_case_tenant` →
+  `uq_investigations_id_case_tenant` (migration `f5a6b7c8d9e0`). PostgreSQL
+  violations surface as **23503 (`foreign_key_violation`)**, not 23514 —
+  verified by bypass-path tests in `test_postgres_integration.py`. SQLite
+  keeps the parent key as a unique index (no table rebuild, immutability
+  triggers survive). No backfill; NULL stays case-wide. Deploy per
+  `docs/deploy-plan-adr0005-pr-a-schema.md`.
+- **PR-B** (service/API, pending): `cms/services/action_scope.py` +
+  create-path wiring + link/unlink endpoints + API tests.
+- FORCE RLS on `research_actions` is a **separate security item** (worker/CLI
+  and request contexts), deliberately out of PR-A/PR-B and out of the PR-C
+  UI work; revisited before broad production rollout.
