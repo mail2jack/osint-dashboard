@@ -58,6 +58,8 @@
   .fact-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .fact-table th, .fact-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-color); vertical-align: top; }
   .fact-table th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .scope-badge { display: inline-block; font-size: 0.7rem; padding: 0.12rem 0.5rem; border-radius: 999px; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; white-space: nowrap; }
+  .scope-badge.scope-badge-wide { background: var(--bg-secondary); color: var(--text-secondary); border-color: var(--border-color); }
   .empty-note { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; }
   .subhead { font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem; color: var(--text-primary); }
   .count-chip { display: inline-block; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary); margin-right: 0.4rem; margin-bottom: 0.4rem; }
@@ -701,6 +703,12 @@
           </select>
         </div>
         <div class="form-group">
+          <label>{{ _('Research (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">{{ _('— or Zaakbreed') }}</span></label>
+          <select id="propose-investigation-id" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
+            <option value="">🌐 {{ _('Zaakbreed') }}</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>{{ _('Action Types') }}</label>
           <div id="propose-actions" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
             {% for key in action_presets %}
@@ -719,10 +727,21 @@
   </div>
   <script nonce="{{ csp_nonce }}">
   (function() {
+    const INVESTIGATION_OPTIONS = {{ investigation_options|tojson }};
+    const caseEl = document.getElementById('propose-case-id');
+    const invEl = document.getElementById('propose-investigation-id');
+    function refreshInvestigationOptions() {
+      const list = INVESTIGATION_OPTIONS[String(caseEl.value)] || [];
+      invEl.innerHTML = '<option value="">🌐 Zaakbreed</option>' +
+        list.map(function(i) { return '<option value="' + i.id + '">🔗 ' + i.human_number + ' — ' + i.title + '</option>'; }).join('');
+    }
+    refreshInvestigationOptions();
+    caseEl.addEventListener('change', refreshInvestigationOptions);
     document.getElementById('btn-propose').addEventListener('click', function() {
       var btn = this;
       var statusEl = document.getElementById('propose-status');
-      var caseId = document.getElementById('propose-case-id').value;
+      var caseId = caseEl.value;
+      var investigationId = invEl.value || null;
       var checked = document.querySelectorAll('#propose-actions input[name="propose_action"]:checked');
       var types = Array.from(checked).map(function(cb) { return cb.value; });
       if (!types.length) { statusEl.textContent = 'Select at least one action type'; statusEl.style.color = '#dc2626'; return; }
@@ -732,7 +751,7 @@
       window.apiFetch('/cms/workflow/api/case/' + caseId + '/proposals', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({subject_id: {{ subject.id|tojson }}, action_types: types}),
+        body: JSON.stringify({subject_id: {{ subject.id|tojson }}, action_types: types, investigation_id: investigationId}),
       })
       .then(function(r) { return r.text().then(function(t) { var d; try { d = JSON.parse(t); } catch(e) { d = {_raw: t.substring(0,300)}; } return {status: r.status, body: d}; }); })
       .then(function(res) {
@@ -770,6 +789,12 @@
             {% for c in profile.cases %}
             <option value="{{ c.id }}">{{ c.case_number }} — {{ c.title }}</option>
             {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ _('Research (optional)') }} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal;">{{ _('— or Zaakbreed') }}</span></label>
+          <select id="action-investigation-id" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
+            <option value="">🌐 {{ _('Zaakbreed') }}</option>
           </select>
         </div>
         <div class="form-group">
@@ -812,6 +837,16 @@
     };
     const typeEl = document.getElementById('action-type');
     const valueEl = document.getElementById('action-data-value');
+    const caseEl = document.getElementById('action-case-id');
+    const invEl = document.getElementById('action-investigation-id');
+    const INVESTIGATION_OPTIONS = {{ investigation_options|tojson }};
+    function refreshInvestigationOptions() {
+      const list = INVESTIGATION_OPTIONS[String(caseEl.value)] || [];
+      invEl.innerHTML = '<option value="">🌐 Zaakbreed</option>' +
+        list.map(function(i) { return '<option value="' + i.id + '">🔗 ' + i.human_number + ' — ' + i.title + '</option>'; }).join('');
+    }
+    refreshInvestigationOptions();
+    caseEl.addEventListener('change', refreshInvestigationOptions);
     function autoFill() {
       const key = ACTION_DEFAULTS[typeEl.value] || 'name';
       valueEl.value = DATA[key] || '';
@@ -821,7 +856,8 @@
 
     document.getElementById('btn-run-action').addEventListener('click', function() {
       const statusEl = document.getElementById('action-status');
-      const caseId = document.getElementById('action-case-id').value;
+      const caseId = caseEl.value;
+      const investigationId = invEl.value || null;
       const actionType = typeEl.value;
       const dataValue = valueEl.value.trim();
       if (!actionType) { statusEl.textContent = 'Select an action type'; return; }
@@ -830,7 +866,7 @@
       window.apiFetch('/cms/api/profile/subjects/' + {{ subject.id|tojson }} + '/run-action', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId}),
+        body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId, investigation_id: investigationId}),
       })
       .then(function(r) { return r.text().then(function(t) { var d; try { d = JSON.parse(t); } catch(e) { d = {_raw: t.substring(0,300)}; } return {status: r.status, body: d}; }); })
       .then(function(res) {
@@ -935,13 +971,14 @@
     <div class="card-header"><h2>{{ _('Research actions') }} <span class="badge badge-status-active">{{ profile.actions|length }} actions</span></h2></div>
     {% if profile.actions %}
     <table class="fact-table">
-      <thead><tr><th>Action</th><th>Type</th><th>Case</th><th>Status</th><th>Findings</th><th>Created</th><th>Completed</th><th></th></tr></thead>
-      <tbody>
-        {% for a in profile.actions %}
-        <tr>
-          <td><strong>{{ a.label }}</strong>{% if a.error %}<div style="font-size:0.75rem;color:#dc2626;">{{ a.error[:120] }}</div>{% endif %}</td>
-          <td><code style="font-size:0.78rem;">{{ a.action_type }}</code></td>
-          <td><a href="{{ url_for('workflow.case_detail', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
+<thead><tr><th>Action</th><th>Type</th><th>Case</th><th>Scope</th><th>Status</th><th>Findings</th><th>Created</th><th>Completed</th><th></th></tr></thead>
+        <tbody>
+          {% for a in profile.actions %}
+          <tr>
+            <td><strong>{{ a.label }}</strong>{% if a.error %}<div style="font-size:0.75rem;color:#dc2626;">{{ a.error[:120] }}</div>{% endif %}</td>
+            <td><code style="font-size:0.78rem;">{{ a.action_type }}</code></td>
+            <td><a href="{{ url_for('workflow.case_detail', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
+            <td>{% if a.investigation_id %}<span class="scope-badge" title="{{ a.investigation_title or 'Gekoppeld onderzoek' }}">🔗 {{ a.investigation_number or ('#' + a.investigation_id[:8]) }}</span>{% else %}<span class="scope-badge scope-badge-wide" title="Actie geldt voor de hele zaak">🌐 Zaakbreed</span>{% endif %}</td>
           <td>{{ status_badge(a.status) }}</td>
           <td>{{ a.findings_count }}</td>
           <td>{{ a.created_at[:10] if a.created_at else '-' }}</td>

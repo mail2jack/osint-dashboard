@@ -1,4 +1,27 @@
 // ── Action picker modal ──
+
+// ── PR-C/ADR-0005: optional investigation scope ──
+function scopeLabel(invId) {
+  if (!invId) return 'Zaakbreed';
+  var inv = INVESTIGATIONS.find(function(i) { return String(i.id) === String(invId); });
+  return inv ? inv.human_number : String(invId).slice(0, 8);
+}
+function scopeSelectHtml(selectedId) {
+  var opts = '<option value="">Zaakbreed (geen onderzoek)</option>';
+  OPEN_INVESTIGATIONS.forEach(function(i) {
+    var selected = String(i.id) === String(selectedId || '') ? ' selected' : '';
+    opts += '<option value="' + esc(i.id) + '"' + selected + '>' + esc(i.human_number + ' — ' + i.title) + '</option>';
+  });
+  return '<div style="margin-bottom:0.6rem;">' +
+    '<label style="display:block;font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.25rem;">🔗 Onderzoek (optioneel)</label>' +
+    '<select class="scope-select" style="width:100%;padding:0.45rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:0.85rem;">' + opts + '</select>' +
+  '</div>';
+}
+function readScopeSelect(overlay) {
+  var sel = overlay.querySelector('.scope-select');
+  return sel && sel.value ? sel.value : null;
+}
+
 function showActionPicker(actionType, mode) {
   mode = mode || 'run';
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
@@ -65,6 +88,7 @@ function showActionPicker(actionType, mode) {
         '<button class="picker-close" data-action="close-picker">&times;</button>' +
       '</div>' +
       '<div class="picker-body">' +
+        scopeSelectHtml('') +
         '<div class="picker-items">' + items.map(function(item, idx) {
           return '<div class="picker-item" data-idx="' + idx + '">' +
             '<div class="pi-subject">' + esc(item.subject) + '</div>' +
@@ -80,14 +104,15 @@ function showActionPicker(actionType, mode) {
     el.addEventListener('click', function() {
       var idx = parseInt(el.dataset.idx);
       if (isNaN(idx)) return;
+      var invId = readScopeSelect(overlay);
       overlay.remove();
       var item = items[parseInt(el.dataset.idx)];
       var val = item.value;
       var subjectId = item.subject_id;
       if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint' || actionType === 'manual_entry') {
-        showEditConfirm(actionType, val, subjectId, mode);
+        showEditConfirm(actionType, val, subjectId, mode, invId);
       } else {
-        runAction(actionType, val, subjectId, mode);
+        runAction(actionType, val, subjectId, mode, invId);
       }
     });
   });
@@ -97,8 +122,9 @@ function showActionPicker(actionType, mode) {
   });
 }
 
-function showEditConfirm(actionType, currentValue, subjectId, mode) {
+function showEditConfirm(actionType, currentValue, subjectId, mode, invId) {
   mode = mode || 'run';
+  invId = invId || '';
   const btn = document.querySelector('[data-action-key="' + actionType + '"]');
   const label = btn ? btn.dataset.label : actionType;
   var desc = 'Search by name or username:';
@@ -126,6 +152,7 @@ function showEditConfirm(actionType, currentValue, subjectId, mode) {
     bodyHtml =
       '<p style="margin-bottom:0.8rem;color:var(--text-muted);font-size:0.85rem;">' + desc + '</p>' +
       '<input id="edit-value" type="text" value="' + esc(currentValue) + '" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;" autofocus />' +
+      scopeSelectHtml(invId) +
       '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
         '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Cancel</button>' +
         (mode === 'proposal'
@@ -177,17 +204,20 @@ function showEditConfirm(actionType, currentValue, subjectId, mode) {
     input.focus();
     input.setSelectionRange(0, input.value.length);
     overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
+      var inv = readScopeSelect(overlay);
       overlay.remove();
-      runAction(actionType, input.value.trim() || currentValue, subjectId, 'run');
+      runAction(actionType, input.value.trim() || currentValue, subjectId, 'run', inv);
     };
     overlay.querySelector('[data-action="confirm-propose"]').onclick = function() {
+      var inv = readScopeSelect(overlay);
       overlay.remove();
-      runAction(actionType, input.value.trim() || currentValue, subjectId, 'proposal');
+      runAction(actionType, input.value.trim() || currentValue, subjectId, 'proposal', inv);
     };
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
+        var inv = readScopeSelect(overlay);
         overlay.remove();
-        runAction(actionType, input.value.trim() || currentValue, subjectId, mode);
+        runAction(actionType, input.value.trim() || currentValue, subjectId, mode, inv);
       }
     });
   }
@@ -411,6 +441,7 @@ function showDorkVariableForm(dork, mode) {
       '</div>' +
       '<div class="picker-body">' +
         '<p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 0.75rem 0;">' + esc(dork.description) + '</p>' +
+        scopeSelectHtml('') +
         fieldsHtml +
         '<div id="dork-preview-box" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:0.6rem 0.75rem;margin-top:0.75rem;font-family:monospace;font-size:0.82rem;color:var(--text-primary);word-break:break-all;"></div>' +
         '<div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">' +
@@ -444,6 +475,7 @@ function showDorkVariableForm(dork, mode) {
   function finishDork(btnMode) {
     var q = buildPreviewQuery();
     if (!q) return;
+    var invId = readScopeSelect(overlay);
     overlay.remove();
     var vars = {};
     overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
@@ -451,10 +483,10 @@ function showDorkVariableForm(dork, mode) {
     });
     var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q, variables: vars});
     if (btnMode === 'browser') {
-      runAction('browser_search', payload, '', 'proposal');
+      runAction('browser_search', payload, '', 'proposal', invId);
       return;
     }
-    runAction('google_dork', payload, '', btnMode);
+    runAction('google_dork', payload, '', btnMode, invId);
   }
 
   var confirmBtn = overlay.querySelector('#dork-confirm-btn');

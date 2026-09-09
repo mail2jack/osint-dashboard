@@ -25,3 +25,11 @@ function updateCredits(actionType) {
 
 const SUBJECTS = {{ subjects_data|tojson }};
 const DORKS_LIBRARY = {{ dorks_library|tojson }};
+
+// ── PR-C/ADR-0005 investigation scope ──
+// All investigations of this case (open + archived): archived ones keep
+// historical links/badges visible; only OPEN ones are selectable targets.
+const INVESTIGATIONS = {{ investigations_meta|tojson }};
+const OPEN_INVESTIGATIONS = INVESTIGATIONS.filter(function(i) {
+  return i.status === 'open' && !i.archived;
+});

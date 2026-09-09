@@ -381,6 +381,40 @@ document.addEventListener('DOMContentLoaded', function() {
     if (bar) bar.style.display = count > 0 ? 'inline-flex' : 'none';
   });
 
+  // ── PR-C/ADR-0005: link/unlink an action to/from an investigation ──
+  document.addEventListener('change', function(e) {
+    var sel = e.target.closest('.scope-link');
+    if (!sel) return;
+    var aid = sel.getAttribute('data-action-id');
+    if (!aid) return;
+    var invId = sel.value;
+    var csrf = '{{ csrf_token() }}';
+    var url = '/cms/workflow/api/case/' + CASE_ID + '/actions/' + encodeURIComponent(aid) + '/link';
+    var req = invId
+      ? fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json'}, body: JSON.stringify({investigation_id: invId})})
+      : fetch(url, {method: 'DELETE', headers: {'X-CSRFToken': csrf, 'Accept': 'application/json'}});
+    req.then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { showToast(data.error, 'error'); }
+        else { showToast(data.investigation_id ? 'Actie gekoppeld aan onderzoek' : 'Actie terug naar Zaakbreed', 'success'); }
+        _forceFindingsUpdate = true;
+        _lastFindingsHash = '';
+        pollStatus();
+      })
+      .catch(function() { pollStatus(); });
+  });
+
+  // ── PR-C/ADR-0005: scope filter (Alle / Zaakbreed / investigation) ──
+  var scopeFilterSel = document.getElementById('scopeFilter');
+  if (scopeFilterSel) {
+    scopeFilterSel.addEventListener('change', function(e) {
+      scopeFilter = e.target.value || '';
+      _forceFindingsUpdate = true;
+      _lastFindingsHash = '';
+      pollStatus();
+    });
+  }
+
   var delSelBtn = document.getElementById('deleteSelectedFindings');
   if (delSelBtn) delSelBtn.addEventListener('click', function() {
     var byCase = {};

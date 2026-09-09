@@ -84,6 +84,24 @@
 }
 .proposal-start { color: #10b981; }
 .proposal-delete { color: #ef4444; }
+.scope-badge {
+  font-size: 0.7rem; padding: 0.12rem 0.5rem; border-radius: 999px;
+  background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe;
+  white-space: nowrap; line-height: 1.3; flex-shrink: 0;
+}
+.scope-badge.scope-badge-wide {
+  background: var(--bg-secondary); color: var(--text-secondary); border-color: var(--border-color);
+}
+.scope-link {
+  font-size: 0.72rem; padding: 0.1rem 0.3rem; border: 1px solid var(--border-color);
+  border-radius: 6px; background: var(--bg-card); color: var(--text-primary);
+  max-width: 11rem; cursor: pointer; flex-shrink: 0;
+}
+.scope-filter-wrap { margin-left: 0.75rem; display: inline-flex; align-items: center; gap: 0.25rem; }
+#scopeFilter {
+  font-size: 0.72rem; padding: 0.12rem 0.3rem; border: 1px solid var(--border-color);
+  border-radius: 6px; background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+}
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 .finding-item {
   padding: 0.75rem 3rem 0.75rem 0.75rem; border: 1px solid var(--border-color);
@@ -567,13 +585,31 @@ input:-webkit-autofill:focus {
       <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Delete selected</button>
     </span>
     <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
+    {% if investigations_meta %}
+    <span class="scope-filter-wrap">
+      <select id="scopeFilter" title="Filter op scope">
+        <option value="">Alle scopes</option>
+        <option value="__wide">🌐 Zaakbreed</option>
+        {% for i in investigations_meta %}
+        <option value="{{ i.id }}">🔗 {{ i.human_number }}{% if i.archived %} (gearchiveerd){% endif %}</option>
+        {% endfor %}
+      </select>
+    </span>
+    {% endif %}
   </div>
   <div class="workflow-step-body">
     <div id="findingsContainer">
       {% if findings %}
 
-      {% set action_groups = {} %}
-      {% set ungrouped = [] %}
+{% set action_groups = {} %}
+       {% set ungrouped = [] %}
+
+       {% set inv_meta = {} %}
+       {% set open_ids = [] %}
+       {% for i in investigations_meta %}
+         {% set _ = inv_meta.update({i.id: i}) %}
+         {% if not i.archived and i.status == 'open' %}{% set _ = open_ids.append(i.id) %}{% endif %}
+       {% endfor %}
 
       {% for a in actions %}
         {% set _ = action_groups.update({a.id: {"action": a, "findings": []}}) %}
@@ -601,8 +637,22 @@ input:-webkit-autofill:focus {
              <div class="finding-group-header" data-toggle="findings-{{ aid }}">
                <span class="toggle-icon">▶</span>
                 <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
-                <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}{% if act.dork_label %} — {{ act.dork_label }}{% endif %}</span>
-               <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
+<span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}{% if act.dork_label %} — {{ act.dork_label }}{% endif %}</span>
+                <span class="scope-badge{% if not act.investigation_id %} scope-badge-wide{% endif %}" title="{% if act.investigation_id %}{{ (inv_meta.get(act.investigation_id).title if act.investigation_id in inv_meta else '') or 'Gekoppeld onderzoek' }}{% else %}Actie geldt voor de hele zaak{% endif %}">{% if act.investigation_id %}🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }}{% else %}🌐 Zaakbreed{% endif %}</span>
+                {% if investigations_meta %}
+                <select class="scope-link" data-action-id="{{ act.id }}" title="Koppel actie aan een open onderzoek">
+                  <option value="">🌐 Zaakbreed</option>
+                  {% for i in investigations_meta %}
+                    {% if i.id in open_ids %}
+                    <option value="{{ i.id }}"{% if act.investigation_id and i.id == act.investigation_id %} selected{% endif %}>{{ i.human_number }}</option>
+                    {% endif %}
+                  {% endfor %}
+                  {% if act.investigation_id and act.investigation_id not in open_ids %}
+                  <option value="{{ act.investigation_id }}" selected>🔗 {{ (inv_meta.get(act.investigation_id).human_number if act.investigation_id in inv_meta else '#' + act.investigation_id[:8]) }} (gearchiveerd)</option>
+                  {% endif %}
+                </select>
+                {% endif %}
+                <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
                <span class="fg-count">{{ group.findings|length }}</span>
                {% if act.completed_at %}
                <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>

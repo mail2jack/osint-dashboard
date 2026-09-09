@@ -21,6 +21,7 @@ from cms.models import (
     Case,
     Contact,
     Finding,
+    Investigation,
     ResearchAction,
     SocialAccount,
     Subject,
@@ -874,8 +875,23 @@ class SubjectService:
             .limit(200)
             .all()
         )
+        # PR-C/ADR-0005 (read-only): resolve the linked investigation number
+        # for every action so the profile table can badge "Zaakbreed" vs the
+        # investigation number. Archived investigations stay resolvable —
+        # historical links are retained (D4/D6).
+        _action_inv_ids = [a.investigation_id for a in actions if a.investigation_id]
+        _action_invs = {}
+        if _action_inv_ids:
+            _action_invs = {
+                i.id: i
+                for i in Investigation.query.filter(
+                    Investigation.id.in_(_action_inv_ids),
+                    Investigation.tenant_id == subject.tenant_id,
+                ).all()
+            }
         action_rows = []
         for a in actions:
+            _inv = _action_invs.get(a.investigation_id)
             snap = a.target_snapshot_data or {}
             action_rows.append(
                 {
@@ -888,6 +904,9 @@ class SubjectService:
                     "error": a.error,
                     "result_summary": a.result_summary,
                     "target_snapshot": snap,
+                    "investigation_id": a.investigation_id,
+                    "investigation_number": _inv.human_number if _inv else None,
+                    "investigation_title": _inv.title if _inv else None,
                     "findings_count": sum(
                         1 for f in a.findings if not f.is_deleted and not f.archived_at
                     ),

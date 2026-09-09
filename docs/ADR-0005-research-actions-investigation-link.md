@@ -164,3 +164,46 @@ boundary.
 - FORCE RLS on `research_actions` is a **separate security item** (worker/CLI
   and request contexts), deliberately out of PR-A/PR-B and out of the PR-C
   UI work; revisited before broad production rollout.
+
+## Addendum 2 — PR-C UI (case detail + subject profile)
+
+### D9. UI scope model
+
+- Every research action in the case workflow (findings groups) and the
+  subject-profile action table shows a **scope badge**: `🌐 Zaakbreed` when
+  `investigation_id IS NULL`, otherwise `🔗 <human_number>` (title shown as
+  tooltip). Archived investigations stay resolvable so historical links keep
+  their badge (D4/D6).
+- The Step 5 findings header adds a **scope filter** (`Alle scopes /
+  Zaakbreed / <investigation>`). Filtering is client-side; an empty result
+  shows a dedicated no-match message instead of a blank panel.
+- New actions in the case workflow (picker runs incl. dork variables,
+  proposals, edit-confirm) and the subject-profile forms (**Propose action**
+  and **Quick Start**) expose an optional **Research picker** that defaults to
+  "Zaakbreed". Only **open** investigations of exactly the same case are
+  selectable; the server re-validates via the PR-B service (D6/D7).
+- Existing actions can be re-scoped from the findings-group header via a
+  link/unlink `<select>` that calls `POST / DELETE …/actions/<id>/link`
+  (idempotent, audited — D7). Selecting the current value is a no-op; the
+  select is rebuilt from the `case_status` polling payload.
+
+### D10. Non-goals
+
+- `photo_analysis` keeps its own upload endpoint and **no**
+  `investigation_id`, so photo runs stay case-wide in PR-C. Extending the
+  file-upload path with scoping is a possible later addendum, deliberately out
+  of scope here.
+- No data-model, RLS or migration changes. The UI only reads
+  `investigations_meta` (case detail) / `investigation_options` (profile) and
+  posts bodies the PR-B API already accepted; `archived` investigations appear
+  in lookup data purely to keep historical badges unfiltered.
+
+### Execution notes
+
+- **PR-C** (UI, this change): read-only serialization (`case_status` action
+  payload, `case_detail.investigations_meta`, `profile_view` action rows,
+  `subject_profile.investigation_options`) plus templates
+  (`_workflow_js_config`, `_workflow_picker`, `_workflow_polling`,
+  `_workflow_events`, `workflow_case_detail`, `subjects/profile`) and
+  `tests/test_research_action_link_ui.py`.
+- RLS on `research_actions` stays a separate security item (see Addendum 1).
