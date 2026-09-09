@@ -6,6 +6,7 @@ import uuid
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from cms.models import (
     AuditLog,
@@ -16,6 +17,7 @@ from cms.models import (
     InvestigationSeqCounter,
     LoginLog,
     Notification,
+    ResearchAction,
     Tenant,
     User,
     db,
@@ -55,7 +57,8 @@ class TestPostgreSQLIntegration:
         # Keep this assertion aligned with the current Alembic head.
         # a6b7c8d9e0f1 (P1) adds the per-tenant invoice number counter.
         # e2f3a4b5c6d7 adds tenant RLS coverage for background_tasks.
-        assert revision == "e2f3a4b5c6d7"
+        # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
+        assert revision == "f5a6b7c8d9e0"
 
         protected = db.session.execute(
             text(
@@ -1136,7 +1139,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "e2f3a4b5c6d7"
+        assert revision == "f5a6b7c8d9e0"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
@@ -1145,4 +1148,96 @@ class TestInvoiceRLSAndNumbering:
         ).scalar()
         assert counter_table == 1
 
+        set_tenant_context(db, admin.tenant_id)
+
+
+class TestADR0005ResearchActionInvestigationInvariant:
+    """ADR-0005 D2 (Option A): the composite FK must reject a linked
+    investigation from another case or tenant — even under an RLS bypass.
+
+    The error is a PostgreSQL ``foreign_key_violation`` (23503), not a check
+    violation (23514): the block comes from the FK on
+    ``research_actions(investigation_id, case_id, tenant_id)``.
+    """
+
+    def _seed(self, admin) -> tuple[str, str, str, str, str]:
+        # cases/clients are FORCE-RLS protected; seed the second tenant's
+        # data under the bypass so the FK probe later is the only write tested.
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name=f"RA PG Tenant B {uuid.uuid4().hex[:8]}",
+            slug=f"ra-pg-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+
+        case_a = _seed_case(tenant_a, admin.id)
+        case_b = _seed_case(tenant_b.id, admin.id)
+        inv_b = Investigation(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_b.id,
+            case_id=case_b.id,
+            sequence_no=1,
+            title="RA PG cross inv",
+        )
+        db.session.add(inv_b)
+        db.session.commit()
+        return tenant_a, tenant_b.id, case_a.id, case_b.id, inv_b.id
+
+    def _try_link(self, *, tenant_id, case_id, investigation_id) -> None:
+        action = ResearchAction(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            case_id=case_id,
+            investigation_id=investigation_id,
+            action_type="google_dork",
+            status="pending",
+        )
+        db.session.add(action)
+        db.session.flush()
+
+    def test_cross_tenant_link_rejected_under_rls_bypass(self, app):
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a, _, case_a, _, inv_b = self._seed(admin)
+
+        set_tenant_context(db, None, bypass_rls=True)
+        with pytest.raises(IntegrityError) as exc_info:
+            self._try_link(
+                tenant_id=tenant_a,
+                case_id=case_a,
+                investigation_id=inv_b,
+            )
+        assert getattr(exc_info.value.orig, "pgcode", None) == "23503"
+        db.session.rollback()
+        set_tenant_context(db, admin.tenant_id)
+
+    def test_cross_case_link_rejected_under_rls_bypass(self, app):
+        """Same tenant, different case: still blocked by the composite FK."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a, _, case_a, _, _ = self._seed(admin)
+
+        case_other = _seed_case(tenant_a, admin.id)
+        other_inv = Investigation(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_a,
+            case_id=case_other.id,
+            sequence_no=1,
+            title="RA PG same-tenant other-case inv",
+        )
+        db.session.add(other_inv)
+        db.session.commit()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        with pytest.raises(IntegrityError) as exc_info:
+            self._try_link(
+                tenant_id=tenant_a,
+                case_id=case_a,
+                investigation_id=other_inv.id,
+            )
+        assert getattr(exc_info.value.orig, "pgcode", None) == "23503"
+        db.session.rollback()
         set_tenant_context(db, admin.tenant_id)

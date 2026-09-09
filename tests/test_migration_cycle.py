@@ -19,7 +19,7 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "e2f3a4b5c6d7"
+HEAD_REVISION = "f5a6b7c8d9e0"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -592,3 +592,47 @@ class TestMigrationCycle:
         assert "invoice_number_counters" in tables
         assert ("tenant_id", "invoice_number") in invoice_unique
         assert ("invoice_number",) not in invoice_unique
+
+    def test_research_actions_investigation_link_roundtrip(self, tmp_path):
+        """ADR-0005 PR-A: nullable investigation_id + composite FK roundtrip.
+
+        Upgrade adds the column/index and the unique parent key on
+        investigations; downgrade removes both again. A case-wide row (NULL,
+        the existing default) stays NULL and valid after the upgrade — no
+        backfill is required or performed (ADR-0005 D4).
+        """
+        ADR0005_PREV = "e2f3a4b5c6d7"
+        db_file = tmp_path / "ra-inv.db"
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
+        index_names = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
+            if r[0]
+        }
+        inv_unique = _unique_index_columns(conn, "investigations")
+        # Existing case-wide rows must survive untouched (NULL = case-wide).
+        conn.execute(
+            "INSERT INTO research_actions (id, tenant_id, case_id, action_type, status) "
+            "VALUES ('ra1', 't1', 'c1', 'google_dork', 'pending')"
+        )
+        conn.commit()
+        conn.close()
+        assert "investigation_id" in cols
+        assert "ix_research_actions_investigation_id" in index_names
+        assert ("id", "case_id", "tenant_id") in inv_unique
+
+        _run_alembic(db_file, "downgrade", ADR0005_PREV)
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
+        inv_unique = _unique_index_columns(conn, "investigations")
+        conn.close()
+        assert "investigation_id" not in cols
+        assert ("id", "case_id", "tenant_id") not in inv_unique
+
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
+        conn.close()
+        assert "investigation_id" in cols
