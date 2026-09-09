@@ -799,7 +799,7 @@ def profile_run_action(subject_id: str) -> flask.Response:
     )
     action.target_snapshot = json.dumps(action.build_target_snapshot(ws, data_value))
     db.session.add(action)
-    db.session.commit()
+    db.session.flush()
 
     scope = f"linked to investigation {investigation_id}" if investigation_id else "case-wide"
     AuditLog.log(

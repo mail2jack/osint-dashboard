@@ -294,6 +294,41 @@ class TestLinkUnlinkEndpoints:
         )
         assert resp.status_code == 400
 
+    def test_non_open_investigation_rejected_even_without_archive(
+        self, auth_client, admin_tenant_id
+    ):
+        """A non-OPEN status is not linkable even when archived_at is NULL."""
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        inv.status = InvestigationStatus.ARCHIVED.value
+        inv.archived_at = None
+        db.session.commit()
+        action = _mk_case_wide_action(case)
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/actions/{action.id}/link",
+            json={"investigation_id": inv.id},
+        )
+        assert resp.status_code == 400
+        assert "open" in resp.get_json()["error"]
+
+    def test_non_open_investigation_rejected_on_run_action(
+        self, auth_client, admin_tenant_id
+    ):
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        inv.status = InvestigationStatus.ARCHIVED.value
+        inv.archived_at = None
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/run-action",
+            json={
+                "action_type": "osint",
+                "data_value": "X",
+                "investigation_id": inv.id,
+            },
+        )
+        assert resp.status_code == 400
+
     def test_link_unknown_investigation_rejected(self, auth_client, admin_tenant_id):
         case = _mk_case(admin_tenant_id)
         action = _mk_case_wide_action(case)
@@ -337,3 +372,118 @@ class TestLinkUnlinkEndpoints:
             json={"investigation_id": inv.id},
         )
         assert resp.status_code == 400
+
+
+class TestDurableAuditAndAtomicity:
+    """Prove the audit records really persist (new session reads them from the
+    committed database) and that an action never exists without its audit.
+
+    The test DB is a file-backed SQLite database, so a fresh session reads the
+    committed rows — this exercises the durability claim end to end.
+    """
+
+    def _fresh_session(self):
+        db.session.remove()
+        return db.session
+
+    def test_create_does_not_leave_orphan_action_when_audit_fails(
+        self, auth_client, admin_tenant_id, monkeypatch
+    ):
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        case_id = case.id
+        db.session.commit()
+
+        def boom(**kwargs):
+            raise RuntimeError("audit write failed")
+
+        monkeypatch.setattr("cms.workflow.routes.log_scope_audit", boom)
+        # TESTING propagates the exception; the key property is that the audit
+        # failure aborts the request AND nothing was committed.
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            auth_client.post(
+                f"/cms/workflow/api/case/{case.id}/run-action",
+                json={
+                    "action_type": "osint",
+                    "data_value": "X",
+                    "investigation_id": inv.id,
+                },
+            )
+
+        # No action may survive a failed audit write (same transaction).
+        fresh = self._fresh_session()
+        assert fresh.query(ResearchAction).filter_by(case_id=case_id).count() == 0
+
+    def test_audit_records_survive_new_session(self, auth_client, admin_tenant_id):
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        action = _mk_case_wide_action(case)
+        db.session.commit()
+
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/actions/{action.id}/link",
+            json={"investigation_id": inv.id},
+        )
+        assert resp.status_code == 200
+        resp = auth_client.delete(
+            f"/cms/workflow/api/case/{case.id}/actions/{action.id}/link"
+        )
+        assert resp.status_code == 200
+
+        action_id = action.id
+        inv_id = inv.id
+        fresh = self._fresh_session()
+        action = fresh.get(ResearchAction, action_id)
+        assert action is not None
+        assert action.investigation_id is None
+        audits = (
+            fresh.query(AuditLog)
+            .filter_by(
+                entity_type="research_action",
+                entity_id=action_id,
+            )
+            .order_by(AuditLog.id)
+            .all()
+        )
+        assert len(audits) >= 2
+        link_audit = next(a for a in audits if a.action == "link")
+        unlink_audit = next(a for a in audits if a.action == "unlink")
+        assert link_audit.new_values["investigation_id"] == inv_id
+        assert link_audit.old_values["investigation_id"] is None
+        assert unlink_audit.old_values["investigation_id"] == inv_id
+        assert unlink_audit.new_values["investigation_id"] is None
+
+    def test_proposals_audit_records_survive_new_session(
+        self, auth_client, admin_tenant_id
+    ):
+        case = _mk_case(admin_tenant_id)
+        inv = _mk_investigation(case)
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/proposals",
+            json={
+                "action_types": ["osint", "google_dork"],
+                "investigation_id": inv.id,
+            },
+        )
+        assert resp.status_code == 200
+        action_ids = resp.get_json()["ids"]
+        assert len(action_ids) == 2
+
+        inv_id = inv.id
+        fresh = self._fresh_session()
+        for action_id in action_ids:
+            action = fresh.get(ResearchAction, action_id)
+            assert action is not None
+            assert action.investigation_id == inv_id
+            audit = (
+                fresh.query(AuditLog)
+                .filter_by(
+                    entity_type="research_action",
+                    entity_id=action.id,
+                )
+                .first()
+            )
+            assert audit is not None
+            assert audit.action == "create"
+            assert audit.new_values["investigation_id"] == inv_id

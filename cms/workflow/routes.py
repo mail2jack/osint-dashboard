@@ -1350,7 +1350,8 @@ def run_action(case_id):
             action.build_target_snapshot(subject, data_value)
         )
         db.session.add(action)
-        db.session.commit()
+        db.session.flush()
+        # Same-transaction audit: no proposal without its audit record.
         log_scope_audit(
             action=action,
             audit_action="create",
@@ -1397,11 +1398,12 @@ def run_action(case_id):
         action.build_target_snapshot(subject, data_value)
     )
     db.session.add(action)
-    db.session.commit()
+    db.session.flush()
     action_id = action.id
 
-    # Audit the scope end-to-end (ADR-0005 D3): run_action historically had
-    # no AuditLog entry; every create now records the explicit scope.
+    # Audit in the SAME transaction as the action create: an action must never
+    # exist without its audit record (ADR-0005 D3/D8). If the audit write
+    # fails, the whole transaction rolls back — no orphan action survives.
     log_scope_audit(
         action=action,
         audit_action="create",
@@ -1581,22 +1583,24 @@ def create_proposals(case_id):
         )
         action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
         db.session.add(action)
+        db.session.flush()
         created.append(action.id)
+        # One audit record per proposed action (own entity_id + own
+        # old/new investigation_id); everything commits atomically in a
+        # single transaction below (ADR-0005 D3/D8).
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=(
+                f"Proposed {action_type} action "
+                f"({'linked to investigation ' + investigation_id if investigation_id else 'case-wide'})"
+            ),
+            new_investigation_id=investigation_id,
+        )
     db.session.commit()
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action="create",
-        entity_type="research_action",
-        entity_id=",".join(created),
-        ip_address=request.remote_addr,
-        case_id=case_id,
-        new_values={"investigation_id": investigation_id},
-        description=(
-            f"Proposed {len(created)} investigation action(s) "
-            f"({'linked to investigation ' + investigation_id if investigation_id else 'case-wide'})"
-        ),
-    )
     return jsonify({"ok": True, "ids": created, "skipped": skipped})
 
 

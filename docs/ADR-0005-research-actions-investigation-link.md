@@ -139,6 +139,12 @@ boundary.
 - `run_action` historically created actions **without** an `AuditLog` entry;
   all create paths now log the explicit scope (`investigation <id>` or
   `case-wide`) with old/new values — scope is auditable end-to-end.
+- **Create + scope-audit is one transaction** (add → flush → audit → commit):
+  an action can never exist without its audit record; a failed audit write
+  rolls the action create back.
+- Bulk proposals write **one AuditLog entry per created action** (each with
+  its own `entity_id` and old/new `investigation_id`) in a single atomic
+  commit.
 - `investigation_id` is forwarded from the request body on the user-driven
   create paths (`run_action`, `create_proposals`, subject-profile run-action);
   system/synthetic creates (e.g. `manual_entry`) always stay NULL.

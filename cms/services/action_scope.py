@@ -34,11 +34,14 @@ def get_linkable_investigation(investigation_id, *, case, tenant_id):
         return None, "Investigation does not belong to this case", 400
     if tenant_id and investigation.tenant_id != tenant_id:
         return None, "Investigation does not belong to this tenant", 400
-    archived = (
-        investigation.archived_at is not None
-        or investigation.status == InvestigationStatus.ARCHIVED.value
+    # Positive OPEN check (ADR-0005 D6): linkable only while status is exactly
+    # OPEN AND archived_at is NULL. A non-open status without an archived_at
+    # (e.g. a future status) stays non-linkable too.
+    is_open = (
+        investigation.status == InvestigationStatus.OPEN.value
+        and investigation.archived_at is None
     )
-    if archived:
+    if not is_open:
         return None, "Only open (non-archived) investigations can be linked", 400
 
     return investigation, None, None

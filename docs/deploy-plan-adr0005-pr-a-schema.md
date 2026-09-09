@@ -23,22 +23,45 @@
 
 ## 4. Voorbereiding & onderhoudsvenster
 
-- `PREV_SHA` = huidige `/.deployed_sha` op de VPS (`121c104`, na PR #145); `TARGET_SHA` = mergecommit `1382deb` (post-#146 master). `git merge-base --is-ancestor` bevestigt dat PR #146 aanwezig is.
-- Merge-freeze op `master` tijdens het venster. App draaien kan gewoon; de migratie is additief, dus geen schrijfstilstand nodig (anders dan de P1-factuurnummers).
+- **Merge-freeze op `master` vóór het venster; daarna pas `TARGET_SHA` bepalen.**
+  `TARGET_SHA` = `origin/master`-hoofdlijn ná `git fetch`, dynamisch geresolveerd
+  tijdens de preflight (niet hardcoden — master kan na de `docs/`-commit alweer
+  zijn opgeschoven). Leg de geresolveerde SHA + het fetch-tijdstip vast in het
+  rolloutrapport en vereis dat zij gedurende het venster ongewijzigd blijven:
+  `git rev-parse origin/master` moét gelijk blijven aan `TARGET_SHA` bij deploy.
+- `PREV_SHA` = waarde uit **`$PROJECT_DIR/.deployed_sha`** op de VPS (op dit
+  moment `121c104`, na PR #145 — maar always read, niet hardcoden).
+  `git merge-base --is-ancestor <PREV_SHA> <TARGET_SHA>` bevestigt dat PR #146
+  in de target zit.
+- App draaien kan gewoon; de migratie is additief, dus geen schrijfstilstand
+  nodig (anders dan de P1-factuurnummers).
 - Alembic-head vóór: `e2f3a4b5c6d7`; ná: `f5a6b7c8d9e0` (single head).
 
-## 5. Verse databasebackup vóór migratie (verplicht, binnen het venster)
+## 5. Verse databasebackup + verplichte verificatie (fail-closed, vóór deploy)
 
-`update.sh` maakt na de pull zelf een pg_dump in `$PROJECT_DIR/backups/<ts>/db.sql` (alleen bij de eerste run; de zelf-herstartrun skipt backup+pull). Daarnaast/of: bestaand archiveringsproces handmatig draaien en het label in het rolloutrapport opslaan — dit is het externe restore-doel.
+1. **Verse archiefbackup** binnen het venster via het bestaande proces
+   (`scripts/backup.sh` → `iveras_backup_<ts>.tar.gz.gpg`); label opslaan in
+   het rolloutrapport — dit is het externe restore-doel.
+2. **`scripts/verify_backup.sh` verplicht** op die archiven (restore naar een
+   geïsoleerde PG-database + DR-checks). RC=0 vereist; de verifier heeft zelf
+   een freshness-floor (24 u) en weigert stale/slechte archieven.
+3. **Fail-closed gate:** als de backup of `verify_backup.sh` niet volledig groen
+   is → het venster stopt; **`update.sh` wordt dan niet gestart**. Geen
+   "doorskip" of gedeeltelijke uitvoer.
+4. `update.sh` maakt daarnaast zelf nóg een pg_dump-kopie
+   (`$PROJECT_DIR/backups/<ts>/db.sql`, eerste run) — extra comfort, en telt
+   niet als vervanging van stap 1–3.
 
 ## 6. Preflight (vóór deploy)
 
-1. App + health up; `.deployed_sha` op de VPS == `PREV_SHA` (`121c104`).
-2. `alembic current` == `e2f3a4b5c6d7` (single head, pre-migratie).
-3. Disk/network check; clone op VPS op `origin/master` fetchbaar.
-4. Verse backup gemaakt (stap 5) en label genoteerd in het rolloutrapport.
+1. App + health up; `/.deployed_sha` == `PREV_SHA`.
+2. `git fetch origin` en `TARGET_SHA`-resolve + merge-freeze-bevestiging
+   (zie 4); `alembic current` == `e2f3a4b5c6d7` (single head, pre-migratie).
+3. Disk/network check; clone op VPS klaar.
+4. Verse backup + `verify_backup.sh` groen (stap 5) — **fail-closed gate**.
 
-Droogloop `alembic upgrade head --sql` is niet nodig: de migratie is al bewezen via de CI roundtrip (SQLite + PostgreSQL).
+Droogloop `alembic upgrade head --sql` is niet nodig: de migratie is al bewezen
+via de CI roundtrip (SQLite + PostgreSQL).
 
 ## 7. Deploy
 
@@ -46,7 +69,7 @@ Bestaande rollout: `sudo ./update.sh` (patroon PR #145). Eerste run: backup + pu
 
 ## 8. Post-deploychecks (in volgorde)
 
-1. `alembic current` == `heads` == `f5a6b7c8d9e0`; `/.deployed_sha` == `TARGET_SHA` (== HEAD).
+1. `alembic current` == `heads` == `f5a6b7c8d9e0`; `$PROJECT_DIR/.deployed_sha` == `TARGET_SHA` (== HEAD).
 2. Healthchecks groen (`/api/v1/health` 200; `systemctl is-active osint-dashboard license-server`).
 3. Structuur-verificatie (bypass-sessie):
 
