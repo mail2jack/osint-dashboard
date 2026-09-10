@@ -129,4 +129,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     with flask_app.app_context():
+        # This is an explicit cross-tenant maintenance tool: it must run for
+        # every tenant from a single invocation and therefore operates with
+        # FORCE RLS bypassed (app.bypass_rls = true), never relying on an
+        # implicit tenant context. Without this the first FORCE-RLS-row
+        # (research_actions, migration f6a7b8c9d0e1) would hide every
+        # un-contexted row and the script would silently scan nothing.
+        from cms.tenant_context import set_tenant_context
+
+        set_tenant_context(db, None, bypass_rls=True)
         backfill(apply=args.apply)

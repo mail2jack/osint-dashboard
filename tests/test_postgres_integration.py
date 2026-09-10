@@ -58,7 +58,8 @@ class TestPostgreSQLIntegration:
         # a6b7c8d9e0f1 (P1) adds the per-tenant invoice number counter.
         # e2f3a4b5c6d7 adds tenant RLS coverage for background_tasks.
         # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
-        assert revision == "f5a6b7c8d9e0"
+        # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
+        assert revision == "f6a7b8c9d0e1"
 
         protected = db.session.execute(
             text(
@@ -70,14 +71,15 @@ class TestPostgreSQLIntegration:
                     'subject_identifiers', 'subject_facts',
                     'investigations', 'case_number_counters',
                     'investigation_seq_counters',
-                    'invoice_number_counters'
+                    'invoice_number_counters',
+                    'research_actions', 'action_findings'
                 )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 9
+        assert protected == 11
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
@@ -349,6 +351,12 @@ class TestPostgreSQLIntegration:
         db.session.add(action)
         db.session.commit()
 
+        # Production hand-off: the worker receives the action id as a string
+        # from the DB poller, never a live ORM instance. Capture it before
+        # wiping the session/context below (under FORCE RLS a reload over the
+        # expired instance would fail while the cold context hides the row).
+        action_id = action.id
+
         # Simulate a cold worker: start with NO tenant context at all.
         set_tenant_context(db, None)
         db.session.expire_all()
@@ -377,7 +385,7 @@ class TestPostgreSQLIntegration:
             category="open",
         )
         try:
-            run_action(action.id)
+            run_action(action_id)
             db.session.expire_all()
 
             # Context must be reset afterwards: no tenant and no bypass leak
@@ -393,7 +401,7 @@ class TestPostgreSQLIntegration:
 
             set_tenant_context(db, tenant_a)
             db.session.expire_all()
-            reloaded = db.session.get(ResearchAction, action.id)
+            reloaded = db.session.get(ResearchAction, action_id)
             assert reloaded.status == "completed"
             finding = (
                 Finding.query.filter_by(case_id=case.id)
@@ -405,6 +413,79 @@ class TestPostgreSQLIntegration:
         finally:
             ACTION_REGISTRY.pop("test_pg_cold_probe", None)
             set_tenant_context(db, admin.tenant_id)
+
+    def test_backfill_cli_sees_rows_under_force_rls(self, app):
+        """The maintenance CLI must keep working when its tables are FORCE RLS.
+
+        backfill_subject_actions is an explicit cross-tenant maintenance tool:
+        it re-establishes a bypass context before scanning. Regression guard
+        for migration f6a7b8c9d0e1 — without the bypass the dry-run would scan
+        zero rows and silently do nothing on a real non-superuser connection.
+        """
+        import json as json_mod
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        from cms.models import Subject
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG backfill client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            tenant_id=tenant_a,
+            case_number=f"PG-BF-{uuid.uuid4().hex[:8]}",
+            client_id=client.id,
+            title="PG backfill case",
+            start_date=date.today(),
+            created_by=admin.id,
+        )
+        db.session.add(case)
+        db.session.flush()
+        subject = Subject(
+            name="PG backfill subject",
+            subject_type="person",
+            tenant_id=tenant_a,
+            email="pg-backfill@example.com",
+        )
+        subject.encrypt_identifiers()
+        db.session.add(subject)
+        db.session.flush()
+        action = ResearchAction(
+            tenant_id=tenant_a,
+            case_id=case.id,
+            action_type="google_dork",
+            target_kind="subject",
+            target_snapshot=json_mod.dumps({"subject_id": subject.id}),
+            data_value="{}",
+            status="completed",
+            created_by=admin.id,
+        )
+        db.session.add(action)
+        db.session.commit()
+        action_id = action.id
+
+        root = Path(__file__).resolve().parent.parent
+        env = dict(os.environ)
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(root / "scripts" / "backfill_subject_actions.py"),
+            ],
+            cwd=str(root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        combined = result.stdout + result.stderr
+        assert "Scanned 1" in combined, combined
+        assert action_id in combined, combined
 
     def test_login_under_force_rls(self, app, client):
         """Login must succeed under FORCE RLS — audit_logs INSERT must carry
@@ -1139,7 +1220,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f5a6b7c8d9e0"
+        assert revision == "f6a7b8c9d0e1"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "

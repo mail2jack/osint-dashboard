@@ -161,9 +161,8 @@ boundary.
   `docs/deploy-plan-adr0005-pr-a-schema.md`.
 - **PR-B** (service/API, pending): `cms/services/action_scope.py` +
   create-path wiring + link/unlink endpoints + API tests.
-- FORCE RLS on `research_actions` is a **separate security item** (worker/CLI
-  and request contexts), deliberately out of PR-A/PR-B and out of the PR-C
-  UI work; revisited before broad production rollout.
+- FORCE RLS on `research_actions` — handled in **Addendum 3 / PR #154**
+  (migration `f6a7b8c9d0e1`, CLI fix, full PG test coverage).
 
 ## Addendum 2 — PR-C UI (case detail + subject profile)
 
@@ -214,4 +213,90 @@ boundary.
   (`_workflow_js_config`, `_workflow_picker`, `_workflow_polling`,
   `_workflow_events`, `workflow_case_detail`, `subjects/profile`) and
   `tests/test_research_action_link_ui.py`.
-- RLS on `research_actions` stays a separate security item (see Addendum 1).
+
+## Addendum 3 — RLS closure (security gap)
+
+### D11. Context
+
+Every other tenant-scoped table carries FORCE RLS (see the pinned matrix in
+`tests/test_postgres_rls_matrix.py`, `EXPECTED_FORCE_RLS_TABLES`), so a
+non-superuser connection can only reach rows whose ``tenant_id`` matches the
+``app.tenant_id`` session GUC (or runs under the explicit ``app.bypass_rls``
+flag). The ADR-0005 tables were the exception:
+
+- ``research_actions`` has its own NOT NULL ``tenant_id`` but was never added
+  to FORCE RLS — any request/worker/CLI path could list or write job data
+  across tenants.
+- ``action_findings`` is a junction table without any tenant column at all.
+
+### D12. Decision — FORCE RLS for `research_actions` and `action_findings`
+
+Migration ``f6a7b8c9d0e1`` closes the gap (PostgreSQL only, mirroring the
+surrounding RLS migrations):
+
+- ``research_actions``: ENABLE + FORCE RLS with the standard
+  ``tenant_isolation`` policy on its direct ``tenant_id`` column
+  (``USING``/``WITH CHECK`` same as every other tenant table).
+- ``action_findings``: ENABLE + FORCE RLS with a ``tenant_isolation`` policy
+  whose ``USING``/``WITH CHECK`` resolves the tenant *through the owning
+  ``research_actions`` row* (`EXISTS (SELECT 1 FROM research_actions ra
+  WHERE ra.id = action_findings.action_id AND ra.tenant_id = <ctx>)`). No
+  schema change: the NOT NULL FK on ``research_actions.id`` guarantees a
+  junction row always has a parent, so the subquery is fail-closed and
+  index-accelerated (action_id is the PRIMARY KEY). This keeps the app code
+  untouched — no ``tenant_id`` column, backfill, or model churn.
+
+``investigations`` already had FORCE RLS since ``bb1c2d3e4f5a7`` and
+``findings`` (the ``WorkflowFinding`` alias) since ``d2e3f4a5b6c7``; they are
+part of the same isolation boundary but needed no change.
+
+### D13. Context audit (request / worker / CLI)
+
+- **Request**: ``app.py`` ``before_request`` (``set_tenant_context``) sets the
+  GUC for every request; ``ResearchAction.tenant_id`` inserts are auto-filled
+  from ``flask.g.tenant_id`` (``_TENANT_MODELS``) which always equals the GUC,
+  so ``WITH CHECK`` passes and reads stay tenant-scoped.
+- **Worker / async**: ``run_action`` (``run_action(action_id)``) looks the row
+  up under a temporary bypass, scopes the whole run to the action's tenant,
+  re-asserts the context around commits, and resets the connection in
+  ``finally`` so nothing leaks to the pool.
+- **CLI**: ``scripts/backfill_subject_actions.py`` is an explicit
+  cross-tenant maintenance tool; it now re-establishes
+  ``set_tenant_context(db, None, bypass_rls=True)`` before scanning. Without
+  it, FORCE RLS would hide every row and the tool would silently scan zero
+  actions. ``scripts/seed_testdata.py`` already sets an explicit bypass.
+
+### D14. Tests
+
+All PostgreSQL coverage runs under a real non-superuser role
+(``NOSUPERUSER NOBYPASSRLS``) in CI and locally, so RLS is genuinely
+enforced (a superuser would bypass everything):
+
+- ``test_migrations_reach_head_and_enable_forced_rls`` now pins the new head
+  and asserts ``research_actions``/``action_findings`` are FORCE + ENABLE.
+- Matrix: ``research_actions``/``action_findings`` pinned in
+  ``EXPECTED_FORCE_RLS_TABLES``; cross-tenant isolation tests (row visible as
+  its own tenant, hidden as any other tenant and hidden without any context).
+- ``WITH CHECK`` enforcement: inserting a research way-action with a foreign
+  ``tenant_id`` (or a junction row for another tenant's action) is rejected
+  with SQLSTATE ``42501`` — no bypass.
+- CLI regression: running ``backfill_subject_actions.py`` end-to-end as a
+  subprocess under FORCE RLS still scans the seeded rows.
+- The cold-worker integration test now hands ``run_action`` a plain action id
+  string (exactly what the real poller passes) instead of re-reading an
+  expired ORM instance across a context wipe, which the new FORCE RLS
+  correctly makes invisible pre-hand-off.
+
+### Execution notes
+
+- **PR (this change)**: migration ``f6a7b8c9d0e1``, CLI fix, PG test
+  extensions. Deployment follows the normal controlled flow
+  (``update.sh`` → head check via ``osint-health-refresh``); the migration is
+  DDL-free on SQLite and only ``ALTER TABLE … ROW LEVEL SECURITY`` statements
+  on PostgreSQL (reversible via ``downgrade()``).
+- **Functional pilot before production-standard rollout**: a disposable case
+  is used to verify one case-wide action and one investigation-linked action,
+  the scope badges/filter/profile display, link/unlink on an existing action,
+  and the audit trail — then the case is cleaned up.
+- RLS on `research_actions` and `action_findings` is **closed** by Addendum 3
+  / PR #154 (migration `f6a7b8c9d0e1` + CLI fix + full PG test coverage).
