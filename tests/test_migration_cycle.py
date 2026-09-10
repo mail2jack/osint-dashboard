@@ -19,7 +19,7 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "f5a6b7c8d9e0"
+HEAD_REVISION = "f6a7b8c9d0e1"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:

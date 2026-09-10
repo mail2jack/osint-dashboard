@@ -18,13 +18,16 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from cms.models import (
+    ActionFinding,
     BackgroundTask,
     Client,
     Document,
     Finding,
     OsintSearch,
+    ResearchAction,
     SpiderFootScan,
     Tenant,
     User,
@@ -39,6 +42,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 EXPECTED_FORCE_RLS_TABLES = {
+    "action_findings",
     "addresses",
     "api_keys",
     "audit_logs",
@@ -64,6 +68,7 @@ EXPECTED_FORCE_RLS_TABLES = {
     "payments",
     "phone_lookups",
     "reminders",
+    "research_actions",
     "screenshots",
     "social_accounts",
     "spiderfoot_scans",
@@ -255,6 +260,258 @@ class TestMultiTenantRLSMatrix:
         db.session.expire_all()
         assert Finding.query.filter_by(id=finding_a_id).count() == 0
         assert Finding.query.filter_by(id=finding_b_id).count() == 0
+
+    def test_research_actions_are_force_rls(self):
+        """``research_actions`` is added to FORCE RLS in f6a7b8c9d0e1."""
+        assert "research_actions" in _force_rls_tables()
+
+    def test_action_findings_are_force_rls(self):
+        """``action_findings`` (junction) is FORCE RLS in f6a7b8c9d0e1."""
+        assert "action_findings" in _force_rls_tables()
+
+    def test_research_actions_isolated_between_tenants(self, app):
+        """Job data (research_actions) must be invisible across tenants and
+        invisible without any tenant context (the cold-worker baseline)."""
+        from cms.models import Case
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_a = Client(tenant_id=tenant_a, name="matrix ra A")
+        client_b = Client(tenant_id=tenant_b, name="matrix ra B")
+        db.session.add_all([client_a, client_b])
+        db.session.flush()
+        case_a = Case(
+            tenant_id=tenant_a,
+            case_number=f"MAT-RA-A-{uuid.uuid4().hex[:8]}",
+            client_id=client_a.id,
+            title="Matrix RA A",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        case_b = Case(
+            tenant_id=tenant_b,
+            case_number=f"MAT-RA-B-{uuid.uuid4().hex[:8]}",
+            client_id=client_b.id,
+            title="Matrix RA B",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        db.session.add_all([case_a, case_b])
+        db.session.flush()
+        action_a = ResearchAction(
+            tenant_id=tenant_a,
+            case_id=case_a.id,
+            action_type="google_dork",
+            data_value='{"dork": "site:x"}',
+            status="completed",
+            created_by=admin.id,
+        )
+        action_b = ResearchAction(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            action_type="google_dork",
+            data_value='{"dork": "site:y"}',
+            status="completed",
+            created_by=admin.id,
+        )
+        db.session.add_all([action_a, action_b])
+        db.session.commit()
+        action_a_id, action_b_id = action_a.id, action_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert ResearchAction.query.filter_by(id=action_a_id).count() == 1
+        assert ResearchAction.query.filter_by(id=action_b_id).count() == 0
+
+        set_tenant_context(db, tenant_b)
+        db.session.expire_all()
+        assert ResearchAction.query.filter_by(id=action_a_id).count() == 0
+        assert ResearchAction.query.filter_by(id=action_b_id).count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert ResearchAction.query.filter_by(id=action_a_id).count() == 0
+        assert ResearchAction.query.filter_by(id=action_b_id).count() == 0
+
+    def test_action_findings_isolated_between_tenants(self, app):
+        """Junction rows inherit the tenant of their research action: a link
+        between a tenant-A action and a tenant-A finding is readable by tenant
+        A and by nobody else."""
+        from cms.models import Case
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_a = Client(tenant_id=tenant_a, name="matrix jx A")
+        client_b = Client(tenant_id=tenant_b, name="matrix jx B")
+        db.session.add_all([client_a, client_b])
+        db.session.flush()
+        case_a = Case(
+            tenant_id=tenant_a,
+            case_number=f"MAT-JX-A-{uuid.uuid4().hex[:8]}",
+            client_id=client_a.id,
+            title="Matrix JX A",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        case_b = Case(
+            tenant_id=tenant_b,
+            case_number=f"MAT-JX-B-{uuid.uuid4().hex[:8]}",
+            client_id=client_b.id,
+            title="Matrix JX B",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        db.session.add_all([case_a, case_b])
+        db.session.flush()
+        action_a = ResearchAction(
+            tenant_id=tenant_a,
+            case_id=case_a.id,
+            action_type="manual_entry",
+            status="completed",
+            created_by=admin.id,
+        )
+        action_b = ResearchAction(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            action_type="manual_entry",
+            status="completed",
+            created_by=admin.id,
+        )
+        finding_a = Finding(
+            tenant_id=tenant_a,
+            case_id=case_a.id,
+            title="Matrix jx finding A",
+            content="evidence",
+            source_type="manual",
+            created_by=admin.id,
+        )
+        finding_b = Finding(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            title="Matrix jx finding B",
+            content="evidence",
+            source_type="manual",
+            created_by=admin.id,
+        )
+        db.session.add_all([action_a, action_b, finding_a, finding_b])
+        db.session.flush()
+        link_a = ActionFinding(action_id=action_a.id, finding_id=finding_a.id)
+        link_b = ActionFinding(action_id=action_b.id, finding_id=finding_b.id)
+        db.session.add_all([link_a, link_b])
+        db.session.commit()
+        act_a_id, act_b_id = action_a.id, action_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert ActionFinding.query.filter_by(action_id=act_a_id).count() == 1
+        assert ActionFinding.query.filter_by(action_id=act_b_id).count() == 0
+
+        set_tenant_context(db, tenant_b)
+        db.session.expire_all()
+        assert ActionFinding.query.filter_by(action_id=act_a_id).count() == 0
+        assert ActionFinding.query.filter_by(action_id=act_b_id).count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert ActionFinding.query.filter_by(action_id=act_a_id).count() == 0
+        assert ActionFinding.query.filter_by(action_id=act_b_id).count() == 0
+
+    def test_force_rls_rejects_cross_tenant_action_insert(self, app):
+        """WITH CHECK must reject inserting a research way-action whose
+        tenant_id differs from the active context (no bypass)."""
+        from cms.models import Case
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="matrix wc")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            tenant_id=tenant_a,
+            case_number=f"MAT-WC-{uuid.uuid4().hex[:8]}",
+            client_id=client.id,
+            title="Matrix WC",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        db.session.add(case)
+        db.session.commit()
+        case_id = case.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.add(
+            ResearchAction(
+                tenant_id=tenant_b,
+                case_id=case_id,
+                action_type="manual_entry",
+                status="pending",
+                created_by=admin.id,
+            )
+        )
+        with pytest.raises(DBAPIError) as exc_info:
+            db.session.commit()
+        assert getattr(exc_info.value.orig, "pgcode", None) == "42501"
+        db.session.rollback()
+
+    def test_action_findings_with_check_derives_tenant_from_parent(self, app):
+        """A junction row for another tenant's action must be rejected under a
+        normal tenant context (subquery policy evaluates against the parent)."""
+        from cms.models import Case
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_b = Client(tenant_id=tenant_b, name="matrix jb")
+        db.session.add(client_b)
+        db.session.flush()
+        case_b = Case(
+            tenant_id=tenant_b,
+            case_number=f"MAT-JB-{uuid.uuid4().hex[:8]}",
+            client_id=client_b.id,
+            title="Matrix JB",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        db.session.add(case_b)
+        db.session.flush()
+        action_b = ResearchAction(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            action_type="manual_entry",
+            status="completed",
+            created_by=admin.id,
+        )
+        finding_b = Finding(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            title="Matrix jb finding",
+            content="evidence",
+            source_type="manual",
+            created_by=admin.id,
+        )
+        db.session.add_all([action_b, finding_b])
+        db.session.commit()
+        act_b_id, finding_b_id = action_b.id, finding_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.add(
+            ActionFinding(action_id=act_b_id, finding_id=finding_b_id)
+        )
+        with pytest.raises(DBAPIError) as exc_info:
+            db.session.commit()
+        assert getattr(exc_info.value.orig, "pgcode", None) == "42501"
+        db.session.rollback()
 
     def test_osint_search_and_spiderfoot_scan_isolated(self, app):
         admin = User.query.filter_by(username="admin").one()
