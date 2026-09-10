@@ -1,4 +1,7 @@
 const CASE_ID = '{{ case.id }}';
+// PR-C: write rights gate mutating UI (link/unlink scope-select); the badge is
+// read-only and stays visible to viewers.
+const CAN_WRITE = {{ can_write|tojson }};
 const POLL_INTERVAL = 2000;
 const CREDIT_LIMITS = {tiktok: 50, instagram: 10, linkedin: 50, twitter: 1000, facebook: 30};
 let pollTimer = null;
@@ -25,3 +28,11 @@ function updateCredits(actionType) {
 
 const SUBJECTS = {{ subjects_data|tojson }};
 const DORKS_LIBRARY = {{ dorks_library|tojson }};
+
+// ── PR-C/ADR-0005 investigation scope ──
+// All investigations of this case (open + archived): archived ones keep
+// historical links/badges visible; only OPEN ones are selectable targets.
+const INVESTIGATIONS = {{ investigations_meta|tojson }};
+const OPEN_INVESTIGATIONS = INVESTIGATIONS.filter(function(i) {
+  return i.status === 'open' && !i.archived;
+});

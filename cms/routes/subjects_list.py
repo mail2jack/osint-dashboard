@@ -385,17 +385,41 @@ def subject_profile(subject_id: str) -> str:
         .all()
     )
 
+    # PR-C/ADR-0005 (read-only): open investigations per linked case, for the
+    # optional scope picker on "Propose action" and "Quick Start Action".
+    # Only OPEN (non-archived) investigations are selectable targets (D6).
+    from cms.models import Investigation, InvestigationStatus
+
+    profile_case_ids = [c["id"] for c in profile["cases"]]
+    investigation_options = {}
+    if profile_case_ids:
+        _open_invs = Investigation.query.filter(
+            Investigation.case_id.in_(profile_case_ids),
+            Investigation.tenant_id == subject.tenant_id,
+            Investigation.archived_at.is_(None),
+            Investigation.status == InvestigationStatus.OPEN.value,
+        ).all()
+        for inv in _open_invs:
+            investigation_options.setdefault(inv.case_id, []).append(
+                {
+                    "id": inv.id,
+                    "human_number": inv.human_number,
+                    "title": inv.title,
+                }
+            )
+
     return render_template(
         "cms/subjects/profile.html",
         subject=subject,
         profile=profile,
         can_edit=current_user.role != "viewer",
         relation_candidates=[
-            {"id": c.id, "name": c.name, "subject_type": c.subject_type}
+            {"id": c["id"], "name": c["name"], "subject_type": c["subject_type"]}
             for c in candidates
         ],
         action_presets=presets_for_subject(subject.subject_type),
         action_labels={k: v["label"] for k, v in ACTION_REGISTRY.items()},
+        investigation_options=investigation_options,
     )
 
 

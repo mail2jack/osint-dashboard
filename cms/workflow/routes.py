@@ -970,6 +970,20 @@ def case_detail(case_id):
 
     investigations, created_by_names = _load_case_investigations(case_id, show_archived)
 
+    # PR-C/ADR-0005 (read-only): scope metadata for badges/filters. Loads ALL
+    # investigations (open + archived) so historical links keep their number,
+    # independent of the show_archived toggle used for the Step-3 list.
+    investigations_meta = [
+        {
+            "id": inv.id,
+            "human_number": inv.human_number,
+            "title": inv.title,
+            "status": inv.status,
+            "archived": inv.archived_at is not None,
+        }
+        for inv in Investigation.query.filter_by(case_id=case_id).all()
+    ]
+
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     with db.session.no_autoflush:
         if client:
@@ -1056,6 +1070,7 @@ def case_detail(case_id):
             findings=findings,
             finding_actions=finding_actions,
             investigations=investigations,
+            investigations_meta=investigations_meta,
             created_by_names=created_by_names,
             can_write=_current_user_is_investigator(),
             step_number=3,
@@ -1781,6 +1796,14 @@ def case_status(case_id):
     ensure_case_access(case)
 
     actions = WorkflowResearchAction.query.filter_by(case_id=case_id).all()
+    # PR-C/ADR-0005 D6: expose investigation scope per action (read-only).
+    # Includes archived investigations so historical links keep their badge.
+    _invs = {
+        i.id: i
+        for i in Investigation.query.filter(
+            Investigation.case_id == case_id
+        ).all()
+    }
     findings = (
         WorkflowFinding.query.filter_by(case_id=case_id)
         .filter(WorkflowFinding.is_deleted == False)
@@ -1857,6 +1880,17 @@ def case_status(case_id):
                     "subject_id": a.subject_id,
                     "target_kind": a.target_kind,
                     "target_snapshot": a.target_snapshot_data,
+                    "investigation_id": a.investigation_id,
+                    "investigation_number": (
+                        _invs[a.investigation_id].human_number
+                        if a.investigation_id and a.investigation_id in _invs
+                        else None
+                    ),
+                    "investigation_title": (
+                        _invs[a.investigation_id].title
+                        if a.investigation_id and a.investigation_id in _invs
+                        else None
+                    ),
                     "dork_label": a.dork_label,
                     "result_summary": a.result_summary,
                     "created_at": a.created_at.isoformat() if a.created_at else None,
