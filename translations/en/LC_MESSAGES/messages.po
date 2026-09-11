@@ -4893,3 +4893,54 @@ msgstr "Unknown finding"
 msgid "Unknown research action"
 msgstr "Unknown research action"
 
+msgid "Start Action"
+msgstr "Start Action"
+
+msgid "Start research action"
+msgstr "Start research action"
+
+msgid "Action type"
+msgstr "Action type"
+
+msgid "Scope"
+msgstr "Scope"
+
+msgid "Subject (optional)"
+msgstr "Subject (optional)"
+
+msgid "Data value"
+msgstr "Data value"
+
+msgid "Run now"
+msgstr "Run now"
+
+msgid "Save as proposal"
+msgstr "Save as proposal"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Dork query"
+msgstr "Dork query"
+
+msgid "Search query"
+msgstr "Search query"
+
+msgid "Select an action type."
+msgstr "Select an action type."
+
+msgid "Proposal saved."
+msgstr "Proposal saved."
+
+msgid "Action started."
+msgstr "Action started."
+
+msgid "Network error — could not start the action."
+msgstr "Network error — could not start the action."
+
+msgid "— Case-wide target —"
+msgstr "— Case-wide target —"
+
+msgid "paid channel off"
+msgstr "paid channel off"
+

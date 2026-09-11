@@ -65,6 +65,21 @@ def _enable_workspace(tenant_id, enabled=True):
     return flag
 
 
+def _enable_paid_channels(tenant_id):
+    flag = FeatureFlag.query.filter_by(
+        tenant_id=tenant_id, flag_name="paid_channels"
+    ).first()
+    if flag:
+        flag.enabled = True
+    else:
+        flag = FeatureFlag(
+            tenant_id=tenant_id, flag_name="paid_channels", enabled=True
+        )
+        db.session.add(flag)
+    db.session.commit()
+    return flag
+
+
 def _make_user(role, tenant_id=None, username=None):
     token = uuid.uuid4().hex[:8]
     user = User(
@@ -235,6 +250,17 @@ def _audit(
 
 def _detail_url(case_id, investigation_id):
     return f"/cms/workflow/case/{case_id}/investigations/{investigation_id}"
+
+
+def _modal_subject_select(html):
+    """Inner HTML of the modal's subject select, for option-level assertions."""
+    start_marker = '<select id="wsActionSubject"'
+    start = html.find(start_marker)
+    assert start != -1, "modal subject select not found"
+    start = html.find(">", start) + 1
+    end = html.find("</select>", start)
+    assert end != -1, "modal subject select is not closed"
+    return html[start:end]
 
 
 def _scaffold(case, investigation, user, n_actions=2, n_findings=2):
@@ -1191,6 +1217,270 @@ class TestWorkspaceXssAndUrlScheme:
         assert dto.source_url_is_linkable is False
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert 'href="javascript:' not in body
+
+
+# ---------------------------------------------------------------------------
+# PR4 — "Start Action" modal (button visibility, context, scoped run)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceStartAction:
+    def _enable(self, tid):
+        _enable_workspace(tid, enabled=True)
+
+    def _admin_case_inv(self):
+        tid = _admin_tenant_id()
+        self._enable(tid)
+        case = _make_case()
+        user = User.query.filter_by(username="admin").first()
+        case.created_by = user.id
+        db.session.commit()
+        inv = _make_investigation(case)
+        db.session.commit()
+        return case, inv
+
+    def _viewer_case_inv(self):
+        tid = _admin_tenant_id()
+        self._enable(tid)
+        case = _make_case()
+        case.created_by = _make_user("viewer", tenant_id=tid).id
+        db.session.commit()
+        inv = _make_investigation(case)
+        db.session.commit()
+        viewer = db.session.get(User, case.created_by)
+        return case, inv, viewer
+
+    def test_button_visible_for_investigator(self, auth_client):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" in body
+        assert "wsStartActionModal" in body
+
+    def test_button_hidden_for_viewer(self, app):
+        case, inv, viewer = self._viewer_case_inv()
+        _scaffold(case, inv, viewer)
+        client = _login_as(app.test_client(), viewer)
+        body = client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    def test_button_hidden_when_archived(self, auth_client):
+        case, inv = self._admin_case_inv()
+        inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    def test_scope_defaults_to_current_investigation_with_case_wide_option(
+        self, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'<option value="{inv.id}" selected>' in body
+        assert 'value="__case_wide"' in body
+
+    def test_subject_options_include_linked_case_subjects(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Anna Visser")
+        case.subjects.append(subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "Anna Visser" in body
+
+    def test_action_types_offer_google_dork_but_not_photo_or_manual(
+        self, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="google_dork"' in body
+        assert 'value="photo_analysis"' not in body
+        assert 'value="manual_entry"' not in body
+
+    def test_paid_options_disabled_when_paid_channels_off(self, auth_client):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="facebook" disabled' in body
+        assert "paid channel off" in body
+
+    def test_paid_options_enabled_when_paid_channels_on(self, auth_client):
+        case, inv = self._admin_case_inv()
+        _enable_paid_channels(case.tenant_id)
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="facebook"' in body
+        assert 'value="facebook" disabled' not in body
+        assert "paid channel off" not in body
+
+    def test_run_action_from_workspace_modal_scoped_and_audited(
+        self, app, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Anna Visser")
+        case.subjects.append(subject)
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/run-action",
+            json={
+                "action_type": "google_dork",
+                "data_value": "site:example.nl",
+                "subject_id": subject.id,
+                "investigation_id": inv.id,
+                "mode": "run",
+            },
+        )
+        assert resp.status_code == 200
+        action = db.session.get(ResearchAction, resp.get_json()["id"])
+        assert action.investigation_id == inv.id
+        assert action.subject_id == subject.id
+        audit = (
+            AuditLog.query.filter_by(
+                entity_type="research_action", entity_id=action.id, action="create"
+            )
+            .order_by(AuditLog.id.desc())
+            .first()
+        )
+        assert audit is not None
+        assert audit.new_values["investigation_id"] == inv.id
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "site:example.nl" in body
+
+    # -- P1-1: subject picker hardening --------------------------------
+
+    def test_soft_deleted_linked_subject_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Sophie Softdelete")
+        case.subjects.append(subject)
+        subject.is_deleted = True
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        options = _modal_subject_select(body)
+        assert f'value="{subject.id}"' not in options
+        assert "Sophie Softdelete" not in options
+
+    def test_linked_subject_from_other_case_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        other = _make_case()
+        other_subject = _make_subject(other, name="Fremdverbinding")
+        other.subjects.append(other_subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'value="{other_subject.id}"' not in _modal_subject_select(body)
+
+    def test_subject_from_other_tenant_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        other_tenant = _make_other_tenant()
+        other_case = _make_case(tenant_id=other_tenant.id)
+        alien = _make_subject(other_case, name="Andere Tenant")
+        other_case.subjects.append(alien)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'value="{alien.id}"' not in _modal_subject_select(body)
+
+    def test_subject_options_use_plaintext_display_name_fields(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(
+            case, name="fallback-not-used", achternaam="Visser", voornamen="Anna"
+        )
+        case.subjects.append(subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        options = _modal_subject_select(body)
+        assert f'value="{subject.id}"' in options
+        assert "Anna Visser" in options
+
+    def test_page_load_leaves_encrypted_subject_fields_unchanged(
+        self, app, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Encrypted Keeper", email="keep@example.nl")
+        case.subjects.append(subject)
+        db.session.commit()
+        db.session.expire_all()
+        stored = db.session.get(Subject, subject.id)
+        cipher_before = stored.email
+        assert cipher_before.startswith("gAAAA")
+
+        resp = auth_client.get(_detail_url(case.id, inv.id))
+        assert resp.status_code == 200
+
+        db.session.expire_all()
+        stored_after = db.session.get(Subject, subject.id)
+        assert stored_after.email == cipher_before
+
+    # -- P1-2: positive status invariant for Start Action ---------------
+
+    @pytest.mark.parametrize(
+        ("state",),
+        [
+            pytest.param(("closed", None), id="closed-no-timestamp"),
+            pytest.param(("archived", None), id="archived-no-timestamp"),
+            pytest.param(("open", "timestamp"), id="open-with-timestamp"),
+            pytest.param(("archived", "timestamp"), id="archived-with-timestamp"),
+        ],
+    )
+    def test_start_action_hidden_for_non_open_states(self, state, auth_client):
+        status, archived_at = state
+        case, inv = self._admin_case_inv()
+        inv.status = status
+        if archived_at:
+            inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    @pytest.mark.parametrize(
+        ("state",),
+        [
+            pytest.param(("closed", None), id="closed-no-timestamp"),
+            pytest.param(("archived", None), id="archived-no-timestamp"),
+            pytest.param(("open", "timestamp"), id="open-with-timestamp"),
+            pytest.param(("archived", "timestamp"), id="archived-with-timestamp"),
+        ],
+    )
+    def test_run_action_post_rejected_for_non_open_states(self, state, auth_client):
+        status, archived_at = state
+        case, inv = self._admin_case_inv()
+        inv.status = status
+        if archived_at:
+            inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+
+        actions_before = ResearchAction.query.filter_by(
+            case_id=case.id, tenant_id=case.tenant_id
+        ).count()
+        audits_before = (
+            AuditLog.query.filter_by(
+                case_id=case.id, entity_type="research_action", action="create"
+            ).count()
+        )
+
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/run-action",
+            json={
+                "action_type": "google_dork",
+                "data_value": "site:example.nl",
+                "investigation_id": inv.id,
+                "mode": "run",
+            },
+        )
+        assert resp.status_code == 400
+        assert (
+            "Only open (non-archived) investigations can be linked"
+            in resp.get_json()["error"]
+        )
+        assert (
+            ResearchAction.query.filter_by(
+                case_id=case.id, tenant_id=case.tenant_id
+            ).count()
+            == actions_before
+        )
+        assert (
+            AuditLog.query.filter_by(
+                case_id=case.id, entity_type="research_action", action="create"
+            ).count()
+            == audits_before
+        )
 
 
 # ---------------------------------------------------------------------------
