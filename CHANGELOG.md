@@ -5,6 +5,11 @@
 ### Fixed
 - DR production snapshots now honor the database selected by `PGSERVICE` and
   use SHA-256 schema fingerprints.
+- `scripts/pilot_adr0005_rls.py` cleanup would fail to commit when an invoice
+  referenced the disposal client (`invoices_client_id_fkey` FK violation), and
+  the first fix attempt crashed on `IN ARRAY[...]` rendering. The cleanup now
+  deletes `invoice_items` and `invoices` before the client, using tuple
+  parameters so psycopg2 renders `IN (...)`.
 - `subjects_list.subject_profile` string-indexed SQLAlchemy 2.0 `Row` objects
   (`c["id"]`), which crashed on production (PostgreSQL, 2+ subjects per tenant)
   with `TypeError: tuple indices must be integers or slices, not str` when
