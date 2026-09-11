@@ -4636,3 +4636,52 @@ msgstr "De payload moet een JSON-object zijn."
 msgid "%(field)s must be a string."
 msgstr "%(field)s moet een string zijn."
 
+
+msgid "Subjects referenced by research actions"
+msgstr "Subjects betrokken via onderzoeksacties"
+
+msgid "No subjects referenced by research actions yet. Subjects appear here once a research action targets them."
+msgstr "Nog geen subjects betrokken via onderzoeksacties. Subjects verschijnen hier zodra een onderzoeksactie ze als doelwit heeft."
+
+msgid "No research actions have been run in this investigation yet."
+msgstr "In dit onderzoek zijn nog geen onderzoeksacties uitgevoerd."
+
+msgid "No findings generated yet. Run research actions to produce findings."
+msgstr "Nog geen bevindingen gegenereerd. Voer onderzoeksacties uit om bevindingen te produceren."
+
+msgid "Activity"
+msgstr "Activiteiten"
+
+msgid "No activity recorded yet."
+msgstr "Nog geen activiteiten geregistreerd."
+
+msgid "Most recent %(count)s of %(total)s"
+msgstr "Meest recente %(count)s van %(total)s"
+
+msgid "Most recent %(count)s activities; older scope changes may exist"
+msgstr "Meest recente %(count)s activiteiten; er kunnen oudere scope-wijzigingen bestaan"
+
+msgid "Linked actions"
+msgstr "Gekoppelde acties"
+
+msgid "Linked findings"
+msgstr "Gekoppelde bevindingen"
+
+msgid "Nationality"
+msgstr "Nationaliteit"
+
+msgid "View screenshot"
+msgstr "Bekijk screenshot"
+
+msgid "Open website"
+msgstr "Open website"
+
+msgid "Screenshot reference:"
+msgstr "Screenshotverwijzing:"
+
+msgid "Unknown finding"
+msgstr "Onbekende bevinding"
+
+msgid "Unknown research action"
+msgstr "Onbekende onderzoeksactie"
+

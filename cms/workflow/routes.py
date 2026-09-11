@@ -45,6 +45,7 @@ from cms.services.investigation_service import (
     validate_update_payload,
 )
 from cms.services.invoice_service import auto_invoice_case_created
+from cms.services.investigation_workspace import build_inv_workspace
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
@@ -1152,18 +1153,15 @@ def investigation_detail(case_id, investigation_id):
 
     inv, case = ensure_investigation_access(case_id, investigation_id)
 
-    creator_name = ""
-    if inv.created_by:
-        creator = db.session.get(User, inv.created_by)
-        if creator:
-            creator_name = creator.username or creator.full_name or ""
+    ws = build_inv_workspace(inv, case)
 
     return render_template(
         "cms/workflow/workflow_investigation_detail.html",
         inv=inv,
         case=case,
         can_write=_current_user_is_investigator(),
-        created_by_name=creator_name,
+        created_by_name=ws.created_by_name or "",
+        ws=ws,
     )
 
 
