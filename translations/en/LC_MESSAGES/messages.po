@@ -4796,3 +4796,45 @@ msgstr ""
 msgid "Could not update finding"
 msgstr ""
 
+msgid "Archive this investigation?"
+msgstr ""
+
+msgid "Back to case"
+msgstr ""
+
+msgid "Created by"
+msgstr ""
+
+msgid "Instructions"
+msgstr ""
+
+msgid "Investigation is archived and cannot be edited."
+msgstr ""
+
+msgid "Investigation update failed."
+msgstr ""
+
+msgid "Investigation updated."
+msgstr ""
+
+msgid "Instructions must be at most %(max)d characters."
+msgstr ""
+
+msgid "No updates provided."
+msgstr ""
+
+msgid "Notes must be at most %(max)d characters."
+msgstr ""
+
+msgid "Save changes"
+msgstr ""
+
+msgid "Title is required."
+msgstr ""
+
+msgid "Title must be at most %(max)d characters."
+msgstr ""
+
+msgid "Unknown fields: %(fields)s"
+msgstr ""
+
