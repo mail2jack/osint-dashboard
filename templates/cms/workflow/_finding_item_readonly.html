@@ -39,22 +39,22 @@
     {% for ss in fd.screenshots %}
     <div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);{% if loop.last %}border:none{% endif %}">
       <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-        {% if ss.url_is_linkable %}
-        <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ {{ _('View screenshot') }}</a>
-        {% elif ss.url %}
-        <span style="font-size:0.72rem;color:var(--text-muted);">🖼️ {{ _('View screenshot') }}</span>
+        {% if ss.image_url_is_same_origin %}
+        <a href="{{ ss.image_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ {{ _('View screenshot') }}</a>
         {% endif %}
-        {% if ss.source_url_is_linkable and ss.source_url != ss.url %}
+        {% if ss.source_url_is_linkable and ss.source_url != ss.image_url %}
         <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 {{ _('Open website') }}</a>
         {% endif %}
         <span style="font-size:0.72rem;color:var(--text-muted);">{{ ss.captured_at.strftime('%d-%m-%Y %H:%M') if ss.captured_at else '-' }}</span>
       </div>
-      {% if ss.url_is_linkable %}
+      {% if ss.image_url_is_same_origin %}
       <div style="margin-top:0.3rem;">
-        <a href="{{ ss.url }}" target="_blank" rel="noopener">
-          <img src="{{ ss.url }}" alt="{{ _('Screenshot') }}" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy">
+        <a href="{{ ss.image_url }}" target="_blank" rel="noopener">
+          <img src="{{ ss.image_url }}" alt="{{ _('Screenshot') }}" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy">
         </a>
       </div>
+      {% elif ss.image_url %}
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.25rem;word-break:break-all;">{{ _('Screenshot reference:') }} {{ ss.image_url }}</div>
       {% endif %}
       {% if ss.notes %}<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">{{ ss.notes }}</div>{% endif %}
     </div>

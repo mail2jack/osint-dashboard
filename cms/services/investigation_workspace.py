@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Iterable
 from urllib.parse import urlparse
@@ -56,6 +57,12 @@ _EPOCH_FLOOR = -float("inf")
 
 # Only http(s) may be rendered as a clickable link.
 _LINKABLE_SCHEMES = ("http", "https")
+
+# Trusted same-origin screenshot route (workflow.serve_screenshot). A screenshot
+# image may only be rendered from exactly this internal path.
+_IMAGE_UPLOAD_PREFIX = "/cms/workflow/uploads/"
+# Single filename segment as produced by ``secure_filename`` (uuid + extension).
+_SAFE_FILENAME_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 
 # Audit ``action`` values known to write scope changes (ADR-0005 D3/D4).
 _SCOPE_AUDIT_ACTIONS = ("link", "unlink")
@@ -84,8 +91,8 @@ class ActionDTO:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class ScreenshotDTO:
-    url: str | None
-    url_is_linkable: bool
+    image_url: str | None
+    image_url_is_same_origin: bool
     source_url: str | None
     source_url_is_linkable: bool
     captured_at: datetime | None
@@ -179,6 +186,40 @@ def _is_linkable_url(raw: str | None) -> bool:
         return False
 
 
+def _is_same_origin_screenshot(raw: str | None, finding_id: str) -> bool:
+    """True only for the trusted same-origin screenshot route.
+
+    Accepted form is exactly ``/cms/workflow/uploads/<finding_id>/<filename>``
+    where ``finding_id`` matches the finding the screenshot belongs to and
+    ``filename`` is a single traversal-free segment (what
+    ``workflow.serve_screenshot`` later resolves through ``secure_filename``).
+
+    Rejected: absolute http(s)/other-scheme URLs, protocol-relative ``//``
+    URLs, encoded traversal, wrong-or-different finding ids and any filename
+    that is not a plain safe segment.
+    """
+    if not raw or not finding_id:
+        return False
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return False
+    if parsed.scheme or parsed.netloc:
+        return False
+    if not parsed.path.startswith(_IMAGE_UPLOAD_PREFIX):
+        return False
+    tail = parsed.path[len(_IMAGE_UPLOAD_PREFIX):]
+    parts = tail.split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        return False
+    url_finding_id, filename = parts
+    if url_finding_id != finding_id:
+        return False
+    if filename == ".." or ".." in filename or "\\" in filename:
+        return False
+    return bool(_SAFE_FILENAME_RE.fullmatch(filename))
+
+
 def _sort_timestamp(dt: datetime | None) -> float:
     """Consistent UTC sort key — never mix naive/aware comparisons."""
     if dt is None:
@@ -203,8 +244,8 @@ def _compute_diff(old: object, new: object) -> dict | None:
 def _screenshot_dtos(finding: WorkflowFinding) -> list[ScreenshotDTO]:
     return [
         ScreenshotDTO(
-            url=ss.url,
-            url_is_linkable=_is_linkable_url(ss.url),
+            image_url=ss.url,
+            image_url_is_same_origin=_is_same_origin_screenshot(ss.url, finding.id),
             source_url=ss.source_url,
             source_url_is_linkable=_is_linkable_url(ss.source_url),
             captured_at=ss.captured_at,

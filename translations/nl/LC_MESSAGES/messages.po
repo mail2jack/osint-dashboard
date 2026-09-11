@@ -4676,3 +4676,6 @@ msgstr "Bekijk screenshot"
 msgid "Open website"
 msgstr "Open website"
 
+msgid "Screenshot reference:"
+msgstr "Screenshotverwijzing:"
+

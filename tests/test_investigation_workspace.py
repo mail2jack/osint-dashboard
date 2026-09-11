@@ -1011,7 +1011,7 @@ class TestWorkspaceXssAndUrlScheme:
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert 'href="https://example.com/x?a=1&amp;b=2"' in body
 
-    def _screenshot_page(self, *, url=None, source_url=None):
+    def _screenshot_page(self, *, url=None, source_url=None, internal=False):
         tid = _admin_tenant_id()
         _enable_workspace(tid, enabled=True)
         case = _make_case()
@@ -1021,6 +1021,8 @@ class TestWorkspaceXssAndUrlScheme:
         subject = _make_subject(case)
         act = _make_action(case, investigation=inv, subject=subject, label="Dork")
         f = _make_finding(case, subject, title="SS Finding", created_by=user.id)
+        if internal:
+            url = f"/cms/workflow/uploads/{f.id}/shot.png"
         f.finding_screenshots = [
             FindingScreenshot(
                 tenant_id=case.tenant_id,
@@ -1034,30 +1036,88 @@ class TestWorkspaceXssAndUrlScheme:
         db.session.commit()
         return case, inv, f
 
-    def test_screenshot_url_javascript_data_schemes(self, auth_client):
-        case, inv, f = self._screenshot_page(
-            url="javascript:alert(1)", source_url="data:text/html,<b>x</b>"
+    def _ss_dto(self, case, inv):
+        return build_inv_workspace(inv, case).findings[0].screenshots[0]
+
+    def test_screenshot_internal_same_origin_rendered(self, auth_client):
+        case, inv, f = self._screenshot_page(internal=True)
+        dto = self._ss_dto(case, inv)
+        assert dto.image_url == f"/cms/workflow/uploads/{f.id}/shot.png"
+        assert dto.image_url_is_same_origin is True
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert f'href="/cms/workflow/uploads/{f.id}/shot.png"' in body
+        assert f'src="/cms/workflow/uploads/{f.id}/shot.png"' in body
+
+    def test_screenshot_internal_wrong_finding_id_not_rendered(self, auth_client):
+        case, inv, _ = self._screenshot_page(
+            url="/cms/workflow/uploads/other-finding-id/shot.png"
         )
-        dto = build_inv_workspace(inv, case).findings[0].screenshots[0]
-        assert dto.url_is_linkable is False
+        dto = self._ss_dto(case, inv)
+        assert dto.image_url_is_same_origin is False
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert 'href="/cms/workflow/uploads/other-finding-id/shot.png"' not in body
+        assert 'src="/cms/workflow/uploads/other-finding-id/shot.png"' not in body
+
+    def test_screenshot_internal_traversal_not_rendered(self, auth_client):
+        case, inv, f = self._screenshot_page(internal=True)
+        traversal_url = f"/cms/workflow/uploads/{f.id}/../../etc/passwd"
+        f.finding_screenshots[0].url = traversal_url
+        db.session.commit()
+        dto = self._ss_dto(case, inv)
+        assert dto.image_url_is_same_origin is False
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert f'src="/cms/workflow/uploads/{f.id}/' not in body
+        assert f'href="{traversal_url}"' not in body
+
+    def test_screenshot_external_https_not_loaded(self, auth_client):
+        case, inv, _ = self._screenshot_page(url="https://evil.example/image.png")
+        dto = self._ss_dto(case, inv)
+        assert dto.image_url_is_same_origin is False
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        # never loaded as <img> or used as a screenshot view link
+        assert 'src="https://evil.example/image.png"' not in body
+        assert 'href="https://evil.example/image.png"' not in body
+        # only surfaced as escaped reference text
+        assert "https://evil.example/image.png" in body
+
+    def test_screenshot_protocol_relative_not_rendered(self, auth_client):
+        case, inv, _ = self._screenshot_page(url="//evil.example/image.png")
+        dto = self._ss_dto(case, inv)
+        assert dto.image_url_is_same_origin is False
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert 'src="//evil' not in body
+        assert 'href="//evil' not in body
+
+    def test_screenshot_bad_schemes_not_rendered(self, auth_client):
+        for bad in (
+            "javascript:alert(1)",
+            "data:image/png;base64,AAAA",
+            "file:///etc/passwd",
+        ):
+            case, inv, _ = self._screenshot_page(url=bad)
+            dto = self._ss_dto(case, inv)
+            assert dto.image_url_is_same_origin is False, bad
+            body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+            assert 'src="javascript:' not in body
+            assert 'src="data:' not in body
+            assert 'src="file:' not in body
+            assert 'href="javascript:' not in body
+            assert 'href="data:' not in body
+            assert 'href="file:' not in body
+
+    def test_screenshot_source_url_https_linkable(self, auth_client):
+        case, inv, _ = self._screenshot_page(source_url="https://example.com/page?a=1&b=2")
+        dto = self._ss_dto(case, inv)
+        assert dto.source_url_is_linkable is True
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert 'href="https://example.com/page?a=1&amp;b=2"' in body
+
+    def test_screenshot_source_url_invalid_no_href(self, auth_client):
+        case, inv, _ = self._screenshot_page(source_url="javascript:alert(1)")
+        dto = self._ss_dto(case, inv)
         assert dto.source_url_is_linkable is False
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert 'href="javascript:' not in body
-        assert 'src="javascript:' not in body
-        assert 'href="data:' not in body
-
-    def test_screenshot_url_https_linkable_and_rendered(self, auth_client):
-        case, inv, f = self._screenshot_page(
-            url="https://example.com/ss.png?a=1&b=2",
-            source_url="https://example.com/page",
-        )
-        dto = build_inv_workspace(inv, case).findings[0].screenshots[0]
-        assert dto.url_is_linkable is True
-        assert dto.source_url_is_linkable is True
-        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
-        assert 'href="https://example.com/ss.png?a=1&amp;b=2"' in body
-        assert 'src="https://example.com/ss.png?a=1&amp;b=2"' in body
-        assert 'href="https://example.com/page"' in body
 
 
 # ---------------------------------------------------------------------------
