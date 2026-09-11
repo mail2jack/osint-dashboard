@@ -4685,3 +4685,54 @@ msgstr "Onbekende bevinding"
 msgid "Unknown research action"
 msgstr "Onbekende onderzoeksactie"
 
+msgid "Start Action"
+msgstr "Actie starten"
+
+msgid "Start research action"
+msgstr "Onderzoeksactie starten"
+
+msgid "Action type"
+msgstr "Actietype"
+
+msgid "Scope"
+msgstr "Reikwijdte"
+
+msgid "Subject (optional)"
+msgstr "Subject (optioneel)"
+
+msgid "Data value"
+msgstr "Gegevenswaarde"
+
+msgid "Run now"
+msgstr "Nu uitvoeren"
+
+msgid "Save as proposal"
+msgstr "Opslaan als voorstel"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Dork query"
+msgstr "Dork-query"
+
+msgid "Search query"
+msgstr "Zoekopdracht"
+
+msgid "Select an action type."
+msgstr "Selecteer een actietype."
+
+msgid "Proposal saved."
+msgstr "Voorstel opgeslagen."
+
+msgid "Action started."
+msgstr "Actie gestart."
+
+msgid "Network error — could not start the action."
+msgstr "Netwerkfout — de actie kon niet worden gestart."
+
+msgid "— Case-wide target —"
+msgstr "— Zaakbreed doelwit —"
+
+msgid "paid channel off"
+msgstr "betaald kanaal uit"
+
