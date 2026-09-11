@@ -80,19 +80,34 @@ timeline / counts update. `{error}` → `showToast(error, 'error')`.
 ### Security / robustness properties
 
 - `subjects_cfg` is a list of plain DTO dicts (`{id, display_name, subject_type}`);
-  ORM objects are never passed to the modal. Decryption runs inside
-  `db.session.no_autoflush` and only scalar field reads follow, so no query or lazy
-  load happens after decryption.
+  ORM objects are never passed to the modal. The rows come from an **explicit,
+  case-scoped query on the case-subject junction** that also filters
+  `Subject.tenant_id == case.tenant_id` and `Subject.is_deleted.is_(False)`
+  (review P1-1), and are sorted deterministically by display name
+  (case-insensitive) then id. Only plaintext name fields are rendered, so
+  `decrypt_identifiers()` is **never** called on this path: no cipher is
+  touched, nothing is re-encrypted, and no autoflush side-effect can occur.
+- **`can_start_actions` (review P1-2)** is computed server-side as
+  `can_write and inv.status == InvestigationStatus.OPEN.value and
+  inv.archived_at is None` — the same positive invariant as
+  `get_linkable_investigation()` / `require_open()`. It alone gates the
+  Start Action button, the modal markup and the modal JS; no divergent
+  template-side status checks exist. The workspace stays *readable* for
+  archived/closed/inconsistent investigations, but `get_linkable_investigation()`
+  remains the authoritative server-side security control on every POST.
 - Modal JS uses `window.apiFetch` (CSRF-safe, base.js) and interpolates `{{ case.id }}`
   into the URL — no dependency on the case-detail global `CASE_ID`.
 - Toast/status text is assigned via `textContent`; option values are Jinja-escaped.
 - A `_submitting` guard plus a disabled submit button prevent duplicate actions on
   double-click; the submit button is re-enabled in `finally`.
-- Button and modal (and their JS) render only when `can_write` and
-  `not inv.archived_at`.
+- Button and modal (and their JS) render only when `can_start_actions` is true
+  (writer role, status OPEN, no archive timestamp).
 - The original `data-confirm-archive` handler remains its own single-load nonce
   script with non-overlapping selectors, so no listener is ever registered twice and
   the CSP nonce tests stay green.
+- Accessible dialog (`role="dialog"`, `aria-modal`, `aria-labelledby`): focus moves
+  to the first field on open, is trapped via the Tab handler, Escape closes the modal,
+  clicking the overlay closes it, and focus returns to the trigger button on close.
 
 ---
 
@@ -100,11 +115,15 @@ timeline / counts update. `{error}` → `showToast(error, 'error')`.
 
 ### Backend context (`cms/workflow/routes.py`, `investigation_detail`)
 
+- `can_start_actions`: `can_write and status == OPEN and archived_at is None`
+  (positive invariant, identical to the server validators). Passed as a single
+  boolean; the template renders button + modal + JS only under it.
 - `action_types`: list of `{key, label, icon, category}` for `ACTION_REGISTRY`,
   excluding `photo_analysis` and `manual_entry`.
-- `subjects_cfg`: list of `{id, display_name, subject_type}` decrypted from
-  `case.subjects` (same pattern as `case_detail`, sorted by name, computed inside
-  `no_autoflush`).
+- `subjects_cfg`: list of `{id, display_name, subject_type}` built from an explicit
+  `case.subjects.filter(tenant==case, is_deleted=False)` query (no
+  `decrypt_identifiers()`), sorted deterministically by display name
+  (case-insensitive) then id.
 - `paid_enabled`: `paid_channels_enabled()` — lets the template mark paid types.
 
 No changes to `build_inv_workspace`, `run_action`, or validation. The workspace
@@ -136,9 +155,9 @@ text. Purely presentational; server does the real validation.
 
 | File | Change |
 |---|---|
-| `cms/workflow/routes.py` | `investigation_detail`: add `action_types`, `subjects_cfg`, `paid_enabled` to context |
-| `templates/cms/workflow/workflow_investigation_detail.html` | Start Action button + modal + JS (+ restored archive-confirm nonce script) |
-| `tests/test_investigation_workspace.py` | `TestWorkspaceStartAction` (9 cases: visibility, scope default, subjects, action-type offering, paid shielding, end-to-end scoped + audited run) |
+| `cms/workflow/routes.py` | `investigation_detail`: add `can_start_actions`, `action_types`, `subjects_cfg` (explicit tenant/case/soft-delete scoped, non-decrypting), `paid_enabled` to context |
+| `templates/cms/workflow/workflow_investigation_detail.html` | Start Action button + modal + JS (+ restored archive-confirm nonce script; accessible dialog) |
+| `tests/test_investigation_workspace.py` | `TestWorkspaceStartAction` (22 cases: visibility status matrix, scope default, subjects filter matrix, action-type offering, paid shielding, ciphertext-unchanged, end-to-end scoped + audited run, POST-rejection matrix) |
 | `translations/{nl,en}/LC_MESSAGES/messages.{po,mo}` | New modal msgids |
 | `docs/design-investigation-workspace-pr4.md` | This document |
 
