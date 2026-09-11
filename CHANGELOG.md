@@ -73,6 +73,16 @@
   added: `Back to case`, `Archive this investigation?`, `Instructions` and
   `Save changes` (plus validation / flash keys for the update flow).
 
+### Fixed
+- Investigation editing review round (PR2): `require_open` / `require_archived`
+  now enforce a positive invariant — `status == open` **and** `archived_at is
+  None` (resp. `status == archived` **and** `archived_at` set). Unknown or
+  inconsistent status/timestamp combinations (e.g. `closed`, or `open` with a
+  timestamp) are rejected with 409 and no mutation or audit. Update payloads
+  must be JSON objects whose provided fields are strings or `null`; array /
+  number / boolean / nested payloads return 400 without mutation or audit.
+  NL archive-confirm wording corrected: "Dit onderzoek archiveren?".
+
 ## [3.7.1] — 2026-07-18
 
 ### Fixed

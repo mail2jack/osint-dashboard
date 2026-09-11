@@ -4589,7 +4589,7 @@ msgid "Could not update finding"
 msgstr "Kon bevinding niet bijwerken"
 
 msgid "Archive this investigation?"
-msgstr "Archief dit onderzoek?"
+msgstr "Dit onderzoek archiveren?"
 
 msgid "Back to case"
 msgstr "Terug naar zaak"
@@ -4629,4 +4629,10 @@ msgstr "Titel mag maximaal %(max)d tekens bevatten."
 
 msgid "Unknown fields: %(fields)s"
 msgstr "Onbekende velden: %(fields)s"
+
+msgid "Payload must be a JSON object."
+msgstr "De payload moet een JSON-object zijn."
+
+msgid "%(field)s must be a string."
+msgstr "%(field)s moet een string zijn."
 

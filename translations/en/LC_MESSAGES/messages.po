@@ -4838,3 +4838,9 @@ msgstr ""
 msgid "Unknown fields: %(fields)s"
 msgstr ""
 
+msgid "Payload must be a JSON object."
+msgstr ""
+
+msgid "%(field)s must be a string."
+msgstr ""
+

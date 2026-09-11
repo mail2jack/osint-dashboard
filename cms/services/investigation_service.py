@@ -44,41 +44,59 @@ class OperationalConflict(Exception):
         self.message = message
 
 
-def _is_archived(investigation: Investigation) -> bool:
-    return investigation.archived_at is not None or (
-        investigation.status == InvestigationStatus.ARCHIVED.value
-    )
-
-
 def require_open(investigation: Investigation) -> None:
     """Operational validator: only *open* investigations may be mutated.
 
-    Independent of access control; raises :class:`OperationalConflict` when the
-    investigation is archived.
+    Positive invariant — ``status is OPEN`` **and** ``archived_at is None``.
+    Unknown or inconsistent status/timestamp combinations (e.g. a ``closed``
+    status, or an open status with an archive timestamp) are rejected with 409.
+    Independent of access control; raises :class:`OperationalConflict`.
     """
-    if _is_archived(investigation):
+    if (
+        investigation.status != InvestigationStatus.OPEN.value
+        or investigation.archived_at is not None
+    ):
         raise OperationalConflict(ARCHIVED_UNEDITABLE_MESSAGE)
 
 
 def require_archived(investigation: Investigation) -> None:
-    """Operational validator: restore only applies to *archived* investigations."""
-    if not _is_archived(investigation):
+    """Operational validator: restore only applies to *archived* investigations.
+
+    Positive invariant — ``status is ARCHIVED`` **and** ``archived_at`` is set;
+    everything else is rejected with 409.
+    """
+    if (
+        investigation.status != InvestigationStatus.ARCHIVED.value
+        or investigation.archived_at is None
+    ):
         raise OperationalConflict(NOT_ARCHIVED_MESSAGE)
 
 
-def validate_update_payload(payload: dict) -> dict:
+def validate_update_payload(payload: object) -> dict:
     """Normalize and validate an update payload.
 
-    Only ``title``/``instructions``/``notes`` are accepted; any other key is
+    The payload must be a JSON object whose provided fields are strings or
+    ``null`` — anything else (arrays, numbers, booleans, nested values) is
+    rejected with 400 before any mutation or audit. Only
+    ``title``/``instructions``/``notes`` are accepted; any other key is
     rejected. Returns a kwargs dict with exactly the provided fields, ready for
     :func:`update_investigation`. Provided-but-empty ``instructions``/``notes``
     are normalized to ``None`` (clearing the field).
     """
+    if not isinstance(payload, dict):
+        raise ValueError(_("Payload must be a JSON object."))
+
     unknown = [key for key in payload if key not in ALLOWED_UPDATE_FIELDS]
     if unknown:
         raise ValueError(
             _("Unknown fields: %(fields)s", fields=", ".join(sorted(unknown)))
         )
+
+    for key in ALLOWED_UPDATE_FIELDS:
+        if key in payload and payload[key] is not None and not isinstance(payload[key], str):
+            raise ValueError(
+                _("%(field)s must be a string.", field=key.capitalize())
+            )
 
     normalized: dict = {}
     if "title" in payload:

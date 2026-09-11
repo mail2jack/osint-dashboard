@@ -275,6 +275,50 @@ class TestUpdateValidation:
         )
         assert resp.status_code == 200
 
+    def test_payload_must_be_json_object(self, app, auth_client):
+        case, inv = _enabled_case_and_investigation()
+        for bad in (["title"], ["title", "x"], 42, "title"):
+            resp = auth_client.post(
+                _update_url(case.id, inv.id), json=bad
+            )
+            assert resp.status_code == 400
+        resp = auth_client.post(
+            _update_url(case.id, inv.id), data="null", content_type="application/json"
+        )
+        assert resp.status_code == 400
+        db.session.refresh(inv)
+        assert inv.title == "Originele titel"
+        assert _update_audit(inv.id) == []
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"title": 123},
+            {"title": True},
+            {"notes": []},
+            {"notes": {"x": "y"}},
+            {"instructions": ["a", "b"]},
+            {"title": None},
+        ],
+    )
+    def test_non_string_field_values_return_400(self, app, auth_client, payload):
+        case, inv = _enabled_case_and_investigation()
+        resp = auth_client.post(_update_url(case.id, inv.id), json=payload)
+        assert resp.status_code == 400
+        db.session.refresh(inv)
+        assert inv.title == "Originele titel"
+        assert _update_audit(inv.id) == []
+
+    def test_explicit_null_clears_optional_field(self, app, auth_client):
+        case, inv = _enabled_case_and_investigation()
+        resp = auth_client.post(
+            _update_url(case.id, inv.id), json={"notes": None}
+        )
+        assert resp.status_code == 200
+        db.session.refresh(inv)
+        assert inv.notes is None
+        assert inv.title == "Originele titel"
+
 
 class TestUpdateArchived:
     def test_archived_investigation_update_409_no_mutation_no_audit(
@@ -299,6 +343,89 @@ class TestUpdateArchived:
         auth_client.post(f"/cms/workflow/api/investigations/{inv.id}/archive", json={})
         resp = auth_client.get(_edit_url(case.id, inv.id))
         assert resp.status_code == 302
+
+
+class TestStatusInvariant:
+    """require_open/require_archived enforce a POSITIVE invariant.
+
+    Only ``open + archived_at is None`` (resp. ``archived + archived_at set``)
+    pass; unknown or inconsistent status/timestamp combinations are 409 with no
+    mutation or audit.
+    """
+
+    def test_archive_closed_status_409(self, app, auth_client):
+        case, inv = _enabled_case_and_investigation()
+        inv.status = "closed"
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/investigations/{inv.id}/archive", json={}
+        )
+        assert resp.status_code == 409
+        db.session.refresh(inv)
+        assert inv.status == "closed"
+        assert inv.archived_at is None
+        assert AuditLog.query.filter_by(
+            entity_type="investigation", entity_id=inv.id, action="archive"
+        ).count() == 0
+
+    def test_archive_inconsistent_open_with_timestamp_409(self, app, auth_client):
+        case, inv = _enabled_case_and_investigation()
+        inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/investigations/{inv.id}/archive", json={}
+        )
+        assert resp.status_code == 409
+        db.session.refresh(inv)
+        assert AuditLog.query.filter_by(
+            entity_type="investigation", entity_id=inv.id, action="archive"
+        ).count() == 0
+
+    @pytest.mark.parametrize(
+        ("status", "archived_at"),
+        [
+            ("closed", None),
+            ("archived", None),
+            ("open", "SET"),  # inconsistent: open status with a timestamp
+        ],
+    )
+    def test_update_rejects_non_open_combinations(
+        self, app, auth_client, status, archived_at
+    ):
+        case, inv = _enabled_case_and_investigation()
+        inv.status = status
+        inv.archived_at = datetime.now(UTC) if archived_at == "SET" else None
+        db.session.commit()
+        resp = auth_client.post(
+            _update_url(case.id, inv.id), json={"title": "Nooit"}
+        )
+        assert resp.status_code == 409
+        db.session.refresh(inv)
+        assert inv.title == "Originele titel"
+        assert _update_audit(inv.id) == []
+
+    @pytest.mark.parametrize(
+        ("status", "archived_at", "should_200"),
+        [
+            ("archived", None, False),
+            ("closed", "SET", False),
+            ("open", "SET", False),
+        ],
+    )
+    def test_restore_requires_archived_positive_invariant(
+        self, app, auth_client, status, archived_at, should_200
+    ):
+        case, inv = _enabled_case_and_investigation()
+        inv.status = status
+        inv.archived_at = datetime.now(UTC) if archived_at == "SET" else None
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/investigations/{inv.id}/restore", json={}
+        )
+        assert resp.status_code == (200 if should_200 else 409)
+        assert AuditLog.query.filter_by(
+            entity_type="investigation", entity_id=inv.id, action="restore"
+        ).count() == (1 if should_200 else 0)
 
 
 class TestUpdateAccess:
