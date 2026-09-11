@@ -5,6 +5,8 @@ proposal-mode actions, bulk proposals, and action channel categories.
 
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
+
 from cms.models import Case, Client, Finding, User, db, ResearchAction
 from cms.workflow.actions.registry import (
     action_category,
@@ -163,6 +165,53 @@ class TestProposalMode:
         assert action.status == "proposal"
         assert action.subject_id == subject.id
         assert action.target_kind == "subject"
+
+    def test_proposal_response_does_not_read_action_after_commit(
+        self, auth_client
+    ):
+        """PR #163 regression: the proposal response id must be captured BEFORE
+        commit. Reading ``action.id`` after ``commit()`` expired the instance;
+        on PostgreSQL the refresh SELECT runs on a rebound pooled connection
+        whose RLS session context can differ, intermittently 500ing with
+        ObjectDeletedError although the row + audit are already committed.
+        Invariant guard: a proposal POST must not issue any ``research_actions``
+        SELECT in-flight (the fixed handler only returns the pre-commit id)."""
+        case = _create_case_with_subject(auth_client)
+        subject = case.subjects.first()
+        poisoned = []
+
+        def _poison(conn, cursor, statement, parameters, context, executemany):
+            if "FROM research_actions" in statement.upper():
+                poisoned.append(statement)
+                cursor.close()
+                raise sa.orm.exc.ObjectDeletedError(
+                    "Instance has been deleted, or its row is otherwise not "
+                    f"present (refresh SELECT): {statement}"
+                )
+
+        sa.event.listen(db.engine, "before_cursor_execute", _poison)
+        try:
+            resp = auth_client.post(
+                f"/cms/workflow/api/case/{case.id}/run-action",
+                json={
+                    "action_type": "osint",
+                    "data_value": "PR5 Person",
+                    "subject_id": str(subject.id),
+                    "mode": "proposal",
+                },
+            )
+        finally:
+            sa.event.remove(db.engine, "before_cursor_execute", _poison)
+
+        assert resp.status_code == 200
+        assert not poisoned, (
+            "proposal response reads the action instance after commit "
+            f"({len(poisoned)} refresh SELECT(s) hit)"
+        )
+        body = resp.get_json()
+        assert body["status"] == "proposal"
+        action = db.session.get(ResearchAction, body["id"])
+        assert action.status == "proposal"
 
     def test_proposal_mode_does_not_start(self, auth_client):
         case = _create_case_with_subject(auth_client)

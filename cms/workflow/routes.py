@@ -1594,6 +1594,11 @@ def run_action(case_id):
         )
         db.session.add(action)
         db.session.flush()
+        # Capture the id BEFORE commit: after commit the ORM instance is
+        # expired and reading it emits a refresh SELECT on a rebound pooled
+        # connection whose RLS session context may differ — intermittently 500
+        # with ObjectDeletedError although the row + audit are committed.
+        action_id = action.id
         # Same-transaction audit: no proposal without its audit record.
         log_scope_audit(
             action=action,
@@ -1605,7 +1610,7 @@ def run_action(case_id):
             new_investigation_id=investigation_id,
         )
         db.session.commit()
-        return jsonify({"id": action.id, "status": "proposal"})
+        return jsonify({"id": action_id, "status": "proposal"})
 
     _STALE_TIMEOUT = 600  # 10 minutes
     existing_query = WorkflowResearchAction.query.filter_by(
