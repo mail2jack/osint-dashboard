@@ -333,3 +333,100 @@ class TestNavigationFlag:
         html = resp.get_data(as_text=True)
         detail_path = f"/cms/workflow/case/{case_id}/investigations/{inv.id}"
         assert detail_path not in html
+
+
+class TestFeatureFlagAdminRegistration:
+    """PR1-review: de flag is operationeel registreerbaar via de bestaande
+    super-admin feature-flags UI (OFF default), niet alleen via een directe
+    database-rij in tests."""
+
+    def test_flag_registered_off_by_default_and_visible_in_admin_ui(
+        self, app, auth_client
+    ):
+        from cms.routes.feature_flags_admin import (
+            FEATURE_FLAG_NAMES,
+            FEATURE_FLAG_ORDER,
+            _OFF_BY_DEFAULT,
+        )
+
+        assert "investigation_workspace" in FEATURE_FLAG_NAMES
+        assert "investigation_workspace" in FEATURE_FLAG_ORDER
+        assert "investigation_workspace" in _OFF_BY_DEFAULT
+        # Zonder override: geen DB-rij nodig en check_feature default OFF.
+        assert FeatureFlag.query.filter_by(
+            flag_name="investigation_workspace"
+        ).count() == 0
+
+        resp = auth_client.get("/cms/admin/feature-flags")
+        assert resp.status_code == 200
+        assert "investigation_workspace" in resp.get_data(as_text=True)
+
+    def test_admin_ui_toggle_activates_flag_and_detail_loads(
+        self, app, auth_client
+    ):
+        tid = _admin_tenant_id()
+        _, case_id = _make_client_and_case()
+        case = db.session.get(Case, case_id)
+        inv = _make_investigation(case)
+
+        # Detail is 404 voordat de beheerder de pilotflag activeert.
+        off = auth_client.get(_detail_url(case_id, inv.id))
+        assert off.status_code == 404
+
+        # Activeer via de super-admin UI (FeatureFlag-override).
+        resp = auth_client.post(
+            "/cms/admin/feature-flags/toggle",
+            data={
+                "tenant_id": tid,
+                "flag_name": "investigation_workspace",
+                "enabled": "1",
+            },
+        )
+        assert resp.status_code == 302
+        flag = FeatureFlag.query.filter_by(
+            tenant_id=tid, flag_name="investigation_workspace"
+        ).first()
+        assert flag is not None and flag.enabled is True
+
+        on = auth_client.get(_detail_url(case_id, inv.id))
+        assert on.status_code == 200
+
+
+class TestDetailPageCsp:
+    """PR1-review: de detailpagina mag geen inline event handlers bevatten
+    (CSP 'unsafe-inline'). Archive-bevestiging via data-attribuut + nonce."""
+
+    def test_no_inline_event_handlers(self, app, auth_client):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
+        _, case_id = _make_client_and_case()
+        case = db.session.get(Case, case_id)
+        inv = _make_investigation(case)
+        senior = _make_user("senior_investigator", tenant_id=tid)
+        senior.role = "senior_investigator"
+        case.investigators.append(senior)
+        db.session.commit()
+        client = _login_as(app.test_client(), senior)
+        resp = client.get(_detail_url(case_id, inv.id))
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        # Geen inline onclick="return confirm(...)" meer (CSP 'unsafe-inline').
+        assert 'onclick="return confirm(' not in html
+        assert 'onclick=\'' not in html
+        # Archive-actie moet nu via data-attribuut + nonce-script lopen.
+        assert "data-confirm-archive=" in html
+        assert "window.confirm" in html
+
+    def test_confirm_uses_data_attribute_and_nonce_script(self, app, auth_client):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
+        _, case_id = _make_client_and_case()
+        case = db.session.get(Case, case_id)
+        inv = _make_investigation(case)
+        resp = auth_client.get(_detail_url(case_id, inv.id))
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert 'data-confirm-archive="Archive this investigation?"' in html
+        assert "getAttribute('data-confirm-archive')" in html
+        assert 'nonce="' in html
+        assert "window.confirm" in html

@@ -6,11 +6,14 @@
 - Read-only investigation detail workspace (ADR-0002/ADR-0005, PR1):
   `GET /cms/workflow/case/<case_id>/investigations/<investigation_id>` behind
   the per-tenant feature flag `investigation_workspace` (OFF default, via the
-  central `check_feature()` control). Central gate
+  central `check_feature()` control). Flag is registered in the super-admin
+  feature-flags UI (`FEATURE_FLAG_NAMES/ORDER/_OFF_BY_DEFAULT`) so pilots can
+  be activated without database overrides. Central gate
   `ensure_investigation_access(case_id, investigation_id)` covers identity,
   case-binding and case-access (status checks stay separate, PR2). Investigation
-  cards link to the detail page only when the flag is ON. SQLite +
-  PostgreSQL/RLS-isolation tests
+  cards link to the detail page only when the flag is ON. Archive confirm uses
+  `data-confirm-archive` + nonce event listener (no inline `onclick`; CSP-safe).
+  SQLite + PostgreSQL/RLS-isolation tests
   (`tests/test_investigation_detail_access.py`,
   `tests/test_postgres_investigation_detail_rls.py`).
 

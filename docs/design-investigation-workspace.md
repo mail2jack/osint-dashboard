@@ -302,6 +302,12 @@ routes/views doen **geen losse `FeatureFlag`-queries**.
   nu); pas bij ON worden ze klikbaar — nooit een klik naar een 404-pagina.
 - case-detail en bestaande list/archive/restore blijven onveranderd.
 
+**PR-scope (bindend, na review PR1):** PR1 is **strikt read-only**. De interne
+archive/restore-refactor naar `ensure_investigation_access` én de operationele
+statusvalidators (`require_open`/`require_archived`) en de id-only wrappers
+(3.1a/3.1b) zitten **expliciet in PR2**, nooit in PR1. De helper in PR1 regelt
+alleen leesauth; mutation-paden veranderen niet in PR1.
+
 **Per-PR-verplichtingen (alle PR's):** i18n (nl/en keys) én a11y-basis én mobiele
 layout zijn **acceptatie-eisen binnen élk PR**, en **élke PR die een route of query
 toevoegt draagt zijn eigen PostgreSQL/RLS-isolatietest** in dezelfde PR

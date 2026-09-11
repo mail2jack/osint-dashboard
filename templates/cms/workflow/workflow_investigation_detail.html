@@ -86,7 +86,7 @@
       {% else %}
       <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" onclick="return confirm('{{ _('Archive this investigation?') }}');" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
+        <button type="submit" data-confirm-archive="{{ _('Archive this investigation?') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
       </form>
       {% endif %}
       <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;">{{ _('Back to case') }}</a>
@@ -96,4 +96,16 @@
     {% endif %}
   </div>
 </div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-confirm-archive]');
+    if (!btn) return;
+    var message = btn.getAttribute('data-confirm-archive') || '{{ _('Archive this investigation?') }}';
+    if (!window.confirm(message)) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
 {% endblock %}

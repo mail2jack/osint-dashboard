@@ -86,8 +86,9 @@ def ensure_investigation_access(case_id: str, investigation_id: str):
     Checks identity, case-binding and case-access (read authorization) **only**.
     Status validation is NOT done here — operational validators (require_open /
     require_archived) live in the mutation routes (PR2).  Returns ``(inv, case)``
-    on success; aborts with 404 when the (id, case_id) pair is invalid or the
-    current user lacks case-level access.
+    on success; aborts with 404 when the (id, case_id) pair is invalid, and per
+    the existing ``ensure_case_access`` policy (403/404) when the user lacks
+    tenant or case-level access.
     """
     inv = Investigation.query.filter_by(id=investigation_id, case_id=case_id).first()
     if not inv:
