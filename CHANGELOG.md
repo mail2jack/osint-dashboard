@@ -55,6 +55,24 @@
   `master` outside the protected PR flow; future DR changes must use a branch
   and green required checks before merge or deployment.
 
+### Added
+- Investigation edit/update workspace (PR2): canonical case-scoped update
+  endpoint `POST /api/case/<case_id>/investigations/<investigation_id>/update`
+  plus edit form `GET .../edit`, both gated on the `investigation_workspace`
+  flag (OFF default). Validates title (required, max 300), instructions
+  (max 5000) and notes (max 5000); rejects unknown fields with 400. Only
+  `open` investigations may be updated — archived investigations return 409
+  with no mutation and no audit. Audit + update share one database transaction
+  so an audit failure rolls back the update and returns 500. Legacy id-only
+  archive/restore endpoints are refactored to the shared
+  `cms.services.investigation_service` module, adding `require_open` /
+  `require_archived` operational status validators and richer audit payloads
+  (`old_values` / `new_values`). Comprehensive SQLite tests
+  (`tests/test_investigation_update.py`) plus PostgreSQL/RLS isolation coverage
+  (`tests/test_postgres_investigation_update_rls.py`). Missing NL translations
+  added: `Back to case`, `Archive this investigation?`, `Instructions` and
+  `Save changes` (plus validation / flash keys for the update flow).
+
 ## [3.7.1] — 2026-07-18
 
 ### Fixed
