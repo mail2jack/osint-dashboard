@@ -132,8 +132,12 @@ class TimelineEventDTO:
     timestamp: datetime | None
     action: str  # raw audit action code; the template translates it
     entity_type: str
-    entity_id: str | None
-    entity_display: str  # action label / finding title (or fallback)
+    entity_id: str | None  # internal correlation only — never rendered
+    entity_display: str  # resolved label/title ("" when unresolvable)
+    # Machine-readable display kind: "action" | "finding" | "unknown_action" |
+    # "unknown_finding" | "none". The template translates the "unknown_*" kinds;
+    # the service layer never calls flask_babel ``_()`` (no request context here).
+    entity_display_kind: str
     description: str | None
     user_name: str | None
     diff: dict | None  # {"status": ("open", "archived")} etc., or None
@@ -239,6 +243,31 @@ def _compute_diff(old: object, new: object) -> dict | None:
         if old_val != new_val:
             changes[key] = (old_val, new_val)
     return changes or None
+
+
+def _resolve_entity_display(
+    *,
+    entity_type: str,
+    entity_id: str | None,
+    action_display: dict[str, str],
+    finding_display: dict[str, str],
+) -> tuple[str, str]:
+    """Return ``(entity_display, kind)`` — never the raw entity id.
+
+    Unresolvable events carry an empty ``entity_display`` plus a machine-readable
+    ``kind`` ("unknown_action" / "unknown_finding") that the template renders as
+    a translated neutral fallback. The service layer must not call flask_babel
+    ``_()`` directly: outside a request context the locale can lock in wrongly.
+    """
+    if entity_id in action_display:
+        return action_display[entity_id], "action"
+    if entity_id in finding_display:
+        return finding_display[entity_id], "finding"
+    if entity_type == "research_action":
+        return "", "unknown_action"
+    if entity_type == "finding":
+        return "", "unknown_finding"
+    return "", "none"
 
 
 def _screenshot_dtos(finding: WorkflowFinding) -> list[ScreenshotDTO]:
@@ -499,6 +528,12 @@ def load_inv_timeline(
 
 
 def _timeline_event_dto(event: AuditLog) -> TimelineEventDTO:
+    if event.entity_type == "research_action":
+        kind = "unknown_action"
+    elif event.entity_type == "finding":
+        kind = "unknown_finding"
+    else:
+        kind = "none"
     return TimelineEventDTO(
         id=event.id,
         timestamp=event.timestamp,
@@ -506,6 +541,7 @@ def _timeline_event_dto(event: AuditLog) -> TimelineEventDTO:
         entity_type=event.entity_type,
         entity_id=event.entity_id,
         entity_display="",  # filled by build_inv_workspace via the display maps
+        entity_display_kind=kind,
         description=event.description,
         user_name=event.user_name,
         diff=_compute_diff(event.old_values, event.new_values),
@@ -723,24 +759,28 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
         for f in findings_orm
     ]
 
-    timeline_events = [
-        TimelineEventDTO(
-            id=e.id,
-            timestamp=e.timestamp,
-            action=e.action,
+    timeline_events: list[TimelineEventDTO] = []
+    for e in timeline.events:
+        entity_display, entity_display_kind = _resolve_entity_display(
             entity_type=e.entity_type,
             entity_id=e.entity_id,
-            entity_display=(
-                action_display.get(e.entity_id)
-                or finding_display.get(e.entity_id)
-                or (e.entity_id or "")
-            ),
-            description=e.description,
-            user_name=e.user_name,
-            diff=e.diff,
+            action_display=action_display,
+            finding_display=finding_display,
         )
-        for e in timeline.events
-    ]
+        timeline_events.append(
+            TimelineEventDTO(
+                id=e.id,
+                timestamp=e.timestamp,
+                action=e.action,
+                entity_type=e.entity_type,
+                entity_id=e.entity_id,
+                entity_display=entity_display,
+                entity_display_kind=entity_display_kind,
+                description=e.description,
+                user_name=e.user_name,
+                diff=e.diff,
+            )
+        )
     timeline = TimelineResult(
         events=timeline_events,
         total=timeline.total,

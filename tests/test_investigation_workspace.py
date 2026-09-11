@@ -294,6 +294,29 @@ def query_counter(app):
     sa.event.remove(db.engine, "before_cursor_execute", _count)
 
 
+def _set_lang(client, lang):
+    with client.session_transaction() as sess:
+        if lang is None:
+            sess.pop("lang", None)
+        else:
+            sess["lang"] = lang
+    from flask import g
+
+    g.pop("_flask_babel", None)
+    return client
+
+
+def _render_lang(auth_client, path, lang):
+    with auth_client.session_transaction() as sess:
+        original_lang = sess.get("lang")
+    _set_lang(auth_client, lang)
+    resp = auth_client.get(path)
+    assert resp.status_code == 200, resp.status_code
+    body = resp.get_data(as_text=True)
+    _set_lang(auth_client, original_lang)
+    return body
+
+
 # ---------------------------------------------------------------------------
 # Route isolation (HTTP) — a different-tenant user NEVER gets a 200
 # ---------------------------------------------------------------------------
@@ -448,9 +471,12 @@ class TestWorkspaceQueryIsolation:
         # leak into the label lookup (P1-1 regression).
         assert dtos[0].action_labels == ["Act B"]
 
-    def test_timeline_extra_label_scoped_to_case(self):
+    def test_timeline_extra_label_scoped_to_case(self, auth_client):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
         user = User.query.filter_by(username="admin").first()
         case_a = _make_case()
+        case_a.created_by = user.id
         inv_a = _make_investigation(case_a)
         subj_a = _make_subject(case_a)
         act_a = _make_action(case_a, investigation=inv_a, subject=subj_a, label="Act A")
@@ -471,13 +497,60 @@ class TestWorkspaceQueryIsolation:
         )
         db.session.commit()
 
+        path = _detail_url(case_a.id, inv_a.id)
         ws = build_inv_workspace(inv_a, case_a)
         assert any(a.id == act_a.id for a in ws.actions)
         ev = [e for e in ws.timeline.events if e.entity_id == act_x.id]
         assert ev
-        # Cross-case label must not leak; falls back to the raw entity id.
-        assert ev[0].entity_display == act_x.id
+        # No cross-case label, no raw entity id — neutral translatable fallback.
+        assert ev[0].entity_display == ""
+        assert ev[0].entity_display_kind == "unknown_action"
+        assert ev[0].entity_display != act_x.id
         assert ev[0].entity_display != act_x.label
+
+        body_en = _render_lang(auth_client, path, "en")
+        body_nl = _render_lang(auth_client, path, "nl")
+        assert act_x.id not in body_en
+        assert act_x.id not in body_nl
+        assert "Act X" not in body_en
+        assert "Unknown research action" in body_en
+        assert "Onbekende onderzoeksactie" in body_nl
+        assert "Onbekende onderzoeksactie" not in body_en
+        assert "Unknown research action" not in body_nl
+
+    def test_timeline_unknown_finding_fallback(self, auth_client):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
+        user = User.query.filter_by(username="admin").first()
+        case = _make_case()
+        case.created_by = user.id
+        inv = _make_investigation(case)
+        subject = _make_subject(case)
+        act = _make_action(case, investigation=inv, subject=subject, label="Scoped A")
+        f = _make_finding(case, subject, title="Gone Finding", created_by=user.id)
+        _link(act, f)
+        db.session.commit()
+        # Audit the finding AFTER its soft-delete so the timeline references an
+        # id that is no longer resolvable in finding_display.
+        f.is_deleted = True
+        db.session.commit()
+        _audit(user, "comment", "finding", f.id, case, description="late comment")
+        db.session.commit()
+
+        path = _detail_url(case.id, inv.id)
+        ws = build_inv_workspace(inv, case)
+        ev = [e for e in ws.timeline.events if e.entity_id == f.id]
+        assert ev
+        assert ev[0].entity_display == ""
+        assert ev[0].entity_display_kind == "unknown_finding"
+
+        body_en = _render_lang(auth_client, path, "en")
+        body_nl = _render_lang(auth_client, path, "nl")
+        assert f.id not in body_en
+        assert f.id not in body_nl
+        assert "Gone Finding" not in body_en
+        assert "Unknown finding" in body_en
+        assert "Onbekende bevinding" in body_nl
 
     def test_query_tenant_isolation_timeline(self):
         case_id, inv_id, _, acts, founds, tenant_b = self._data()

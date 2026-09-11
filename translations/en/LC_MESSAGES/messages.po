@@ -4887,3 +4887,9 @@ msgstr "Open website"
 msgid "Screenshot reference:"
 msgstr "Screenshot reference:"
 
+msgid "Unknown finding"
+msgstr "Unknown finding"
+
+msgid "Unknown research action"
+msgstr "Unknown research action"
+

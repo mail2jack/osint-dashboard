@@ -486,7 +486,7 @@ def query_counter(app_with_context):
 Er is maar één NL/EN msgid-set; de NL-test assert de **NL `msgstr`**:
 | Test | Assertie |
 |---|---|
-| `test_nl_locale_strings` | NL `msgstr`: "Subjects **betrokken** via onderzoeksacties", "Activiteiten" | 
+| `test_nl_locale_strings` | NL `msgstr`: "Subjects **betrokken** via onderzoeksacties", "Activiteiten" |
 | `test_en_locale_strings` | EN msgid: "Subjects referenced by research actions", "Activity" |
 
 De foute assertie `tes bijgehouden subjects` is vervallen.

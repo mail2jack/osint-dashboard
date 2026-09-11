@@ -270,7 +270,13 @@
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:0.85rem;">
+            {% if e.entity_display_kind == 'unknown_action' %}
+            <strong>{{ _('Unknown research action') }}</strong>
+            {% elif e.entity_display_kind == 'unknown_finding' %}
+            <strong>{{ _('Unknown finding') }}</strong>
+            {% else %}
             <strong>{{ e.entity_display }}</strong>
+            {% endif %}
             <span style="color:var(--text-muted);margin-left:0.3rem;">{{ e.action }}</span>
           </div>
           {% if e.description %}
