@@ -252,6 +252,17 @@ def _detail_url(case_id, investigation_id):
     return f"/cms/workflow/case/{case_id}/investigations/{investigation_id}"
 
 
+def _modal_subject_select(html):
+    """Inner HTML of the modal's subject select, for option-level assertions."""
+    start_marker = '<select id="wsActionSubject"'
+    start = html.find(start_marker)
+    assert start != -1, "modal subject select not found"
+    start = html.find(">", start) + 1
+    end = html.find("</select>", start)
+    assert end != -1, "modal subject select is not closed"
+    return html[start:end]
+
+
 def _scaffold(case, investigation, user, n_actions=2, n_findings=2):
     """Actions + findings + junctions + audit trail for a workspace."""
     subject = _make_subject(case)
@@ -1332,6 +1343,144 @@ class TestWorkspaceStartAction:
         assert audit.new_values["investigation_id"] == inv.id
         body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert "site:example.nl" in body
+
+    # -- P1-1: subject picker hardening --------------------------------
+
+    def test_soft_deleted_linked_subject_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Sophie Softdelete")
+        case.subjects.append(subject)
+        subject.is_deleted = True
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        options = _modal_subject_select(body)
+        assert f'value="{subject.id}"' not in options
+        assert "Sophie Softdelete" not in options
+
+    def test_linked_subject_from_other_case_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        other = _make_case()
+        other_subject = _make_subject(other, name="Fremdverbinding")
+        other.subjects.append(other_subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'value="{other_subject.id}"' not in _modal_subject_select(body)
+
+    def test_subject_from_other_tenant_not_in_modal(self, auth_client):
+        case, inv = self._admin_case_inv()
+        other_tenant = _make_other_tenant()
+        other_case = _make_case(tenant_id=other_tenant.id)
+        alien = _make_subject(other_case, name="Andere Tenant")
+        other_case.subjects.append(alien)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'value="{alien.id}"' not in _modal_subject_select(body)
+
+    def test_subject_options_use_plaintext_display_name_fields(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(
+            case, name="fallback-not-used", achternaam="Visser", voornamen="Anna"
+        )
+        case.subjects.append(subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        options = _modal_subject_select(body)
+        assert f'value="{subject.id}"' in options
+        assert "Anna Visser" in options
+
+    def test_page_load_leaves_encrypted_subject_fields_unchanged(
+        self, app, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Encrypted Keeper", email="keep@example.nl")
+        case.subjects.append(subject)
+        db.session.commit()
+        db.session.expire_all()
+        stored = db.session.get(Subject, subject.id)
+        cipher_before = stored.email
+        assert cipher_before.startswith("gAAAA")
+
+        resp = auth_client.get(_detail_url(case.id, inv.id))
+        assert resp.status_code == 200
+
+        db.session.expire_all()
+        stored_after = db.session.get(Subject, subject.id)
+        assert stored_after.email == cipher_before
+
+    # -- P1-2: positive status invariant for Start Action ---------------
+
+    @pytest.mark.parametrize(
+        ("state",),
+        [
+            pytest.param(("closed", None), id="closed-no-timestamp"),
+            pytest.param(("archived", None), id="archived-no-timestamp"),
+            pytest.param(("open", "timestamp"), id="open-with-timestamp"),
+            pytest.param(("archived", "timestamp"), id="archived-with-timestamp"),
+        ],
+    )
+    def test_start_action_hidden_for_non_open_states(self, state, auth_client):
+        status, archived_at = state
+        case, inv = self._admin_case_inv()
+        inv.status = status
+        if archived_at:
+            inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    @pytest.mark.parametrize(
+        ("state",),
+        [
+            pytest.param(("closed", None), id="closed-no-timestamp"),
+            pytest.param(("archived", None), id="archived-no-timestamp"),
+            pytest.param(("open", "timestamp"), id="open-with-timestamp"),
+            pytest.param(("archived", "timestamp"), id="archived-with-timestamp"),
+        ],
+    )
+    def test_run_action_post_rejected_for_non_open_states(self, state, auth_client):
+        status, archived_at = state
+        case, inv = self._admin_case_inv()
+        inv.status = status
+        if archived_at:
+            inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+
+        actions_before = ResearchAction.query.filter_by(
+            case_id=case.id, tenant_id=case.tenant_id
+        ).count()
+        audits_before = (
+            AuditLog.query.filter_by(
+                case_id=case.id, entity_type="research_action", action="create"
+            ).count()
+        )
+
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/run-action",
+            json={
+                "action_type": "google_dork",
+                "data_value": "site:example.nl",
+                "investigation_id": inv.id,
+                "mode": "run",
+            },
+        )
+        assert resp.status_code == 400
+        assert (
+            "Only open (non-archived) investigations can be linked"
+            in resp.get_json()["error"]
+        )
+        assert (
+            ResearchAction.query.filter_by(
+                case_id=case.id, tenant_id=case.tenant_id
+            ).count()
+            == actions_before
+        )
+        assert (
+            AuditLog.query.filter_by(
+                case_id=case.id, entity_type="research_action", action="create"
+            ).count()
+            == audits_before
+        )
 
 
 # ---------------------------------------------------------------------------
