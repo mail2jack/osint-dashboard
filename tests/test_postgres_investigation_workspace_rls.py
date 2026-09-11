@@ -245,3 +245,27 @@ class TestPGWorkspaceRLSIsolation:
         set_tenant_context(db, tenant_id, bypass_rls=True)
         rows = Investigation.query.filter_by(id=investigation_id).count()
         assert rows == 1
+
+    def test_creator_reference_cross_tenant_not_resolved(self, app):
+        admin = User.query.filter_by(username="admin").first()
+        tenant_a = admin.tenant_id
+        _enable_workspace(tenant_a, enabled=True)
+        _, investigation_id = _setup_workspace_data(tenant_a)
+        other_user, _ = _other_tenant_user()
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        inv = db.session.query(Investigation).filter_by(id=investigation_id).first()
+        inv.created_by = other_user.id
+        db.session.commit()
+        inv = db.session.query(Investigation).filter_by(id=investigation_id).first()
+        # The creator lookup is tenant-scoped: a cross-tenant user_id resolves
+        # to no name instead of leaking the other tenant's user (P1-4).
+        ws = build_inv_workspace(inv, None)
+        assert ws.created_by_name is None
+
+        inv.created_by = admin.id
+        db.session.commit()
+        inv = db.session.query(Investigation).filter_by(id=investigation_id).first()
+        assert build_inv_workspace(inv, None).created_by_name == (
+            admin.username or admin.full_name or ""
+        )

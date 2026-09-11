@@ -85,7 +85,9 @@ class ActionDTO:
 @dataclasses.dataclass(frozen=True, slots=True)
 class ScreenshotDTO:
     url: str | None
+    url_is_linkable: bool
     source_url: str | None
+    source_url_is_linkable: bool
     captured_at: datetime | None
     notes: str | None
 
@@ -202,7 +204,9 @@ def _screenshot_dtos(finding: WorkflowFinding) -> list[ScreenshotDTO]:
     return [
         ScreenshotDTO(
             url=ss.url,
+            url_is_linkable=_is_linkable_url(ss.url),
             source_url=ss.source_url,
+            source_url_is_linkable=_is_linkable_url(ss.source_url),
             captured_at=ss.captured_at,
             notes=ss.notes,
         )
@@ -307,7 +311,9 @@ def load_inv_findings(
     )
     survivors = {f.id for f in findings}
     scoped_actions = WorkflowResearchAction.query.filter(
-        WorkflowResearchAction.id.in_(action_ids)
+        WorkflowResearchAction.tenant_id == tenant_id,
+        WorkflowResearchAction.case_id == case_id,
+        WorkflowResearchAction.id.in_(action_ids),
     ).all()
     label_icon = {a.id: _action_display_label(a) for a in scoped_actions}
 
@@ -333,6 +339,7 @@ def load_inv_findings(
             action_labels=[
                 label_icon[a_id]
                 for a_id in sorted(finding_actions_map.get(f.id, []))
+                if a_id in label_icon
             ],
         )
         for f in findings
@@ -583,7 +590,10 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
     # Investigation creator name shares the timeline user map (no extra query).
     creator_name = ""
     if investigation.created_by:
-        creator = db.session.get(User, investigation.created_by)
+        creator = User.query.filter(
+            User.tenant_id == tenant_id,
+            User.id == investigation.created_by,
+        ).first()
         if creator:
             creator_name = creator.username or creator.full_name or ""
 
@@ -618,7 +628,9 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
     )
     if extra_action_ids:
         extra_actions = WorkflowResearchAction.query.filter(
-            WorkflowResearchAction.id.in_(extra_action_ids)
+            WorkflowResearchAction.tenant_id == tenant_id,
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.id.in_(extra_action_ids),
         ).all()
         action_display.update(
             {a.id: _action_display_label(a) for a in extra_actions}

@@ -24,6 +24,7 @@ from cms.models import (
     Client,
     FeatureFlag,
     Finding,
+    FindingScreenshot,
     Investigation,
     ResearchAction,
     Subject,
@@ -417,6 +418,67 @@ class TestWorkspaceQueryIsolation:
             action_ids=[a.id for a in acts],
         )[0]
 
+    def test_finding_labels_scoped_to_case(self):
+        user = User.query.filter_by(username="admin").first()
+        case_a = _make_case()
+        inv_a = _make_investigation(case_a)
+        subj_a = _make_subject(case_a)
+        act_a = _make_action(case_a, investigation=inv_a, subject=subj_a, label="Act A")
+        f_a = _make_finding(case_a, subj_a, created_by=user.id)
+        _link(act_a, f_a)
+
+        case_b = _make_case()
+        inv_b = _make_investigation(case_b)
+        subj_b = _make_subject(case_b)
+        act_b = _make_action(case_b, investigation=inv_b, subject=subj_b, label="Act B")
+        f_b = _make_finding(case_b, subj_b, created_by=user.id)
+        _link(act_b, f_b)
+        _link(act_a, f_b)  # cross-case junction entry: act_a belongs to case_a
+        db.session.commit()
+
+        dtos, _ = load_inv_findings(
+            tenant_id=case_b.tenant_id,
+            case_id=case_b.id,
+            action_ids=[act_a.id, act_b.id],
+        )
+        # Only case_b's finding survives (findings are case-scoped).
+        assert len(dtos) == 1
+        assert dtos[0].id == f_b.id
+        # Only case_b's action label resolves: act_a is cross-case and must not
+        # leak into the label lookup (P1-1 regression).
+        assert dtos[0].action_labels == ["Act B"]
+
+    def test_timeline_extra_label_scoped_to_case(self):
+        user = User.query.filter_by(username="admin").first()
+        case_a = _make_case()
+        inv_a = _make_investigation(case_a)
+        subj_a = _make_subject(case_a)
+        act_a = _make_action(case_a, investigation=inv_a, subject=subj_a, label="Act A")
+
+        case_b = _make_case()
+        subj_b = _make_subject(case_b)
+        act_x = _make_action(case_b, investigation=None, subject=subj_b, label="Act X")
+        # A link/unlink audit written under case_a that references an action of
+        # case_b -> channel-B supplementary event for an out-of-scope action.
+        _audit(
+            user,
+            "unlink",
+            "research_action",
+            act_x.id,
+            case_a,
+            old_values={"investigation_id": inv_a.id},
+            new_values={"investigation_id": ""},
+        )
+        db.session.commit()
+
+        ws = build_inv_workspace(inv_a, case_a)
+        assert any(a.id == act_a.id for a in ws.actions)
+        ev = [e for e in ws.timeline.events if e.entity_id == act_x.id]
+        assert ev
+        # Cross-case label must not leak; falls back to the raw entity id.
+        assert ev[0].entity_display == act_x.id
+        assert ev[0].entity_display != act_x.label
+
     def test_query_tenant_isolation_timeline(self):
         case_id, inv_id, _, acts, founds, tenant_b = self._data()
         result = load_inv_timeline(
@@ -553,6 +615,25 @@ class TestWorkspaceContent:
         labels = dto.action_labels
         assert "Scoped A" in labels
         assert "Case-wide Y" not in labels
+
+    def test_creator_name_not_leaked_across_tenants(self):
+        tenant_b = _make_other_tenant()
+        other = _make_user("investigator", tenant_id=tenant_b.id)
+        case = _make_case()
+        inv = _make_investigation(case, created_by=str(other.id))
+        db.session.commit()
+
+        ws = build_inv_workspace(inv, None)
+        assert ws.created_by_name is None
+
+    def test_creator_name_shown_for_same_tenant(self):
+        user = User.query.filter_by(username="admin").first()
+        case = _make_case()
+        inv = _make_investigation(case, created_by=str(user.id))
+        db.session.commit()
+
+        ws = build_inv_workspace(inv, None)
+        assert ws.created_by_name == (user.username or user.full_name or "")
 
     def test_actions_sorted_created_at_asc(self):
         case = _make_case()
@@ -929,6 +1010,54 @@ class TestWorkspaceXssAndUrlScheme:
         assert dto.source_url_is_linkable is True
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert 'href="https://example.com/x?a=1&amp;b=2"' in body
+
+    def _screenshot_page(self, *, url=None, source_url=None):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
+        case = _make_case()
+        inv = _make_investigation(case)
+        user = User.query.filter_by(username="admin").first()
+        case.created_by = user.id
+        subject = _make_subject(case)
+        act = _make_action(case, investigation=inv, subject=subject, label="Dork")
+        f = _make_finding(case, subject, title="SS Finding", created_by=user.id)
+        f.finding_screenshots = [
+            FindingScreenshot(
+                tenant_id=case.tenant_id,
+                finding_id=f.id,
+                url=url,
+                source_url=source_url,
+                notes="shot note",
+            )
+        ]
+        _link(act, f)
+        db.session.commit()
+        return case, inv, f
+
+    def test_screenshot_url_javascript_data_schemes(self, auth_client):
+        case, inv, f = self._screenshot_page(
+            url="javascript:alert(1)", source_url="data:text/html,<b>x</b>"
+        )
+        dto = build_inv_workspace(inv, case).findings[0].screenshots[0]
+        assert dto.url_is_linkable is False
+        assert dto.source_url_is_linkable is False
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert 'href="javascript:' not in body
+        assert 'src="javascript:' not in body
+        assert 'href="data:' not in body
+
+    def test_screenshot_url_https_linkable_and_rendered(self, auth_client):
+        case, inv, f = self._screenshot_page(
+            url="https://example.com/ss.png?a=1&b=2",
+            source_url="https://example.com/page",
+        )
+        dto = build_inv_workspace(inv, case).findings[0].screenshots[0]
+        assert dto.url_is_linkable is True
+        assert dto.source_url_is_linkable is True
+        body = self._get_with(auth_client, case, inv).get_data(as_text=True)
+        assert 'href="https://example.com/ss.png?a=1&amp;b=2"' in body
+        assert 'src="https://example.com/ss.png?a=1&amp;b=2"' in body
+        assert 'href="https://example.com/page"' in body
 
 
 # ---------------------------------------------------------------------------
