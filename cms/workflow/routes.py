@@ -1155,6 +1155,38 @@ def investigation_detail(case_id, investigation_id):
 
     ws = build_inv_workspace(inv, case)
 
+    # PR4: minimal "Start Action" modal context (action types + case subjects).
+    # photo_analysis needs its file-upload picker and manual_entry its rich form,
+    # so both stay on the case detail page and are omitted here.
+    action_types = [
+        {
+            "key": key,
+            "label": cfg["label"],
+            "icon": cfg.get("icon"),
+            "category": cfg.get("category"),
+        }
+        for key, cfg in ACTION_REGISTRY.items()
+        if key not in ("photo_analysis", "manual_entry")
+    ]
+    subjects_cfg = []
+    with db.session.no_autoflush:
+        _subjects = list(case.subjects)
+        _subjects.sort(key=lambda s: (s.name or "").lower())
+        for s in _subjects:
+            try:
+                s.decrypt_identifiers()
+            except Exception:
+                continue
+            subjects_cfg.append(
+                {
+                    "id": s.id,
+                    "display_name": s.compute_name()
+                    if callable(getattr(s, "compute_name", None))
+                    else (s.name or ""),
+                    "subject_type": s.subject_type,
+                }
+            )
+
     return render_template(
         "cms/workflow/workflow_investigation_detail.html",
         inv=inv,
@@ -1162,6 +1194,9 @@ def investigation_detail(case_id, investigation_id):
         can_write=_current_user_is_investigator(),
         created_by_name=ws.created_by_name or "",
         ws=ws,
+        action_types=action_types,
+        subjects_cfg=subjects_cfg,
+        paid_enabled=paid_channels_enabled(),
     )
 
 
