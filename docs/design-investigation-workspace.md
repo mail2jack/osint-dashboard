@@ -1,8 +1,10 @@
 # Design & Impact Plan — Onderzoek-detail-werkruimte binnen een Zaak
 
-- Status: **v2 — herzien na onafhankelijke review; goedgekeurd met correcties.
-  Nog GEEN code; dit document is de bouworderset.**
-- Datum: 2026-09-11 (v1) / 2026-09-11 (v2, review-verwerking)
+- Status: **v3 — definitieve bouworderset. Verwerkt de tweede review
+  (helper-scope, archive/restore-overgang, flag/navigatie, activity-begrenzing);
+  merge-klaar. Nog GEEN code.**
+- Datum: 2026-09-11 (v1) / 2026-09-11 (v2, eerste review) / 2026-09-11
+  (v3, tweede review)
 - Related: `ADR-0002-investigations-within-case.md`, `ADR-0005-research-actions-investigation-link.md`, `ADR-0002-impact-inventory.md`
 - Beheer in dit document: secties 4 (fasedeling), 5 (besluiten), 6 (risico's)
 
@@ -63,8 +65,10 @@ apart beschikbaar.
   en `get_linkable_investigation` (`cms/services/action_scope.py:17-47`).
 - Bestaand `archive`/`restore`-pad is alleen id-gebaseerd
   (`/api/investigations/<id>/archive`) en checkt `case_id` impliciet via
-  `_get_writable_investigation`; PR1 herschrijft deze paden intern naar één
-  expliciete `(case_id, investigation_id)`-helper als enige gate.
+  `_get_writable_investigation`. Overgang (3.1b): nieuwe templates gebruiken
+  case-scoped endpoints; de oude id-only endpoints blijven tijdelijk compatibele
+  wrappers die onder de tenant-GUC het onderzoek ophalen, `case_id` afleiden en
+  daarna dezelfde centrale access-/servicelogica aanroepen.
 
 ### 2.3 Templates & navigatie
 - `_investigations_section.html` (100 regels) — cards met `human_number/status/
@@ -125,11 +129,10 @@ nodig zolang er geen nieuwe kolom/tabel komt.**
 
 ## 3. Ontwerp
 
-### 3.1 Centrale investering: `ensure_investigation_access(case_id, investigation_id)`
+### 3.1 Centrale accesslaag: `ensure_investigation_access(case_id, investigation_id)`
 
-Eén helper die **alle** lees- en schrijftoegang tot een onderzoek centraliseert en
-wordt gebruikt door **detail, update én activity** (en archive/restore, zie 3.4
-notitie):
+De centrale helper regelt **uitsluitend identiteit, case-binding en
+leesautorisatie** — géén statusvalidatie:
 
 ```
 def ensure_investigation_access(case_id: str, investigation_id: str):
@@ -140,16 +143,39 @@ def ensure_investigation_access(case_id: str, investigation_id: str):
     if not case:
         abort(404)
     ensure_case_access(case)          # bestaand patroon (cms/auth.py:411-432)
-    # archive/soft-delete-semantiek EXPLICIET en identiek op alle paden:
-    #  - detail/activity: tonen zolang geautoriseerd (ook archived, met badge);
-    #  - update/link/unlink/run-action: 400 "archived/inactive" voor archived
-    #    en niet-open (get_linkable_investigation, action_scope.py:17-47).
-    return inv, case
+    return inv, case                  # detail/activity mogen BÉIDE statussen tonen
 ```
 
 - Mismatch-guard: get op `(id, case_id)`, 404 bij afwijking — nooit `id` alleen.
-- Eén plaats voor de archive/archived-semantiek; geen duplicatie over routes.
+- Deze helper dekt alleen **toegang/leesauth**; de statuscheck per mutatie zit in
+  de **operationele validators** (3.1a), zodat "één helper voor alle
+  archive-semantiek" niet vervaagt.
 - `can_write` blijft `_current_user_is_investigator()` (`routes.py:77-79`).
+
+### 3.1a Operationele validators (statuscheck per mutatie — apart van de helper)
+
+| Pad | Vereiste status van het onderzoek | Validator |
+|---|---|---|
+| `update` (titel/instructions/notes), `link`/`unlink`, `run-action` | **open** | `require_open(inv)` → 400 "archived/inactive" |
+| `archive` | **momenteel open** | `require_open(inv)` |
+| `restore` | **archived** | `require_archived(inv)` |
+| `detail` / `activity` (lees) | beide toegestaan (badge bij archived) | — (geen statuscheck) |
+
+`require_open`/`require_archived` worden in PR2 geïntroduceerd; PR1 bouwt alleen
+de lees-helper. Geldige koppeldoelen blijven open-only
+(`get_linkable_investigation`, `action_scope.py:17-47`).
+
+### 3.1b Archive/restore-overgang (id-only → case-scoped)
+
+- **Nieuwe templates** gebruiken de case-scoped endpoints
+  (`/api/case/<case_id>/investigations/<investigation_id>/archive|restore`).
+- **Oude id-only endpoints** (`/api/investigations/<id>/archive|restore`) blijven
+  tijdelijk als **compatibele wrappers**: zij halen onder de tenant-GUC het
+  onderzoek op, leiden `case_id` af en roepen daarna dezelfde centrale
+  access-/servicelogica aan (helper + `require_open`/`require_archived`) — géén
+  tweede implementatie van de gate.
+- Tests bewijzen dat een **verkeerde tenant/id-combinatie nooit zichtbaar wordt**
+  (ook via de wrapper: zonder GUC → 0 rijen → 404, zie 2.6).
 
 **Autorisatiematrix (review-vast, wordt in élke PR letterlijk getest):**
 
@@ -171,10 +197,15 @@ POST  /cms/workflow/api/case/<case_id>/investigations/<investigation_id>/update
 GET   /cms/workflow/api/case/<case_id>/investigations/<investigation_id>/activity
       → onderzoekgerichte Activity/Audit (via helper)
 HERBRUIK  archive/restore, link/unlink, run-action/proposals/start
-      (nieuwe paden id-gebaseerd blijven compatibel; intern helper gebruiken)
+      (nieuwe templates case-scoped; oude id-only endpoints = compatibele
+      wrappers met dezelfde centrale access-/servicelogica, zie 3.1b)
 ```
 - **URL gebruikt technische id; het scherm toont `human_number`**
   (`2026-00042-01`). `human_number` is read-time afgeleid en geen URL-slug.
+- **Uniform OFF-gedrag (flag default OFF):** `investigation_detail` (HTML) → **404**;
+  `activity` (JSON-API) → **JSON 404**. Navigatie koppelt aan de flag: bij OFF
+  tonen de investigation-cards **geen link** (blijven zoals nu); pas bij ON
+  worden ze klikbaar. Nooit een klik naar een pagina die vervolgens 404 geeft.
 - Update-mutatie: `@_investigator_required` + helper; `AuditLog.log(action='update',
   entity_type='investigation', old_values/new_values, case_id)` + commit **één tx**.
 
@@ -207,6 +238,12 @@ Secties, van boven naar beneden (hergebruik bestaande componenten):
    🔗-acties (+ losse tel zaakbreed). Daaronder de Activity-tijdlijn (3.5).
 9. **Links terug**: elke actie/finding → `workflow.case_detail` met die actie/
    finding; subjects → profiel; zaak → case_detail.
+
+**Navigatie-flag-koppeling:** de kaarten in `_investigations_section.html` (en in
+`workflow_case_investigations.html`) krijgen alleen een link als
+`feature_enabled('investigation_workspace')` ON is; bij OFF blijven de kaarten
+exact zoals nu (geen link naar een pagina die dan 404 geeft). Zelfde check voor
+de link vanaf zaak-detail/breadcrumb.
 
 ### 3.4 Findings — read-time afleiding en dubbeltelling
 
@@ -241,8 +278,13 @@ Activity omvat **alleen** deze categorieën (niet alle zaakbrede auditregels):
    comment/archive-entries, met "Gedeelde bevinding"-duiding waar van toepassing.
 
 Query-aanpak: `AuditLog`-rijen oplossen via `(case_id)` + entity/action-filter,
-daarna client/server-side op bovenstaande scope filteren; **geen
-`investigation_id`-kolom op `AuditLog`** (besteand schema houden).
+daarna **server-side** op bovenstaande scope filteren; **geen
+`investigation_id`-kolom op `AuditLog`** (bestaand schema houden).
+**Begrensd vanaf het begin:** de activity-query retourneert **maximaal 200
+records** met vaste `timestamp DESC, id DESC`-sortering (nieuwste eerst) als één
+bounded query — géén onbeperkte case-auditquery. Het server-side scope-filter
+(groepen uit 3.5) wordt op die begrensde set toegepast; paginering/"older" alleen
+later als er echte behoefte blijkt.
 
 ---
 
@@ -251,8 +293,13 @@ daarna client/server-side op bovenstaande scope filteren; **geen
 Rollout: feature is **OFF default**. Per tenant expliciet activeren via de
 **bestaande centrale featurecontrole** (`cms/services/registry.py`); routes/views
 doen **geen losse `FeatureFlag`-queries**. `feature_enabled('investigation_workspace')`
-wordt centraal gelezen; OFF → `investigation_detail`/`activity` laden 404/redirect,
-case-detail en bestaande list/archive/restore blijven onveranderd.
+wordt centraal gelezen.
+
+**Uniform OFF-gedrag (bindend):**
+- `investigation_detail` (HTML) → **404**; `activity` (JSON-API) → **JSON 404**.
+- Navigatie: bij OFF tonen de investigation-cards **geen link** (blijven zoals
+  nu); pas bij ON worden ze klikbaar — nooit een klik naar een 404-pagina.
+- case-detail en bestaande list/archive/restore blijven onveranderd.
 
 **Per-PR-verplichtingen (alle PR's):** i18n (nl/en keys) én a11y-basis én mobiele
 layout zijn **acceptatie-eisen binnen élk PR**, en **élke PR die een route of query
@@ -262,10 +309,10 @@ uitgesteld naar PR4.
 
 | # | PR | Scope | Bestanden | Risico's | Tests (altijd incl. PG) | Flag/rollback | Acceptatie |
 |---|---|---|---|---|---|---|---|
-| **1** | Detail RO + navigatie + centrale helper | Route `investigation_detail` (read-only) + template + breadcrumb + case-cards als link + helper `ensure_investigation_access` (+ archive/restore intern naar helper) | `cms/workflow/routes.py`; `workflow_investigation_detail.html`; `_investigations_section.html` (link); `workflow_case_investigations.html` (link); i18n keys; `tests/test_investigation_detail_access.py` (+ PG-variant/RLS) | Link-breuk case-detail; helper-refactor (archive/restore) geeft straks maar één gate; 404-mismatch | **`test_investigation_detail_access.py`** (matrix uit 3.1: junior-lezen 200, viewer 200, geen case-access 403/404, andere tenant nooit) + **PG-isolatie**: detail tonend/verborgen onder FORCE RLS; wrong-case 404; human_number-rendering; links terug | Flag OFF = 404; ON = pagina | Matrix exact groen; human_number klopt; helper gebruikt door detail+archive/restore |
-| **2** | Update (case-scoped) + edit UI + audit | `POST /api/case/<cid>/investigations/<iid>/update` + edit-modal + audit | `routes.py` (update + audit via helper), `workflow_investigation_detail.html`, `_workflow_js_config.html`, audit partial; `tests/test_investigation_update.py` (+PG) | FK/RLS op update; audit-atomiciteit; XSS titel (tojson+DOM API) | **`test_investigation_update.py`**: auth-matrix (403/404/ander-tenant), old/new audit, i18n-key, **PG**: update-RLS + atomiciteits-controle | Flag-gate update; downgrade = prior state | Editing werkt; audit toont old/new; geen cross-tenant write |
+| **1** | Detail RO + navigatie + centrale accesslaag (lees) | Route `investigation_detail` (read-only) + template + breadcrumb + case-cards klikbaar bij flag ON + helper `ensure_investigation_access` (identiteit/case-binding/leesautorisatie; **géén** statuscheck) | `cms/workflow/routes.py`; `workflow_investigation_detail.html`; `_investigations_section.html` (link bij ON); `workflow_case_investigations.html` (link bij ON); i18n keys; `tests/test_investigation_detail_access.py` (+ PG-variant/RLS) | Link-breuk case-detail; 404-mismatch bij OFF | **`test_investigation_detail_access.py`** (matrix uit 3.1: junior-lezen 200, viewer 200, geen case-access 403/404, andere tenant nooit) + **PG-isolatie**: detail tonend/verborgen onder FORCE RLS; wrong-case 404; human_number-rendering; links terug; **OFF → 404 HTML + kaart zonder link** | Flag OFF = 404 + geen link; ON = pagina + klikbare kaart | Matrix exact groen; human_number klopt; helper gebruikt door detail; statusvalidators/activity pas in PR2..4 |
+| **2** | Update (case-scoped) + operationele validators + archive/restore-overgang + audit | `POST /api/case/<cid>/investigations/<iid>/update` + `require_open`/`require_archived` + oude id-only archive/restore → compatibele wrappers (3.1a/3.1b) + edit-modal + audit | `routes.py`, `workflow_investigation_detail.html`, `_workflow_js_config.html`, i18n; `tests/test_investigation_update.py` (+PG) | FK/RLS op update; audit-atomiciteit; XSS titel (tojson+DOM API); wrapper dupeert geen gate | **`test_investigation_update.py`**: auth-matrix (403/404/ander-tenant), old/new audit, statusvalidators (update/link/run = open; archive = open; restore = archived), **PG**: RLS op update + oude wrapper toont verkeerde tenant/id nooit | Flag-gate update; downgrade = prior state | Editing werkt; audit toont old/new; geen cross-tenant write; wrappers identiek gedrag |
 | **3** | 🔗/🌐 blokken + findings + subjects | Data-uitbreiding detailroute (actions, findings via junction, subjects) + primaire/secundaire blokken + "Gedeelde bevinding"-badge + dedup | `routes.py` (detail-data), `workflow_investigation_detail.html` (blokken), `_finding_item.html` (links), i18n; `tests/test_investigation_workspace_data.py` (+PG) | N+1 (eager-load); dubbeltelling-findingen; afleiding traag op grote zaak | **`test_investigation_workspace_data.py`**: scope-filter 🔗/🌐, findings-afleiding + **dedup + gedeelde-bevinding in 2 documenten**, subjects "betrokken via acties", **PG**: junction-query onder FORCE RLS toont/isoleert correct | Flag OFF = case_detail onveranderd (blokken alleen in detail) | 🔗-blok primair; 🌐 secundair ingeklapt; findings éénmaal per onderzoek; gedeelde-badge klopt |
-| **4** | Activity + geïntegreerde acceptatie | Activity-tijdlijn endpoint + voortgangsaantallen (geen %) + laatste integratie/acceptatie-tests | `routes.py` (activity), `workflow_investigation_detail.html` (tijdlijn-partial), `_workflow_events.html`-achtig, `tests/test_investigation_activity.py`, `tests/test_postgres_investigation_workspace.py`, `ci.yml` | Audit zonder investigation-kol → case+filter combineren; performance tijdlijn | **`test_investigation_activity.py`** + **PG-integratie** (tijdlijn-under-FORCE-RLS) + volledige acceptatie-run (hele flow door viewer/junior/investigator) | Flag-gate activity; downgrade = standaard case-filter | Tijdlijn omvat precies de 4 categorieën (3.5); voortgang = aantallen + status; a11y/mobiel/i18n-eisen groen |
+| **4** | Activity + geïntegreerde acceptatie | Activity-tijdlijn endpoint + voortgangsaantallen (geen %) + laatste integratie/acceptatie-tests | `routes.py` (activity), `workflow_investigation_detail.html` (tijdlijn-partial), `_workflow_events.html`-achtig, `tests/test_investigation_activity.py`, `tests/test_postgres_investigation_workspace.py`, `ci.yml` | Audit zonder investigation-kol → case+filter combineren; performance tijdlijn | **`test_investigation_activity.py`** + **PG-integratie** (tijdlijn-under-FORCE-RLS, max 200 records, nieuwste eerst) + volledige acceptatie-run (hele flow door viewer/junior/investigator) | Flag-gate activity; downgrade = standaard case-filter | Tijdlijn precies de 4 categorieën (3.5), begrensd op 200; voortgang = aantallen + status; a11y/mobiel/i18n groen |
 
 ### 4.1 Overkoepelende acceptatiecriteria (alle PR's)
 - Bestaande nummers/acties/findings onaangetast (vergt risico-vrije run huidige suites).
@@ -286,13 +333,17 @@ uitgesteld naar PR4.
 | 3 | Feature-flag **OFF default**, per tenant via **centrale featurecontrole**; géén losse `FeatureFlag`-queries in routes | 4 intro |
 | 4 | URL = technische id (`/case/<case_id>/investigations/<investigation_id>`); scherm toont `human_number` | 3.1/3.2 |
 | 5 | Activity onderzoekgericht (4 categorieën, niet alle zaakbrede audit) | 3.5 + PR4 |
-| 6 | Centrale helper `ensure_investigation_access(case_id, investigation_id)` voor detail, update, activity (+ archive/restore) | 3.1 + PR1 |
+| 6 | Centrale helper `ensure_investigation_access(case_id, investigation_id)`: alleen identiteit/case-binding/leesautorisatie; statuscheck in aparte operationele validators (3.1a) per mutatie | 3.1/3.1a/3.1b + PR1/PR2 |
 | 7 | Update case-scoped: `/api/case/<cid>/investigations/<iid>/update` | 3.2 + PR2 |
 | 8 | Junior met case-toegang leest (geen automatische 403); matrix expliciet getest | 3.1 + PR1-test |
 | 9 | PG/RLS-tests per PR, niet uitgesteld | 4 intro + PR1..4 |
 | 10 | "Subjects betrokken via onderzoeksacties" (geen "gekoppelde subjects") | 3.3.4 + PR3 |
 | 11 | Geen voortgangspercentage; toon aantallen + status | 3.3.8 + PR4 |
 | 12 | PR4 versmalt: alleen Activity + integrale acceptatietests; a11y/mobiel/i18n = acceptatie per alle PR's | 4 tabel |
+| 13 | Statusvalidatie **niet** in de helper; aparte `require_open`/`require_archived`-validators per mutatie (update/link/run = open; archive = open; restore = archived) | 3.1a + PR2 |
+| 14 | Archive/restore-overgang: nieuwe templates case-scoped; oude id-only endpoints = compatibele wrappers met dezelfde centrale logica; tests bewijzen dat verkeerde tenant/id nooit zichtbaar wordt | 3.1b + PR2 |
+| 15 | Flag-consistentie navigatie: OFF → cards geen link (blijven zoals nu); detail → HTML 404; activity → JSON 404 | 3.2/3.3 + 4 intro |
+| 16 | Activity-query begrensd vanaf het begin: max 200 records, `timestamp DESC, id DESC`; géén onbeperkte case-auditquery | 3.5 + PR4 |
 
 ---
 
@@ -300,7 +351,7 @@ uitgesteld naar PR4.
 | Risico | Implicatie | Beperking |
 |---|---|---|
 | Junior/viewer leesrecht onduidelijk vs. case_detail-gate | detail-page is read-only; junior leest als case-toegang geldt (géén `_investigator_required` op GET) | matrix (3.1) + PR1-test letterlijk |
-| Helper-refactor (archive/restore) introduceert gedragswijziging | alleen gecoördineerd in PR1; oude gedrag (4x `_get_writable_investigation`) vervalt contant | identieke semantiek; bestaande archive/restore-tests blijven groen |
+| Helper-refactor (archive/restore) introduceert gedragswijziging | gecoördineerd in PR2 via compatibele wrappers (3.1b); geen gedragswijziging voor bestaande callers | identieke semantiek; bestaande archive/restore-tests blijven groen |
 | N+1 bij findings/subjects | traag op grote zaak | eager-load joinedload + één activity-query |
 | RLS/tenant-lek bij query | alle nieuwe query's door route+helper met tenant-GUC | PG-isolatietest IN élke PR (NOBYPASSRLS rol) |
 | Titel/notes XSS | tojson escapen + DOM API (ADR-0005 D9-patroon) + audit old/new | PR2-code-review |
@@ -313,12 +364,19 @@ uitgesteld naar PR4.
 ## 7. Implementatie-aanwijzingen voor de bouwer (niet-blokkerend)
 
 - Volgorde PR1 → PR4, elke PR los merge-over met groene CI (incl. eigen PG-test).
-- Eén helper als enkele bron van toegang tot onderzoek — **altijd** via
-  `ensure_investigation_access(case_id, investigation_id)`; geen ad-hoc
-  `_get_writable_investigation` bij nieuwe code.
+- Toegang tot een onderzoek **altijd** via
+  `ensure_investigation_access(case_id, investigation_id)` (leesauth); géén
+  ad-hoc `_get_writable_investigation` bij nieuwe code.
+- Statuscheck **nooit** in de helper; per mutatie `require_open`/`require_archived`
+  (3.1a), pas geïntroduceerd in PR2.
+- Oude id-only archive/restore blijven compatibele wrappers die dezelfde centrale
+  logica aanroepen (3.1b) — géén tweede gate; tests bewijzen id-tenant-isolatie.
 - Flag uitsluitend via centrale controle; geen losse `FeatureFlag`-queries.
+  Navigatie- en route-gedrag zijn aan de flag gekoppeld (3.2/4 intro).
 - `?scope=case|all` **niet** introduceren; het detailscherm is en blijft
   onderzoek-gericht (🌐-blok alleen als compacte secundaire referentie).
 
-Vastgesteld door: Ivan (owner) na onafhankelijke review van v1; v2 legt de
-besluiten en correcties voor implementatie vast.
+Vastgesteld door: Ivan (owner). v2 = verwerking eerste review; v3 = verwerking
+tweede review (helper-scope 3.1a, archive/restore-overgang 3.1b,
+flag/navigatie 3.2/3.3, activity-begrenzing 3.5) en hiermee merge-klaar als
+definitieve bouworderset.
