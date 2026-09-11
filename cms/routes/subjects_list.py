@@ -414,7 +414,7 @@ def subject_profile(subject_id: str) -> str:
         profile=profile,
         can_edit=current_user.role != "viewer",
         relation_candidates=[
-            {"id": c["id"], "name": c["name"], "subject_type": c["subject_type"]}
+            {"id": c.id, "name": c.name, "subject_type": c.subject_type}
             for c in candidates
         ],
         action_presets=presets_for_subject(subject.subject_type),

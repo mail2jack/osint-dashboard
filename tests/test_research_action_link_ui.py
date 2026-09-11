@@ -418,6 +418,25 @@ class TestSubjectProfileScopeUi:
         action = db.session.get(ResearchAction, resp.get_json()["id"])
         assert action.investigation_id == inv.id
 
+    def test_profile_relation_candidates_serialize_sqlalchemy_rows(
+        self, auth_client, admin_tenant_id
+    ):
+        # Regression: subjects_list.subject_profile string-indexed with_entities
+        # Rows by ["id"]/["name"]/["subject_type"] — SQLAlchemy 2.0.48 Rows
+        # raise TypeError("tuple indices must be integers..., not str") unless
+        # accessed via attribute. Only crashed when relation candidates were
+        # non-empty (a second subject in the same tenant).
+        _enable_flag(admin_tenant_id)
+        subject = _mk_subject(admin_tenant_id)
+        _mk_subject(admin_tenant_id)  # sibling -> non-empty relation_candidates
+        _mk_case(admin_tenant_id, subject=subject)
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/subjects/{subject.id}/profile")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "UI Subject" in html
+
     def test_propose_form_posts_investigation_id(
         self, auth_client, admin_tenant_id
     ):
