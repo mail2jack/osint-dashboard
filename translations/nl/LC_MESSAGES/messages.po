@@ -4588,3 +4588,51 @@ msgstr "Alle bevindingenregister"
 msgid "Could not update finding"
 msgstr "Kon bevinding niet bijwerken"
 
+msgid "Archive this investigation?"
+msgstr "Dit onderzoek archiveren?"
+
+msgid "Back to case"
+msgstr "Terug naar zaak"
+
+msgid "Created by"
+msgstr "Aangemaakt door"
+
+msgid "Instructions"
+msgstr "Instructies"
+
+msgid "Investigation is archived and cannot be edited."
+msgstr "Onderzoek is gearchiveerd en kan niet worden bewerkt."
+
+msgid "Investigation update failed."
+msgstr "Onderzoek bijwerken is mislukt."
+
+msgid "Investigation updated."
+msgstr "Onderzoek bijgewerkt."
+
+msgid "Instructions must be at most %(max)d characters."
+msgstr "Instructies mogen maximaal %(max)d tekens bevatten."
+
+msgid "No updates provided."
+msgstr "Er is niets gewijzigd."
+
+msgid "Notes must be at most %(max)d characters."
+msgstr "Notities mogen maximaal %(max)d tekens bevatten."
+
+msgid "Save changes"
+msgstr "Wijzigingen opslaan"
+
+msgid "Title is required."
+msgstr "Titel is verplicht."
+
+msgid "Title must be at most %(max)d characters."
+msgstr "Titel mag maximaal %(max)d tekens bevatten."
+
+msgid "Unknown fields: %(fields)s"
+msgstr "Onbekende velden: %(fields)s"
+
+msgid "Payload must be a JSON object."
+msgstr "De payload moet een JSON-object zijn."
+
+msgid "%(field)s must be a string."
+msgstr "%(field)s moet een string zijn."
+

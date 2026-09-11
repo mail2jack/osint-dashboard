@@ -24,7 +24,6 @@ from cms.auth import ensure_case_access, ensure_tenant_access
 from cms.models import (
     AuditLog,
     Investigation,
-    InvestigationStatus,
     User,
     UserRole,
     db,
@@ -36,6 +35,14 @@ from cms.services.action_scope import (
     action_scope_label,
     get_linkable_investigation,
     log_scope_audit,
+)
+from cms.services.investigation_service import (
+    OperationalConflict,
+    archive_investigation as investigation_archive,
+    require_open,
+    restore_investigation as investigation_restore,
+    update_investigation as investigation_update,
+    validate_update_payload,
 )
 from cms.services.invoice_service import auto_invoice_case_created
 from cms.services.sequence_service import (
@@ -1157,6 +1164,120 @@ def investigation_detail(case_id, investigation_id):
         case=case,
         can_write=_current_user_is_investigator(),
         created_by_name=creator_name,
+    )
+
+
+@workflow_bp.route(
+    "/case/<case_id>/investigations/<investigation_id>/edit",
+    methods=["GET"],
+)
+@login_required
+def investigation_edit(case_id, investigation_id):
+    """Edit form for an *open* investigation (canonical case-scoped route).
+
+    Flag-gated like the detail workspace. Editing is restricted to
+    investigators; archived investigations cannot be edited and bounce back to
+    the read-only detail page.
+    """
+    if not check_feature("investigation_workspace"):
+        abort(404)
+    if not _current_user_is_investigator():
+        abort(403)
+
+    inv, case = ensure_investigation_access(case_id, investigation_id)
+    try:
+        require_open(inv)
+    except OperationalConflict:
+        flash(_("Investigation is archived and cannot be edited."), "warning")
+        return redirect(
+            url_for(
+                "workflow.investigation_detail",
+                case_id=case_id,
+                investigation_id=investigation_id,
+            )
+        )
+
+    return render_template(
+        "cms/workflow/workflow_investigation_edit.html",
+        inv=inv,
+        case=case,
+    )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/update",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def update_investigation(case_id, investigation_id):
+    """Update ``title``/``instructions``/``notes`` of an *open* investigation.
+
+    Canonical case-scoped route; validates the payload (unknown fields, empty
+    title, length limits), rejects archived investigations with 409 and rolls
+    back the whole transaction when the audit write fails.
+    """
+    if not check_feature("investigation_workspace"):
+        return jsonify({"error": "Not found"}), 404
+
+    inv, case = ensure_investigation_access(case_id, investigation_id)
+
+    payload = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+    payload = payload or {}
+    if not request.is_json:
+        payload.pop("csrf_token", None)
+    try:
+        normalized = validate_update_payload(payload)
+    except ValueError as exc:
+        if request.is_json:
+            return jsonify({"error": str(exc)}), 400
+        flash(str(exc), "danger")
+        return redirect(
+            url_for(
+                "workflow.investigation_edit",
+                case_id=case_id,
+                investigation_id=investigation_id,
+            )
+        )
+
+    try:
+        investigation_update(inv, actor_id=current_user.id, **normalized)
+        db.session.commit()
+    except OperationalConflict:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({"error": "Investigation is archived and cannot be edited."}), 409
+        flash(_("Investigation is archived and cannot be edited."), "warning")
+        return redirect(
+            url_for(
+                "workflow.investigation_detail",
+                case_id=case_id,
+                investigation_id=investigation_id,
+            )
+        )
+    except Exception:
+        db.session.rollback()
+        logger.exception("Investigation update failed")
+        if request.is_json:
+            return jsonify({"error": "Internal server error"}), 500
+        flash(_("Investigation update failed."), "danger")
+        return redirect(
+            url_for(
+                "workflow.investigation_detail",
+                case_id=case_id,
+                investigation_id=investigation_id,
+            )
+        )
+
+    if request.is_json:
+        return jsonify({"ok": True, "investigation": inv.to_dict()})
+    flash(_("Investigation updated."), "info")
+    return redirect(
+        url_for(
+            "workflow.investigation_detail",
+            case_id=case_id,
+            investigation_id=investigation_id,
+        )
     )
 
 
@@ -2707,15 +2828,21 @@ def _get_writable_investigation(investigation_id):
 @login_required
 @_investigator_required
 def archive_investigation(investigation_id):
-    """Archive an investigation. Never mutates number, case_id or tenant_id."""
+    """Archive an investigation (legacy id-only wrapper).
+
+    Derives the case under tenant RLS via ``_get_writable_investigation`` then
+    delegates to the shared service so validation and audit match the canonical
+    case-scoped routes. Never mutates number, case_id or tenant_id.
+    """
     investigation = _get_writable_investigation(investigation_id)
     if not investigation:
         return jsonify({"error": "Not found"}), 404
 
-    if (
-        investigation.archived_at is not None
-        or investigation.status == InvestigationStatus.ARCHIVED.value
-    ):
+    try:
+        investigation_archive(investigation, actor_id=current_user.id)
+        db.session.commit()
+    except OperationalConflict:
+        db.session.rollback()
         if request.is_json:
             return jsonify({"error": "Investigation is already archived"}), 409
         flash(_("Investigation is already archived."), "warning")
@@ -2723,19 +2850,11 @@ def archive_investigation(investigation_id):
             request.referrer
             or url_for("workflow.case_detail", case_id=investigation.case_id)
         )
+    except Exception:
+        db.session.rollback()
+        logger.exception("Investigation archive failed")
+        return jsonify({"error": "Internal server error"}), 500
 
-    investigation.archived_at = datetime.now(UTC)
-    investigation.status = InvestigationStatus.ARCHIVED.value
-    AuditLog.log(
-        user_id=current_user.id,
-        action="archive",
-        entity_type="investigation",
-        entity_id=investigation.id,
-        ip_address=request.remote_addr,
-        case_id=investigation.case_id,
-        description=f"Workflow archived investigation: {investigation.human_number}",
-    )
-    db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
     flash(_("Investigation archived."), "info")
@@ -2748,14 +2867,19 @@ def archive_investigation(investigation_id):
 @login_required
 @_investigator_required
 def restore_investigation(investigation_id):
-    """Restore an archived investigation."""
+    """Restore an archived investigation (legacy id-only wrapper).
+
+    Shares the same service/access logic as the canonical case-scoped routes.
+    """
     investigation = _get_writable_investigation(investigation_id)
     if not investigation:
         return jsonify({"error": "Not found"}), 404
 
-    if investigation.archived_at is None and (
-        investigation.status != InvestigationStatus.ARCHIVED.value
-    ):
+    try:
+        investigation_restore(investigation, actor_id=current_user.id)
+        db.session.commit()
+    except OperationalConflict:
+        db.session.rollback()
         if request.is_json:
             return jsonify({"error": "Investigation is not archived"}), 409
         flash(_("Investigation is not archived."), "warning")
@@ -2763,19 +2887,11 @@ def restore_investigation(investigation_id):
             request.referrer
             or url_for("workflow.case_detail", case_id=investigation.case_id)
         )
+    except Exception:
+        db.session.rollback()
+        logger.exception("Investigation restore failed")
+        return jsonify({"error": "Internal server error"}), 500
 
-    investigation.archived_at = None
-    investigation.status = InvestigationStatus.OPEN.value
-    AuditLog.log(
-        user_id=current_user.id,
-        action="restore",
-        entity_type="investigation",
-        entity_id=investigation.id,
-        ip_address=request.remote_addr,
-        case_id=investigation.case_id,
-        description=f"Workflow restored investigation: {investigation.human_number}",
-    )
-    db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
     flash(_("Investigation restored."), "info")

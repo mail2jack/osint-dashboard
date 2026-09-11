@@ -1,0 +1,85 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Workflow') }} — {{ _('Edit') }} {{ inv.human_number }}{% endblock %}
+{% block content %}
+<style>
+.workflow-step {
+  border: 2px solid var(--border-color); border-radius: 10px;
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.workflow-step-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600; font-size: 1rem;
+  flex-wrap: wrap;
+}
+.workflow-step-body { padding: 1rem; }
+.form-field { margin-bottom: 1rem; }
+.form-field label {
+  display: block; font-size: 0.8rem; color: var(--text-secondary);
+  font-weight: 600; margin-bottom: 0.25rem;
+}
+.form-field input[type="text"],
+.form-field textarea {
+  width: 100%; max-width: 720px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color); border-radius: 6px;
+  background: var(--bg-primary); color: var(--text-primary);
+  font-size: 0.9rem; box-sizing: border-box;
+}
+.form-field textarea { min-height: 120px; resize: vertical; }
+.form-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+</style>
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Cases') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ case.case_number }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ inv.human_number }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ _('Edit') }}</span>
+</nav>
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent-primary);color:#fff;font-size:0.85rem;flex-shrink:0;">3</span>
+    <span>{{ _('Edit') }} — {{ inv.human_number }}</span>
+  </div>
+  <div class="workflow-step-body">
+    <form method="POST" action="{{ url_for('workflow.update_investigation', case_id=case.id, investigation_id=inv.id) }}" data-investigation-edit>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-field">
+        <label for="inv-title">{{ _('Title') }}</label>
+        <input type="text" id="inv-title" name="title" value="{{ inv.title }}" maxlength="300" required autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label for="inv-instructions">{{ _('Instructions') }}</label>
+        <textarea id="inv-instructions" name="instructions" rows="6">{{ inv.instructions or '' }}</textarea>
+      </div>
+      <div class="form-field">
+        <label for="inv-notes">{{ _('Notes') }}</label>
+        <textarea id="inv-notes" name="notes" rows="4">{{ inv.notes or '' }}</textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms small">{{ _('Save changes') }}</button>
+        <a href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;text-decoration:none;">{{ _('Cancel') }}</a>
+        <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;text-decoration:none;">{{ _('Back to case') }}</a>
+      </div>
+    </form>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var form = document.querySelector('[data-investigation-edit]');
+  if (!form) return;
+  var cancelUrl = {{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id)|tojson }};
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!form.contains(document.activeElement)) return;
+    e.stopPropagation();
+    window.location.href = cancelUrl;
+  });
+})();
+</script>
+{% endblock %}
