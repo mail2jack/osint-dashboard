@@ -4844,3 +4844,43 @@ msgstr ""
 msgid "%(field)s must be a string."
 msgstr ""
 
+
+msgid "Subjects referenced by research actions"
+msgstr "Subjects referenced by research actions"
+
+msgid "No subjects referenced by research actions yet. Subjects appear here once a research action targets them."
+msgstr "No subjects referenced by research actions yet. Subjects appear here once a research action targets them."
+
+msgid "No research actions have been run in this investigation yet."
+msgstr "No research actions have been run in this investigation yet."
+
+msgid "No findings generated yet. Run research actions to produce findings."
+msgstr "No findings generated yet. Run research actions to produce findings."
+
+msgid "Activity"
+msgstr "Activity"
+
+msgid "No activity recorded yet."
+msgstr "No activity recorded yet."
+
+msgid "Most recent %(count)s of %(total)s"
+msgstr "Most recent %(count)s of %(total)s"
+
+msgid "Most recent %(count)s activities; older scope changes may exist"
+msgstr "Most recent %(count)s activities; older scope changes may exist"
+
+msgid "Linked actions"
+msgstr "Linked actions"
+
+msgid "Linked findings"
+msgstr "Linked findings"
+
+msgid "Nationality"
+msgstr "Nationality"
+
+msgid "View screenshot"
+msgstr "View screenshot"
+
+msgid "Open website"
+msgstr "Open website"
+

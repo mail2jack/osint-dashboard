@@ -97,6 +97,204 @@
     {% endif %}
   </div>
 </div>
+
+{% if not ws %}
+<div class="workflow-step">
+  <div class="workflow-step-body">
+    <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No workspace data available.') }}</div>
+  </div>
+</div>
+{% else %}
+
+{# ── Research actions ── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">R</span>
+    <span>{{ _('Research actions') }}</span>
+    <span class="badge badge-info" style="font-size:0.7rem;">{{ ws.counts.actions }}</span>
+  </div>
+  <div class="workflow-step-body">
+    {% if ws.actions %}
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      {% for a in ws.actions %}
+      <div style="border:1px solid var(--border-color);border-radius:8px;padding:0.6rem 0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <span style="font-size:1rem;">{{ a.icon or '🔍' }}</span>
+          <strong>{{ a.label }}</strong>
+          <span class="badge badge-info" style="font-size:0.7rem;">{{ a.action_type }}</span>
+          <span class="badge {% if a.status == 'completed' %}badge-status-success{% elif a.status in ('pending','queued','running') %}badge-status-warning{% else %}badge-status-default{% endif %}" style="font-size:0.7rem;">{{ a.status }}</span>
+          {% if a.archived %}
+          <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Archived') }}</span>
+          {% endif %}
+          <span style="font-size:0.72rem;color:var(--text-muted);margin-left:auto;">
+            {{ _('Created') }}: {{ a.created_at.strftime('%d-%m-%Y %H:%M') if a.created_at else '—' }}
+            {% if a.completed_at %} · {{ _('Completed') }}: {{ a.completed_at.strftime('%d-%m-%Y %H:%M') }}{% endif %}
+          </span>
+        </div>
+        {% if a.data_value %}
+        <div style="margin-top:0.3rem;font-size:0.78rem;color:var(--text-secondary);overflow-wrap:anywhere;">{{ a.data_value }}</div>
+        {% endif %}
+        {% if a.finding_count %}
+        <div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-muted);">{{ _('Linked findings') }}: {{ a.finding_count }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No research actions have been run in this investigation yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Subjects ── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">S</span>
+    <span>{{ _('Subjects referenced by research actions') }}</span>
+    <span class="badge badge-info" style="font-size:0.7rem;">{{ ws.counts.subjects }}</span>
+  </div>
+  <div class="workflow-step-body">
+    {% if ws.subjects %}
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      {% for sd in ws.subjects %}
+      <div style="border:1px solid var(--border-color);border-radius:8px;padding:0.6rem 0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <strong>{{ sd.display_name }}</strong>
+          {% if sd.subject_type %}<span class="badge badge-info" style="font-size:0.7rem;">{{ sd.subject_type }}</span>{% endif %}
+        </div>
+        <div class="subject-info" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.3rem 1rem;margin-top:0.4rem;">
+          {% set s = sd.decrypted %}
+          {% if s.street or s.house_number or s.postal_code or s.city %}
+          <div class="subject-info-item">
+            <div class="lbl">🏠 {{ _('Address') }}</div>
+            <div class="val">{{ s.street or '' }} {{ s.house_number or '' }}{{ s.house_number_addition or '' }}{% if s.postal_code or s.city %}<br>{% endif %}{{ s.postal_code or '' }} {{ s.city or '' }}</div>
+          </div>
+          {% endif %}
+          {% if sd.subject_type == 'person' %}
+            {% if s.date_of_birth %}
+            <div class="subject-info-item">
+              <div class="lbl">{{ _('Date of Birth') }}</div>
+              <div class="val">{{ s.date_of_birth }}</div>
+            </div>
+            {% endif %}
+            {% if s.place_of_birth %}
+            <div class="subject-info-item">
+              <div class="lbl">{{ _('Place of Birth') }}</div>
+              <div class="val">{{ s.place_of_birth }}</div>
+            </div>
+            {% endif %}
+            {% if s.nationality %}
+            <div class="subject-info-item">
+              <div class="lbl">{{ _('Nationality') }}</div>
+              <div class="val">{{ s.nationality }}</div>
+            </div>
+            {% endif %}
+            {% if s.bsn_number %}
+            <div class="subject-info-item">
+              <div class="lbl">{{ _('BSN') }}</div>
+              <div class="val">{{ s.bsn_number[:4] }}****{{ s.bsn_number[-2:] }}</div>
+            </div>
+            {% endif %}
+          {% endif %}
+          {% if s.email %}
+          <div class="subject-info-item">
+            <div class="lbl">📧 {{ _('Email') }}</div>
+            <div class="val">{{ s.email }}</div>
+          </div>
+          {% endif %}
+          {% if s.phone %}
+          <div class="subject-info-item">
+            <div class="lbl">📞 {{ _('Phone') }}</div>
+            <div class="val">{{ s.phone }}</div>
+          </div>
+          {% endif %}
+          {% if s.notes %}
+          <div class="subject-info-item" style="grid-column:1/-1;">
+            <div class="lbl">{{ _('Notes') }}</div>
+            <div class="val">{{ s.notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No subjects referenced by research actions yet. Subjects appear here once a research action targets them.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Findings ── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">F</span>
+    <span>{{ _('Findings') }}</span>
+    <span class="badge badge-info" style="font-size:0.7rem;">{{ ws.counts.findings }}</span>
+  </div>
+  <div class="workflow-step-body">
+    {% if ws.findings %}
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      {% for fd in ws.findings %}
+      {% with fd=fd %}
+      {% include "cms/workflow/_finding_item_readonly.html" %}
+      {% endwith %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No findings generated yet. Run research actions to produce findings.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Activity timeline ── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">A</span>
+    <span>{{ _('Activity') }}</span>
+    {% if ws.timeline.events %}
+      {% if ws.timeline.total_exact and ws.timeline.truncated %}
+      <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Most recent %(count)s of %(total)s', count=ws.timeline.events|length, total=ws.timeline.total) }}</span>
+      {% elif not ws.timeline.total_exact %}
+      <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Most recent %(count)s activities; older scope changes may exist', count=ws.timeline.events|length) }}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+  <div class="workflow-step-body">
+    {% if ws.timeline.events %}
+    <div style="display:flex;flex-direction:column;">
+      {% for e in ws.timeline.events %}
+      <div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.45rem 0;border-bottom:1px dashed var(--border-color);{% if loop.last %}border:none{% endif %}">
+        <div style="flex-shrink:0;font-size:0.75rem;color:var(--text-muted);min-width:7.5rem;">{{ e.timestamp.strftime('%d-%m-%Y %H:%M') if e.timestamp else '—' }}</div>
+        <div style="flex-shrink:0;">
+          {% if e.entity_type == 'research_action' %}<span style="color:var(--text-secondary);">🔍</span>{% elif e.entity_type == 'finding' %}<span style="color:var(--text-secondary);">📋</span>{% else %}<span style="color:var(--text-secondary);">•</span>{% endif %}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.85rem;">
+            <strong>{{ e.entity_display }}</strong>
+            <span style="color:var(--text-muted);margin-left:0.3rem;">{{ e.action }}</span>
+          </div>
+          {% if e.description %}
+          <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.1rem;overflow-wrap:anywhere;">{{ e.description }}</div>
+          {% endif %}
+          {% if e.diff %}
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.1rem;">
+            {% for k, (oldv, newv) in e.diff.items() %}
+            <span style="margin-right:0.5rem;">{{ k }}: <span style="color:var(--text-secondary); text-decoration:line-through;">{{ oldv }}</span> → <span style="color:var(--text-secondary);">{{ newv }}</span></span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div style="flex-shrink:0;font-size:0.75rem;color:var(--text-muted);">{{ e.user_name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No activity recorded yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <script nonce="{{ csp_nonce }}">
 (function () {
   document.addEventListener('click', function (e) {
