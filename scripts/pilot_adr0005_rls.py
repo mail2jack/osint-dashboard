@@ -84,7 +84,7 @@ print(f"  case_id={case_id}")
 
 r = client.get(f"/cms/workflow/case/{case_id}")
 check(r.status_code == 200, "case detail 200")
-check("investigations_meta" in r.get_data(as_text=True), "case page embedt investigations_meta")
+check("INVESTIGATIONS" in r.get_data(as_text=True), "case page embedt investigations_meta (INVESTIGATIONS)")
 
 with app.app_context():
     subj_rows = db.session.execute(
