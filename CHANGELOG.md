@@ -5,6 +5,30 @@
 ### Fixed
 - DR production snapshots now honor the database selected by `PGSERVICE` and
   use SHA-256 schema fingerprints.
+- `subjects_list.subject_profile` string-indexed SQLAlchemy 2.0 `Row` objects
+  (`c["id"]`), which crashed on production (PostgreSQL, 2+ subjects per tenant)
+  with `TypeError: tuple indices must be integers or slices, not str` when
+  serialising relation candidates. Now attribute-access (`c.id, c.name,
+  c.subject_type`). Regression: SQLite-suite test plus a dedicated
+  PostgreSQL-only test (`tests/test_postgres_subjects_profile_row.py`) that
+  runs in CI job `integration-postgres`.
+
+### Added
+- `tests/test_postgres_subjects_profile_row.py`: PostgreSQL regression coverage
+  for the `subjects_list.py:417` Row attribute-access fix (skips on non-PG);
+  wired into the `integration-postgres` CI job.
+- `scripts/pilot_adr0005_rls.py`: normalised, versioned production pilot tool
+  for ADR-0005 (FORCE RLS on `research_actions` + `action_findings`) —
+  request-path via `app.test_client` (no password login), 8-step proof
+  (create case/subject/investigation, case-wide + investigation-bound actions,
+  scope serialisation, link/unlink + idempotent audit, FORCE RLS evidence with
+  and without tenant GUC, deterministic FK-safe cleanup in one transaction,
+  alembic-head unchanged). Removed the unused `WorkflowClient` import that
+  broke the previous `/tmp` pilot run during cleanup.
+- `docs/go-live-adr0005-force-rls-20260911.md`: go-live evidence record for the
+  ADR-0005 closure — deploy SHAs (`f6a7b8c9d0e1` migration, `a99b084` fix),
+  pilot results, tenant counts (baseline 105 cases / 284 research_actions →
+  104 / 282 after cleanup; all pilot residue zero), and RLS behaviour notes.
 
 ### Operations
 - Recorded the DR attestation change that was temporarily pushed directly to
