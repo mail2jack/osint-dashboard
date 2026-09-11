@@ -84,7 +84,7 @@ print(f"  case_id={case_id}")
 
 r = client.get(f"/cms/workflow/case/{case_id}")
 check(r.status_code == 200, "case detail 200")
-check("investigations_meta" in r.get_data(as_text=True), "case page embedt investigations_meta")
+check("INVESTIGATIONS" in r.get_data(as_text=True), "case page embedt investigations_meta (INVESTIGATIONS)")
 
 with app.app_context():
     subj_rows = db.session.execute(
@@ -257,6 +257,12 @@ with app.app_context():
                 "DELETE FROM subject_relations WHERE subject_id = :s OR related_subject_id = :s",
                 {"s": subject_id})
         delstep("subjects", "DELETE FROM subjects WHERE id = :s", {"s": subject_id})
+        inv_rows = conn.execute(
+            text("SELECT id FROM invoices WHERE client_id = :c"), {"c": client_id}
+        ).scalars().all()
+        if inv_rows:
+            delstep("invoice_items", "DELETE FROM invoice_items WHERE invoice_id IN :i", {"i": tuple(inv_rows)})
+            delstep("invoices", "DELETE FROM invoices WHERE id IN :i", {"i": tuple(inv_rows)})
         delstep("clients", "DELETE FROM clients WHERE id = :c", {"c": client_id})
         conn.commit()
         print("    commited")

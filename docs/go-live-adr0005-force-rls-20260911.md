@@ -48,6 +48,28 @@ Volledige 8-stappen-pilot op productie-DB; alle stappen 1–7 **PASS**.
 > Het hulpmiddel is daarna genormaliseerd en versioned in
 > `scripts/pilot_adr0005_rls.py` — spookimport verwijderd, deterministische FK-veilige
 > cleanup in plaats van FK-closure (die faalt op stale FK-metadata in deze DB).
+> De eerste herbewijs-draai van het versioned script legde vervolgens een tweede
+> opruimfout bloot: `invoices` refereerden de wegwerp-`client`, dus `DELETE FROM
+> clients` gaf een FK-violation. Fix (PR #157): `invoice_items` en `invoices`
+> vóór `clients` verwijderen, met tuple-parameters zodat psycopg2 `IN (...)` rendert
+> i.p.v. `ARRAY[...]`. Twee half-crash-runs lieten daardoor residu achter
+> (cases `5aacdd4e-…` en `1b589af6-…`), opgeruimd via `pilot_cleanup5.py` /
+> `pilot_cleanup4.py` (zie tellingen).
+
+## Definitieve herbewijs (versioned script, deps 2026-11-09T08:17)
+
+`scripts/pilot_adr0005_rls.py` draait volledig op productie-DB en eindigt met
+**`PILOT RESULTAAT: ALLES GROEN`** / exit 0 (beide outputs geverifieerd):
+
+- Alle 6 testblokken: case+subject (incl. case-pagina embedt de scope-metadata),
+  investigation-aanmaak, acties (zaakbreed + gekoppeld), scope-serialisatie
+  (badges 🌐/🔗, `human_number`), link/unlink + audit, RLS-bewijs
+  (0 rijen zonder GUC, 2 met GUC), opruiming + residu-check + alembic-head
+  (f6a7b8c9d0e1) allen PASS.
+- De enige afwijkende assertie was de boze check op de letterlijke string
+  `investigations_meta` in de case-HTML. De template rendert de data via de
+  JS-config-constante `INVESTIGATIONS` (`_workflow_js_config.html`), niet de
+  Jinja-variabelenaam; de check is daarop gecorrigeerd. Geen productiebug.
 
 ## Tellingen en cleanup-verificatie (tenant 3a169c92-…)
 
@@ -62,10 +84,14 @@ wél het correcte gedrag — zie RLS-bewijs). Referentie-basis vóór de pilot:
 | Determin. cleanup run 1 (`pilot_cleanup2.py`) | 104 | 282 | pilotelementen weg; −2 acties, −1 case |
 | Na pilot-run 2 (wegwerp) | 105 | 284 | + pilotelementen |
 | Determin. cleanup run 2 (`pilot_cleanup3.py`) | 104 | 282 | pilotelementen weg; −1 case, −2 acties |
+| Re-proof run A (crashte bij FK `clients←invoices`) | 105 | 284 | residu case `5aacdd4e-…` |
+| Re-proof run B (crashte bij `ARRAY[...]`-IN) | 106 | 286 | residu case `1b589af6-…` |
+| Determin. cleanup (`pilot_cleanup4.py` + `pilot_cleanup5.py`) | 104 | 282 | beide residu-cases weg |
+| Herbewijs exit 0 (versioned script) | 104 | 282 | wegwerpcase opgeruimd binnen het script |
 
-Pilot-residu na beide cleanups = **all-zero** (cases, investigations, subjects, clients,
+Pilot-residu na alle cleanups = **all-zero** (cases, investigations, subjects, clients,
 research_actions, subject_relations, audit-entries met `PILOT-RLS`): geverifieerd met een
-verse connectie mét GUC (`verify_cleanup.py` → `OVERALL: OK`). De 104 niet-pilot cases en
+vers connectie mét GUC (`verify_cleanup.py` → `OVERALL: OK`). De 104 niet-pilot cases en
 282 niet-pilot acties bleven in alle metingen intact.
 
 ## RLS-gedrag als design-kenmerk
