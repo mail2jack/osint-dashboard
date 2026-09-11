@@ -65,6 +65,21 @@ def _enable_workspace(tenant_id, enabled=True):
     return flag
 
 
+def _enable_paid_channels(tenant_id):
+    flag = FeatureFlag.query.filter_by(
+        tenant_id=tenant_id, flag_name="paid_channels"
+    ).first()
+    if flag:
+        flag.enabled = True
+    else:
+        flag = FeatureFlag(
+            tenant_id=tenant_id, flag_name="paid_channels", enabled=True
+        )
+        db.session.add(flag)
+    db.session.commit()
+    return flag
+
+
 def _make_user(role, tenant_id=None, username=None):
     token = uuid.uuid4().hex[:8]
     user = User(
@@ -1191,6 +1206,132 @@ class TestWorkspaceXssAndUrlScheme:
         assert dto.source_url_is_linkable is False
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert 'href="javascript:' not in body
+
+
+# ---------------------------------------------------------------------------
+# PR4 — "Start Action" modal (button visibility, context, scoped run)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceStartAction:
+    def _enable(self, tid):
+        _enable_workspace(tid, enabled=True)
+
+    def _admin_case_inv(self):
+        tid = _admin_tenant_id()
+        self._enable(tid)
+        case = _make_case()
+        user = User.query.filter_by(username="admin").first()
+        case.created_by = user.id
+        db.session.commit()
+        inv = _make_investigation(case)
+        db.session.commit()
+        return case, inv
+
+    def _viewer_case_inv(self):
+        tid = _admin_tenant_id()
+        self._enable(tid)
+        case = _make_case()
+        case.created_by = _make_user("viewer", tenant_id=tid).id
+        db.session.commit()
+        inv = _make_investigation(case)
+        db.session.commit()
+        viewer = db.session.get(User, case.created_by)
+        return case, inv, viewer
+
+    def test_button_visible_for_investigator(self, auth_client):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" in body
+        assert "wsStartActionModal" in body
+
+    def test_button_hidden_for_viewer(self, app):
+        case, inv, viewer = self._viewer_case_inv()
+        _scaffold(case, inv, viewer)
+        client = _login_as(app.test_client(), viewer)
+        body = client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    def test_button_hidden_when_archived(self, auth_client):
+        case, inv = self._admin_case_inv()
+        inv.archived_at = datetime.now(UTC)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-open-start-action" not in body
+        assert "wsStartActionModal" not in body
+
+    def test_scope_defaults_to_current_investigation_with_case_wide_option(
+        self, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert f'<option value="{inv.id}" selected>' in body
+        assert 'value="__case_wide"' in body
+
+    def test_subject_options_include_linked_case_subjects(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Anna Visser")
+        case.subjects.append(subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "Anna Visser" in body
+
+    def test_action_types_offer_google_dork_but_not_photo_or_manual(
+        self, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="google_dork"' in body
+        assert 'value="photo_analysis"' not in body
+        assert 'value="manual_entry"' not in body
+
+    def test_paid_options_disabled_when_paid_channels_off(self, auth_client):
+        case, inv = self._admin_case_inv()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="facebook" disabled' in body
+        assert "paid channel off" in body
+
+    def test_paid_options_enabled_when_paid_channels_on(self, auth_client):
+        case, inv = self._admin_case_inv()
+        _enable_paid_channels(case.tenant_id)
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'value="facebook"' in body
+        assert 'value="facebook" disabled' not in body
+        assert "paid channel off" not in body
+
+    def test_run_action_from_workspace_modal_scoped_and_audited(
+        self, app, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Anna Visser")
+        case.subjects.append(subject)
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{case.id}/run-action",
+            json={
+                "action_type": "google_dork",
+                "data_value": "site:example.nl",
+                "subject_id": subject.id,
+                "investigation_id": inv.id,
+                "mode": "run",
+            },
+        )
+        assert resp.status_code == 200
+        action = db.session.get(ResearchAction, resp.get_json()["id"])
+        assert action.investigation_id == inv.id
+        assert action.subject_id == subject.id
+        audit = (
+            AuditLog.query.filter_by(
+                entity_type="research_action", entity_id=action.id, action="create"
+            )
+            .order_by(AuditLog.id.desc())
+            .first()
+        )
+        assert audit is not None
+        assert audit.new_values["investigation_id"] == inv.id
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "site:example.nl" in body
 
 
 # ---------------------------------------------------------------------------
