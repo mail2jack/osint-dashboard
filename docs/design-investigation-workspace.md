@@ -116,9 +116,10 @@ nodig zolang er geen nieuwe kolom/tabel komt.**
   → restart → health. **Geen automatische rollback**; alle 57 migraties hebben
   `downgrade()`.
 - Feature-flag-patroon: **DB `FeatureFlag`** (`cms/models/__init__.py:4358-4384`)
-  ontsloten via de **centrale featurecontrole** (`cms/services/registry.py:103-138`).
-  Regels: routes/views schrijven **nooit** losse `FeatureFlag`-queries; zij roepen
-  alleen de centrale controle aan (`feature_enabled('investigation_workspace', …)`).
+  ontsloten via de **centrale featurecontrole** (`cms/tier_limits.py:106-155`,
+  `check_feature()`). Regels: routes/views schrijven **nooit** losse
+  `FeatureFlag`-queries; zij roepen alleen de centrale controle aan
+  (`check_feature('investigation_workspace', …)`).
 - i18n: flask_babel, `{{ _('...') }}`, talen en/nl/de/fr; `translations/messages.pot`
   handmatig via `pybabel extract`; `.mo`-bestanden gecommit.
 - A11y/mobiel: eigen custom CSS (`--bg-card`, `.btn-cms`, `.finding-item`,
@@ -241,7 +242,7 @@ Secties, van boven naar beneden (hergebruik bestaande componenten):
 
 **Navigatie-flag-koppeling:** de kaarten in `_investigations_section.html` (en in
 `workflow_case_investigations.html`) krijgen alleen een link als
-`feature_enabled('investigation_workspace')` ON is; bij OFF blijven de kaarten
+`check_feature('investigation_workspace')` ON is; bij OFF blijven de kaarten
 exact zoals nu (geen link naar een pagina die dan 404 geeft). Zelfde check voor
 de link vanaf zaak-detail/breadcrumb.
 
@@ -291,9 +292,9 @@ later als er echte behoefte blijkt.
 ## 4. Gefaseerd plan in 4 PR's (+ review poort)
 
 Rollout: feature is **OFF default**. Per tenant expliciet activeren via de
-**bestaande centrale featurecontrole** (`cms/services/registry.py`); routes/views
-doen **geen losse `FeatureFlag`-queries**. `feature_enabled('investigation_workspace')`
-wordt centraal gelezen.
+**bestaande centrale featurecontrole** (`cms/tier_limits.py::check_feature`);
+routes/views doen **geen losse `FeatureFlag`-queries**.
+`check_feature('investigation_workspace')` wordt centraal gelezen.
 
 **Uniform OFF-gedrag (bindend):**
 - `investigation_detail` (HTML) → **404**; `activity` (JSON-API) → **JSON 404**.

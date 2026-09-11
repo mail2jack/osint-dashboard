@@ -42,6 +42,7 @@ from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
 from cms.services.subject_service import subject_service
+from cms.tier_limits import check_feature
 from cms.workflow.actions.registry import action_category
 
 from . import workflow_bp
@@ -77,6 +78,25 @@ _INVESTIGATOR_ROLES = (
 def _current_user_is_investigator() -> bool:
     """Writer check for the investigations section (role-based, matches scope)."""
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def ensure_investigation_access(case_id: str, investigation_id: str):
+    """Central read-access gate for an investigation.
+
+    Checks identity, case-binding and case-access (read authorization) **only**.
+    Status validation is NOT done here — operational validators (require_open /
+    require_archived) live in the mutation routes (PR2).  Returns ``(inv, case)``
+    on success; aborts with 404 when the (id, case_id) pair is invalid or the
+    current user lacks case-level access.
+    """
+    inv = Investigation.query.filter_by(id=investigation_id, case_id=case_id).first()
+    if not inv:
+        abort(404)
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        abort(404)
+    ensure_case_access(case)
+    return inv, case
 
 
 def _load_case_investigations(case_id: str, show_archived: bool):
@@ -1081,6 +1101,7 @@ def case_detail(case_id):
             show_archived=show_archived,
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
+            investigation_workspace_enabled=check_feature("investigation_workspace"),
         )
 
 
@@ -1103,6 +1124,38 @@ def investigations_index(case_id):
         show_archived=show_archived,
         can_write=_current_user_is_investigator(),
         step_number=3,
+        investigation_workspace_enabled=check_feature("investigation_workspace"),
+    )
+
+
+@workflow_bp.route(
+    "/case/<case_id>/investigations/<investigation_id>"
+)
+@login_required
+def investigation_detail(case_id, investigation_id):
+    """Read-only investigation detail workspace (ADR-0002 + ADR-0005).
+
+    Flag-gated: returns 404 when ``investigation_workspace`` is OFF.
+    Archive/restore status validation is NOT done here — the helper allows
+    both *open* and *archived* investigations to be shown.
+    """
+    if not check_feature("investigation_workspace"):
+        abort(404)
+
+    inv, case = ensure_investigation_access(case_id, investigation_id)
+
+    creator_name = ""
+    if inv.created_by:
+        creator = db.session.get(User, inv.created_by)
+        if creator:
+            creator_name = creator.username or creator.full_name or ""
+
+    return render_template(
+        "cms/workflow/workflow_investigation_detail.html",
+        inv=inv,
+        case=case,
+        can_write=_current_user_is_investigator(),
+        created_by_name=creator_name,
     )
 
 
