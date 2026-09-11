@@ -24,6 +24,8 @@ from cms.auth import ensure_case_access, ensure_tenant_access
 from cms.models import (
     AuditLog,
     Investigation,
+    InvestigationStatus,
+    Subject,
     User,
     UserRole,
     db,
@@ -1158,6 +1160,16 @@ def investigation_detail(case_id, investigation_id):
     # PR4: minimal "Start Action" modal context (action types + case subjects).
     # photo_analysis needs its file-upload picker and manual_entry its rich form,
     # so both stay on the case detail page and are omitted here.
+    can_write = _current_user_is_investigator()
+    # Positive invariant, identical to get_linkable_investigation()/require_open():
+    # the workspace may still be *read*, but starting an action requires status
+    # exactly OPEN and no archive timestamp (review P1-2).
+    can_start_actions = (
+        can_write
+        and inv.status == InvestigationStatus.OPEN.value
+        and inv.archived_at is None
+    )
+
     action_types = [
         {
             "key": key,
@@ -1168,30 +1180,38 @@ def investigation_detail(case_id, investigation_id):
         for key, cfg in ACTION_REGISTRY.items()
         if key not in ("photo_analysis", "manual_entry")
     ]
-    subjects_cfg = []
-    with db.session.no_autoflush:
-        _subjects = list(case.subjects)
-        _subjects.sort(key=lambda s: (s.name or "").lower())
-        for s in _subjects:
-            try:
-                s.decrypt_identifiers()
-            except Exception:
-                continue
-            subjects_cfg.append(
-                {
-                    "id": s.id,
-                    "display_name": s.compute_name()
-                    if callable(getattr(s, "compute_name", None))
-                    else (s.name or ""),
-                    "subject_type": s.subject_type,
-                }
-            )
+    # Modal subject options — explicit tenant/case/soft-delete scoped query via
+    # the case-subject junction (review P1-1). Only the plaintext name fields
+    # are rendered in the modal, so decrypt_identifiers() is deliberately NOT
+    # called: compute_name() reads plaintext columns only, so no cipher is
+    # touched, nothing is re-encrypted and no autoflush side-effect can occur.
+    # Sorted deterministically by display name (case-insensitive), then id.
+    subject_rows = (
+        case.subjects.filter(
+            Subject.tenant_id == case.tenant_id,
+            Subject.is_deleted.is_(False),
+        ).all()
+    )
+    _candidates = []
+    for s in subject_rows:
+        _display_name = (
+            s.compute_name()
+            if callable(getattr(s, "compute_name", None))
+            else (s.name or "")
+        )
+        _candidates.append((_display_name, s))
+    _candidates.sort(key=lambda item: (item[0].lower(), item[1].id))
+    subjects_cfg = [
+        {"id": s.id, "display_name": display_name, "subject_type": s.subject_type}
+        for display_name, s in _candidates
+    ]
 
     return render_template(
         "cms/workflow/workflow_investigation_detail.html",
         inv=inv,
         case=case,
-        can_write=_current_user_is_investigator(),
+        can_write=can_write,
+        can_start_actions=can_start_actions,
         created_by_name=ws.created_by_name or "",
         ws=ws,
         action_types=action_types,

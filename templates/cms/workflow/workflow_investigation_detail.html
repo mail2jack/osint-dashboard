@@ -110,7 +110,9 @@
       </form>
       {% else %}
       <a href="{{ url_for('workflow.investigation_edit', case_id=case.id, investigation_id=inv.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;text-decoration:none;">{{ _('Edit') }}</a>
+      {% if can_start_actions %}
       <button type="button" class="btn-cms small" data-open-start-action style="font-size:0.8rem;padding:0.2rem 0.6rem;">🚀 {{ _('Start Action') }}</button>
+      {% endif %}
       <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" data-confirm-archive="{{ _('Archive this investigation?') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
@@ -327,11 +329,11 @@
 </div>
 {% endif %}
 
-{% if can_write and not inv.archived_at %}
-<div class="ws-action-overlay" id="wsStartActionModal" hidden>
+{% if can_start_actions %}
+<div class="ws-action-overlay" id="wsStartActionModal" role="dialog" aria-modal="true" aria-labelledby="wsStartActionTitle" hidden>
   <div class="ws-action-modal">
     <div class="ws-action-header">
-      <span>🚀 {{ _('Start research action') }}</span>
+      <span id="wsStartActionTitle">🚀 {{ _('Start research action') }}</span>
       <button type="button" class="ws-action-close" data-close-start-action aria-label="{{ _('Close') }}">&times;</button>
     </div>
     <div class="ws-action-body">
@@ -380,13 +382,52 @@
 (function () {
   var modal = document.getElementById('wsStartActionModal');
   if (!modal) return;
+  var lastOpenTrigger = null;
+  var FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-  function openModal() { if (modal) modal.hidden = false; }
-  function closeModal() { if (modal) modal.hidden = true; }
+  function focusableNodes() {
+    return Array.prototype.filter.call(modal.querySelectorAll(FOCUSABLE), function (el) {
+      return !el.disabled && el.offsetParent !== null;
+    });
+  }
+
+  function openModal(opener) {
+    lastOpenTrigger = opener || lastOpenTrigger;
+    if (modal) {
+      modal.hidden = false;
+      var first = focusableNodes()[0];
+      if (first) { first.focus(); }
+    }
+  }
+  function closeModal() {
+    if (!modal) return;
+    modal.hidden = true;
+    if (lastOpenTrigger && typeof lastOpenTrigger.focus === 'function') {
+      lastOpenTrigger.focus();
+    }
+    lastOpenTrigger = null;
+  }
 
   document.addEventListener('click', function (e) {
-    if (e.target.closest('[data-open-start-action]')) { openModal(); }
-    else if (e.target.closest('[data-close-start-action]')) { closeModal(); }
+    if (e.target.closest('[data-open-start-action]')) {
+      openModal(e.target.closest('[data-open-start-action]'));
+    } else if (e.target.closest('[data-close-start-action]')) {
+      closeModal();
+    } else if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (modal.hidden) return;
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key !== 'Tab') return;
+    var nodes = focusableNodes();
+    if (!nodes.length) { e.preventDefault(); return; }
+    var first = nodes[0];
+    var last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
   var typeSel = document.getElementById('wsActionType');
