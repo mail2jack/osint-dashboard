@@ -56,6 +56,21 @@ Volledige 8-stappen-pilot op productie-DB; alle stappen 1–7 **PASS**.
 > (cases `5aacdd4e-…` en `1b589af6-…`), opgeruimd via `pilot_cleanup5.py` /
 > `pilot_cleanup4.py` (zie tellingen).
 
+## Definitieve herbewijs (versioned script, deps 2026-11-09T08:17)
+
+`scripts/pilot_adr0005_rls.py` draait volledig op productie-DB en eindigt met
+**`PILOT RESULTAAT: ALLES GROEN`** / exit 0 (beide outputs geverifieerd):
+
+- Alle 6 testblokken: case+subject (incl. case-pagina embedt de scope-metadata),
+  investigation-aanmaak, acties (zaakbreed + gekoppeld), scope-serialisatie
+  (badges 🌐/🔗, `human_number`), link/unlink + audit, RLS-bewijs
+  (0 rijen zonder GUC, 2 met GUC), opruiming + residu-check + alembic-head
+  (f6a7b8c9d0e1) allen PASS.
+- De enige afwijkende assertie was de boze check op de letterlijke string
+  `investigations_meta` in de case-HTML. De template rendert de data via de
+  JS-config-constante `INVESTIGATIONS` (`_workflow_js_config.html`), niet de
+  Jinja-variabelenaam; de check is daarop gecorrigeerd. Geen productiebug.
+
 ## Tellingen en cleanup-verificatie (tenant 3a169c92-…)
 
 Gemeten met GUC `app.tenant_id` ingesteld (zonder GUC verbergt RLS alles; dat is
@@ -72,6 +87,7 @@ wél het correcte gedrag — zie RLS-bewijs). Referentie-basis vóór de pilot:
 | Re-proof run A (crashte bij FK `clients←invoices`) | 105 | 284 | residu case `5aacdd4e-…` |
 | Re-proof run B (crashte bij `ARRAY[...]`-IN) | 106 | 286 | residu case `1b589af6-…` |
 | Determin. cleanup (`pilot_cleanup4.py` + `pilot_cleanup5.py`) | 104 | 282 | beide residu-cases weg |
+| Herbewijs exit 0 (versioned script) | 104 | 282 | wegwerpcase opgeruimd binnen het script |
 
 Pilot-residu na alle cleanups = **all-zero** (cases, investigations, subjects, clients,
 research_actions, subject_relations, audit-entries met `PILOT-RLS`): geverifieerd met een
