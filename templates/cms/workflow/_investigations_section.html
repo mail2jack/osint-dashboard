@@ -13,7 +13,11 @@
     <div class="finding-item" data-investigation-id="{{ inv.id }}" style="padding:0.7rem 0.9rem;border-bottom:1px solid var(--border-color);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
         <div>
+          {% if investigation_workspace_enabled %}
+          <a href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id) }}" style="color:inherit;text-decoration:none;"><strong>{{ inv.human_number }}</strong></a>
+          {% else %}
           <strong>{{ inv.human_number }}</strong>
+          {% endif %}
           <span class="badge badge-info" style="font-size:0.7rem;">{{ inv.status }}</span>
           {% if inv.archived_at %}
           <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Archived') }}</span>
@@ -24,7 +28,13 @@
           <div>{{ inv.created_at.strftime('%d-%m-%Y %H:%M') if inv.created_at else '—' }}</div>
         </div>
       </div>
-      <div style="margin-top:0.35rem;"><strong>{{ inv.title }}</strong></div>
+      <div style="margin-top:0.35rem;">
+        {% if investigation_workspace_enabled %}
+        <a href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id) }}" style="color:inherit;text-decoration:none;"><strong>{{ inv.title }}</strong></a>
+        {% else %}
+        <strong>{{ inv.title }}</strong>
+        {% endif %}
+      </div>
       {% if inv.instructions %}
       <div style="margin-top:0.2rem;font-size:0.85rem;color:var(--text-secondary);white-space:pre-wrap;">{{ inv.instructions }}</div>
       {% endif %}

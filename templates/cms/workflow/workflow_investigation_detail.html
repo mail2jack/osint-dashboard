@@ -1,0 +1,111 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Workflow') }} — {{ inv.human_number }}{% endblock %}
+{% block content %}
+<style>
+.workflow-step {
+  border: 2px solid var(--border-color); border-radius: 10px;
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.workflow-step-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600; font-size: 1rem;
+  flex-wrap: wrap;
+}
+.workflow-step-header .step-nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-primary); color: #fff; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.workflow-step-body { padding: 1rem; }
+.inv-meta {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;
+  color: var(--text-muted); flex-wrap: wrap;
+}
+.inv-field { margin-bottom: 1rem; }
+.inv-field .lbl { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.2rem; }
+.inv-field .val { white-space: pre-wrap; color: var(--text-primary); }
+</style>
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Cases') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ case.case_number }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ inv.human_number }}</span>
+</nav>
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">3</span>
+    <span>{{ inv.human_number }}</span>
+    <span class="badge badge-info" style="font-size:0.7rem;">{{ inv.status }}</span>
+    {% if inv.archived_at %}
+    <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Archived') }}</span>
+    {% endif %}
+    <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-left:auto;">
+      {{ _('Case') }}: <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);">{{ case.case_number }}</a>{% if case.status %} · {{ case.status }}{% endif %}
+    </span>
+  </div>
+  <div class="workflow-step-body">
+    <div class="inv-meta" style="margin-bottom:1rem;">
+      <div>{{ inv.title }}</div>
+      <div>·</div>
+      <div>{{ _('Created by') }}: {{ created_by_name or '—' }}</div>
+      <div>·</div>
+      <div>{{ _('Created') }}: {{ inv.created_at.strftime('%d-%m-%Y %H:%M') if inv.created_at else '—' }}</div>
+      {% if inv.updated_at %}
+      <div>·</div>
+      <div>{{ _('Updated') }}: {{ inv.updated_at.strftime('%d-%m-%Y %H:%M') }}</div>
+      {% endif %}
+    </div>
+
+    {% if inv.instructions %}
+    <div class="inv-field">
+      <div class="lbl">{{ _('Instructions') }}</div>
+      <div class="val">{{ inv.instructions }}</div>
+    </div>
+    {% endif %}
+
+    {% if inv.notes %}
+    <div class="inv-field">
+      <div class="lbl">{{ _('Notes') }}</div>
+      <div class="val">{{ inv.notes }}</div>
+    </div>
+    {% endif %}
+
+    {% if can_write %}
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;">
+      {% if inv.archived_at %}
+      <form method="POST" action="{{ url_for('workflow.restore_investigation', investigation_id=inv.id) }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Restore') }}</button>
+      </form>
+      {% else %}
+      <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" data-confirm-archive="{{ _('Archive this investigation?') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
+      </form>
+      {% endif %}
+      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;">{{ _('Back to case') }}</a>
+    </div>
+    {% else %}
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small" style="font-size:0.8rem;padding:0.2rem 0.6rem;">{{ _('Back to case') }}</a>
+    {% endif %}
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-confirm-archive]');
+    if (!btn) return;
+    var message = btn.getAttribute('data-confirm-archive') || '{{ _('Archive this investigation?') }}';
+    if (!window.confirm(message)) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
+{% endblock %}

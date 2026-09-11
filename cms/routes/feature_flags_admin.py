@@ -15,6 +15,7 @@ FEATURE_FLAG_NAMES = {
     "api_keys": "🔑 API Key Access",
     "paid_channels": "💰 Paid Channels",
     "subject_first_investigations": "👤 Subject-First Investigations",
+    "investigation_workspace": "🔬 Investigation Workspace",
 }
 
 FEATURE_FLAG_ORDER = [
@@ -24,17 +25,23 @@ FEATURE_FLAG_ORDER = [
     "api_keys",
     "paid_channels",
     "subject_first_investigations",
+    "investigation_workspace",
 ]
 
 # Flags that are off by default for every tier (ADR-0001 D1.6 / D1.7).
-_OFF_BY_DEFAULT = {"paid_channels", "subject_first_investigations"}
+_OFF_BY_DEFAULT = {
+    "paid_channels",
+    "subject_first_investigations",
+    "investigation_workspace",
+}
 
 
 def _flag_tier_default(flag_name: str, tenant) -> bool:
     """The tier default a flag resolves to without a super-admin override.
 
-    ``paid_channels`` and ``subject_first_investigations`` are off by default
-    for every tier (ADR-0001 D1.6/D1.7); the tier flags use their plan default.
+    ``paid_channels``, ``subject_first_investigations`` and
+    ``investigation_workspace`` are off by default for every tier
+    (ADR-0001 D1.6/D1.7); the tier flags use their plan default.
     """
     if flag_name in _OFF_BY_DEFAULT:
         return False
