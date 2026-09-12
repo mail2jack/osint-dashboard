@@ -741,7 +741,8 @@ input:-webkit-autofill:focus {
 .picker-modal {
   background:var(--bg-card,#fff);
   border-radius:12px;
-  max-width:560px;width:90%;
+  max-width:min(560px, calc(100vw - 2rem));width:90%;
+  box-sizing:border-box;min-width:0;
   max-height:80vh;overflow-y:auto;
   box-shadow:0 20px 60px rgba(0,0,0,0.3);
 }
@@ -752,7 +753,7 @@ input:-webkit-autofill:focus {
 }
 .picker-header h3{margin:0;font-size:1rem;}
 .picker-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;}
-.picker-body{padding:1.25rem;}
+.picker-body{padding:1.25rem;min-width:0;box-sizing:border-box;}
 .picker-item {
   display:flex;flex-direction:column;
   padding:0.75rem;
@@ -760,12 +761,15 @@ input:-webkit-autofill:focus {
   border:1px solid var(--border-color,#e5e7eb);
   border-radius:8px;
   cursor:pointer;
+  min-width:0;box-sizing:border-box;
   transition:background 0.15s, border-color 0.15s;
 }
 .picker-item:hover{background:var(--bg-secondary,#f1f5f9);border-color:#2563eb;}
 .picker-subject{font-weight:600;font-size:0.85rem;color:var(--text,#111);}
 .picker-field{font-size:0.75rem;color:var(--text-muted,#6b7280);margin-top:2px;}
 .picker-value{font-size:0.85rem;color:#2563eb;margin-top:2px;word-break:break-all;}
+.picker-item > *{min-width:0;}
+.pi-subject,.pi-label,.pi-value{min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:normal;}
 #findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
 
 /* ── RDW card ── */

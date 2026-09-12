@@ -46,6 +46,7 @@ jobs:
             requirements.txt
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python3 -m playwright install --with-deps chromium
       - run: python3 -m pytest tests/ -v --tb=short -q -n 0
       - name: Bandit static analysis (informational — does not block)
         run: bandit -c bandit.yml -r app.py cms/ -ll -f sarif || true

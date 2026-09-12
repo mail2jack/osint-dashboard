@@ -896,7 +896,8 @@ class TestInvestigationRLSAndNumbering:
         db.session.commit()
 
         case = db.session.get(Case, case_id)
-        case.case_number = original[:-1] + "9"
+        replacement_digit = "8" if original[-1] != "8" else "7"
+        case.case_number = original[:-1] + replacement_digit
         with pytest.raises(IntegrityError, match="immutable"):
             db.session.commit()
         db.session.rollback()

@@ -58,7 +58,7 @@ function showActionPicker(actionType, mode) {
     var overlay = document.createElement('div');
     overlay.className = 'picker-overlay';
     overlay.innerHTML =
-      '<div class="picker-modal" style="max-width:400px;">' +
+      '<div class="picker-modal" style="max-width:min(400px, calc(100vw - 2rem));">' +
         '<div class="picker-header">' +
           '<h3>' + (btn ? btn.dataset.icon : '') + ' ' + esc(label) + '</h3>' +
           '<button class="picker-close" data-action="close-warn">&times;</button>' +
@@ -346,7 +346,7 @@ function showDorkPicker(mode) {
   var overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML =
-    '<div class="picker-modal" style="max-width:640px;">' +
+    '<div class="picker-modal" style="max-width:min(640px, calc(100vw - 2rem));">' +
       '<div class="picker-header">' +
         '<h3>🔎 Google Dork Search</h3>' +
         '<button class="picker-close" data-action="close-dork">&times;</button>' +
@@ -434,7 +434,7 @@ function showDorkVariableForm(dork, mode) {
   var overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML =
-    '<div class="picker-modal" style="max-width:500px;">' +
+    '<div class="picker-modal" style="max-width:min(500px, calc(100vw - 2rem));">' +
       '<div class="picker-header">' +
         '<h3>🔎 ' + esc(dork.label) + '</h3>' +
         '<button class="picker-close" data-action="close-dork-var">&times;</button>' +
@@ -511,7 +511,7 @@ function showPhotoAnalysisPicker() {
   });
 
   overlay.innerHTML =
-    '<div class="picker-modal" style="max-width:480px;">' +
+    '<div class="picker-modal" style="max-width:min(480px, calc(100vw - 2rem));">' +
       '<div class="picker-header">' +
         '<h3>📷 Photo Analysis</h3>' +
         '<button class="picker-close" data-action="close-photo">&times;</button>' +
