@@ -741,7 +741,7 @@ input:-webkit-autofill:focus {
 .picker-modal {
   background:var(--bg-card,#fff);
   border-radius:12px;
-  max-width:560px;width:90%;
+  max-width:min(560px, calc(100vw - 2rem));width:90%;
   max-height:80vh;overflow-y:auto;
   box-shadow:0 20px 60px rgba(0,0,0,0.3);
 }
@@ -766,6 +766,8 @@ input:-webkit-autofill:focus {
 .picker-subject{font-weight:600;font-size:0.85rem;color:var(--text,#111);}
 .picker-field{font-size:0.75rem;color:var(--text-muted,#6b7280);margin-top:2px;}
 .picker-value{font-size:0.85rem;color:#2563eb;margin-top:2px;word-break:break-all;}
+.picker-item > *{min-width:0;}
+.pi-subject,.pi-label,.pi-value{min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:normal;}
 #findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
 
 /* ── RDW card ── */
