@@ -742,6 +742,7 @@ input:-webkit-autofill:focus {
   background:var(--bg-card,#fff);
   border-radius:12px;
   max-width:min(560px, calc(100vw - 2rem));width:90%;
+  box-sizing:border-box;min-width:0;
   max-height:80vh;overflow-y:auto;
   box-shadow:0 20px 60px rgba(0,0,0,0.3);
 }
@@ -752,7 +753,7 @@ input:-webkit-autofill:focus {
 }
 .picker-header h3{margin:0;font-size:1rem;}
 .picker-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;}
-.picker-body{padding:1.25rem;}
+.picker-body{padding:1.25rem;min-width:0;box-sizing:border-box;}
 .picker-item {
   display:flex;flex-direction:column;
   padding:0.75rem;
@@ -760,6 +761,7 @@ input:-webkit-autofill:focus {
   border:1px solid var(--border-color,#e5e7eb);
   border-radius:8px;
   cursor:pointer;
+  min-width:0;box-sizing:border-box;
   transition:background 0.15s, border-color 0.15s;
 }
 .picker-item:hover{background:var(--bg-secondary,#f1f5f9);border-color:#2563eb;}

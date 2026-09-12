@@ -109,6 +109,19 @@ body {
         flex-wrap: wrap;
         gap: 0.5rem;
     }
+    .header > div:first-child,
+    .header > div:last-child {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .header > div:first-child {
+        flex: 1 1 100%;
+    }
+    .header > div:last-child {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
     .header a { margin-left: 1rem; font-size: 0.9rem; }
     .header > div:last-child { font-size: 0.85rem; }
 }
