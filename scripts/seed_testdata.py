@@ -21,13 +21,13 @@ from cms.models import (  # noqa: E402
     Case,
     Client,
     Contact,
-    FeatureFlag,
     Finding,
     ResearchAction,
     SocialAccount,
     Subject,
     SubjectFact,
     SubjectIdentifier,
+    Tenant,
     db,
 )
 from cms.encryption_utils import encryptor  # noqa: E402
@@ -328,16 +328,16 @@ def seed_all():
         print(f"Tenant: {TENANT_ID}\n")
 
         # Feature flag
-        flag = FeatureFlag.query.filter_by(
-            tenant_id=TENANT_ID, flag_name="subject_first_investigations",
-        ).first()
-        if not flag:
-            db.session.add(FeatureFlag(
-                tenant_id=TENANT_ID,
-                flag_name="subject_first_investigations", enabled=True,
-            ))
-        elif not flag.enabled:
-            flag.enabled = True
+        from cms.services.feature_flag_service import set_feature_flag
+
+        tenant = db.session.get(Tenant, TENANT_ID)
+        set_feature_flag(
+            tenant=tenant,
+            flag_name="subject_first_investigations",
+            enabled=True,
+            actor_id=None,
+            source="seed_testdata",
+        )
 
         # Clients
         print("Seeding clients...")
