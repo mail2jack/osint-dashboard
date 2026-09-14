@@ -26,6 +26,7 @@ from cms.models import (
     Client,
     Document,
     Finding,
+    FeatureFlag,
     OsintSearch,
     ResearchAction,
     SpiderFootScan,
@@ -57,6 +58,7 @@ EXPECTED_FORCE_RLS_TABLES = {
     "documents",
     "financial_records",
     "findings",
+    "feature_flags",
     "investigation_seq_counters",
     "investigations",
     "invoice_items",
@@ -103,6 +105,53 @@ def _new_tenant():
 
 
 class TestMultiTenantRLSMatrix:
+    def test_feature_flags_are_force_rls_and_tenant_isolated(self, app):
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        flag_a = FeatureFlag(
+            tenant_id=tenant_a, flag_name="investigation_workspace", enabled=True
+        )
+        flag_b = FeatureFlag(
+            tenant_id=tenant_b, flag_name="investigation_workspace", enabled=True
+        )
+        db.session.add_all([flag_a, flag_b])
+        db.session.commit()
+        flag_a_id, flag_b_id = flag_a.id, flag_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert FeatureFlag.query.filter_by(id=flag_a_id).count() == 1
+        assert FeatureFlag.query.filter_by(id=flag_b_id).count() == 0
+
+        set_tenant_context(db, tenant_b)
+        db.session.expire_all()
+        assert FeatureFlag.query.filter_by(id=flag_a_id).count() == 0
+        assert FeatureFlag.query.filter_by(id=flag_b_id).count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert FeatureFlag.query.count() == 0
+
+    def test_feature_flag_with_check_rejects_other_tenant(self, app):
+        admin = User.query.filter_by(username="admin").one()
+        tenant_b = _new_tenant()
+        set_tenant_context(db, admin.tenant_id)
+
+        db.session.add(
+            FeatureFlag(
+                tenant_id=tenant_b,
+                flag_name="investigation_workspace",
+                enabled=True,
+            )
+        )
+        with pytest.raises(DBAPIError) as exc_info:
+            db.session.flush()
+        assert getattr(exc_info.value.orig, "pgcode", None) == "42501"
+        db.session.rollback()
+
     def test_force_rls_coverage_pinned(self):
         """The protected-table set must match expectations exactly. Changes to
         RLS coverage (additions/removals) are a conscious schema decision."""
