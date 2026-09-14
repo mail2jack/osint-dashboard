@@ -11,7 +11,7 @@ from ..feature_flag_policy import (
     tier_default,
 )
 from ..models import FeatureFlag, Tenant, db
-from ..services.feature_flag_service import set_feature_flag
+from ..services.feature_flag_service import set_feature_flag_by_superadmin
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +88,11 @@ def admin_feature_flag_toggle():
         return redirect(url_for("cms.admin_feature_flags"))
 
     try:
-        change = set_feature_flag(
+        change = set_feature_flag_by_superadmin(
             tenant=tenant,
             flag_name=flag_name,
             enabled=enabled,
-            actor_id=current_user.id,
-            source="super_admin_ui",
+            actor=current_user,
         )
         db.session.commit()
     except Exception:

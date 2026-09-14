@@ -328,14 +328,13 @@ def seed_all():
         print(f"Tenant: {TENANT_ID}\n")
 
         # Feature flag
-        from cms.services.feature_flag_service import set_feature_flag
+        from cms.services.feature_flag_service import set_feature_flag_by_system
 
         tenant = db.session.get(Tenant, TENANT_ID)
-        set_feature_flag(
+        set_feature_flag_by_system(
             tenant=tenant,
             flag_name="subject_first_investigations",
             enabled=True,
-            actor_id=None,
             source="seed_testdata",
         )
 

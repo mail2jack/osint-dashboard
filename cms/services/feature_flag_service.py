@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from cms.feature_flag_policy import tier_default, validate_flag_name
-from cms.models import AuditLog, FeatureFlag, Tenant, db
+from cms.models import AuditLog, FeatureFlag, Tenant, User, db
 
 SYSTEM_SOURCES = frozenset({"seed_testdata", "rollout", "maintenance"})
 
@@ -23,7 +23,7 @@ def _snapshot(value: bool | None, effective: bool, default: bool) -> dict:
     }
 
 
-def set_feature_flag(
+def _set_feature_flag(
     *,
     tenant: Tenant,
     flag_name: str,
@@ -39,11 +39,6 @@ def set_feature_flag(
     validate_flag_name(flag_name)
     if not isinstance(enabled, bool):
         raise ValueError("enabled must be a boolean")
-    if actor_id is None and source not in SYSTEM_SOURCES:
-        raise ValueError("Unknown system feature-flag source")
-    if actor_id is not None and source != "super_admin_ui":
-        raise ValueError("Human feature-flag writes must use super_admin_ui")
-
     default = tier_default(flag_name, tenant.tier)
     override = FeatureFlag.query.filter_by(
         tenant_id=tenant.id, flag_name=flag_name
@@ -88,3 +83,33 @@ def set_feature_flag(
         description=f"Feature flag {flag_name} changed via {source}",
     )
     return FeatureFlagChange(operation, resulting_override, True)
+
+
+def set_feature_flag_by_superadmin(
+    *, tenant: Tenant, flag_name: str, enabled: bool, actor: User
+) -> FeatureFlagChange:
+    """Human write entrypoint; callers cannot bypass the super-admin check."""
+    if not actor.is_super_admin:
+        raise PermissionError("Feature flags require a super-admin actor")
+    return _set_feature_flag(
+        tenant=tenant,
+        flag_name=flag_name,
+        enabled=enabled,
+        actor_id=actor.id,
+        source="super_admin_ui",
+    )
+
+
+def set_feature_flag_by_system(
+    *, tenant: Tenant, flag_name: str, enabled: bool, source: str
+) -> FeatureFlagChange:
+    """Non-HTTP system entrypoint with a closed source allowlist."""
+    if source not in SYSTEM_SOURCES:
+        raise ValueError("Unknown system feature-flag source")
+    return _set_feature_flag(
+        tenant=tenant,
+        flag_name=flag_name,
+        enabled=enabled,
+        actor_id=None,
+        source=source,
+    )

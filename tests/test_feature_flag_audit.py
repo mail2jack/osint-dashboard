@@ -3,7 +3,10 @@
 import uuid
 
 from cms.models import AuditLog, FeatureFlag, Tenant, User, db
-from cms.services.feature_flag_service import set_feature_flag
+from cms.services.feature_flag_service import (
+    set_feature_flag_by_superadmin,
+    set_feature_flag_by_system,
+)
 
 
 def _admin() -> User:
@@ -26,12 +29,11 @@ def test_service_create_update_delete_and_noop_are_audited(app):
     actor = _admin()
     tenant = db.session.get(Tenant, actor.tenant_id)
 
-    created = set_feature_flag(
+    created = set_feature_flag_by_superadmin(
         tenant=tenant,
         flag_name="investigation_workspace",
         enabled=True,
-        actor_id=actor.id,
-        source="super_admin_ui",
+        actor=actor,
     )
     db.session.commit()
     assert created.operation == "create"
@@ -40,24 +42,22 @@ def test_service_create_update_delete_and_noop_are_audited(app):
     assert AuditLog.query.filter_by(entity_type="feature_flag").count() == 1
 
     timestamp = flag.updated_at
-    noop = set_feature_flag(
+    noop = set_feature_flag_by_superadmin(
         tenant=tenant,
         flag_name="investigation_workspace",
         enabled=True,
-        actor_id=actor.id,
-        source="super_admin_ui",
+        actor=actor,
     )
     db.session.commit()
     assert noop.operation == "noop"
     assert flag.updated_at == timestamp
     assert AuditLog.query.filter_by(entity_type="feature_flag").count() == 1
 
-    deleted = set_feature_flag(
+    deleted = set_feature_flag_by_superadmin(
         tenant=tenant,
         flag_name="investigation_workspace",
         enabled=False,
-        actor_id=actor.id,
-        source="super_admin_ui",
+        actor=actor,
     )
     db.session.commit()
     assert deleted.operation == "delete"
@@ -79,12 +79,11 @@ def test_service_and_audit_are_one_transaction(app, monkeypatch):
 
     monkeypatch.setattr(AuditLog, "log", fail_log)
     try:
-        set_feature_flag(
+        set_feature_flag_by_superadmin(
             tenant=tenant,
             flag_name="investigation_workspace",
             enabled=True,
-            actor_id=actor.id,
-            source="super_admin_ui",
+            actor=actor,
         )
         db.session.commit()
     except RuntimeError:
@@ -95,17 +94,35 @@ def test_service_and_audit_are_one_transaction(app, monkeypatch):
 def test_system_source_is_allowlisted(app):
     tenant = db.session.get(Tenant, _admin().tenant_id)
     try:
-        set_feature_flag(
+        set_feature_flag_by_system(
             tenant=tenant,
             flag_name="investigation_workspace",
             enabled=True,
-            actor_id=None,
             source="request_body_value",
         )
     except ValueError as exc:
         assert "system" in str(exc)
     else:
         raise AssertionError("unknown system source accepted")
+
+
+def test_human_entrypoint_rejects_non_superadmin(app):
+    actor = _admin()
+    actor.is_super_admin = False
+    tenant = db.session.get(Tenant, actor.tenant_id)
+    try:
+        set_feature_flag_by_superadmin(
+            tenant=tenant,
+            flag_name="investigation_workspace",
+            enabled=True,
+            actor=actor,
+        )
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("non-superadmin actor accepted")
+    assert FeatureFlag.query.count() == 0
+    assert AuditLog.query.filter_by(entity_type="feature_flag").count() == 0
 
 
 def test_switched_superadmin_cannot_toggle_other_tenant(app, auth_client):
