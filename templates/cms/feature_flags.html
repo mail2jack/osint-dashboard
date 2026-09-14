@@ -54,8 +54,8 @@
                 </td>
                 <td><span class="tier-badge-sm tier-{{ row.tenant.tier }}">{{ row.tenant.tier|capitalize }}</span></td>
                 {% for name in flag_order %}
-                {% set override = row.flags[name] %}
-                {% set tier_default = (false if name in ('paid_channels', 'subject_first_investigations') else ((name != 'export' and row.tenant.tier in ('professional', 'enterprise')) or (name == 'export' and row.tenant.tier in ('starter', 'professional', 'enterprise')))) %}
+                {% set override = row.flags[name].override %}
+                {% set tier_default = row.flags[name].tier_default %}
                 {% set is_overridden = override is not none %}
                 {% set current_value = override.enabled if is_overridden else tier_default %}
                 <td style="text-align:center;">

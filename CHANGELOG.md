@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- Audited FeatureFlag write path: tenant overrides now record nullable creator
+  and last-updater IDs, emit an immutable AuditLog entry in the same
+  transaction, and are protected by PostgreSQL FORCE RLS. The super-admin UI
+  and seed script share one service; no-op writes produce no timestamp or
+  audit noise, and switched super-admins can only manage the selected tenant.
 - Read-only investigation detail workspace (ADR-0002/ADR-0005, PR1):
   `GET /cms/workflow/case/<case_id>/investigations/<investigation_id>` behind
   the per-tenant feature flag `investigation_workspace` (OFF default, via the

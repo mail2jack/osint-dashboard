@@ -1,54 +1,32 @@
 import logging
 
-from flask import abort, request, render_template, redirect, url_for, flash
+from flask import abort, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Tenant, FeatureFlag
+from ..feature_flag_policy import (
+    FEATURE_FLAG_NAMES,
+    FEATURE_FLAG_ORDER,
+    OFF_BY_DEFAULT,
+    tier_default,
+)
+from ..models import FeatureFlag, Tenant, db
+from ..services.feature_flag_service import set_feature_flag_by_superadmin
 
 logger = logging.getLogger(__name__)
 
-FEATURE_FLAG_NAMES = {
-    "export": "📤 Export (CSV/PDF)",
-    "ai": "🤖 AI Summarization",
-    "spiderfoot": "🕷️ SpiderFoot OSINT",
-    "api_keys": "🔑 API Key Access",
-    "paid_channels": "💰 Paid Channels",
-    "subject_first_investigations": "👤 Subject-First Investigations",
-    "investigation_workspace": "🔬 Investigation Workspace",
-}
-
-FEATURE_FLAG_ORDER = [
-    "export",
-    "ai",
-    "spiderfoot",
-    "api_keys",
-    "paid_channels",
-    "subject_first_investigations",
-    "investigation_workspace",
-]
-
-# Flags that are off by default for every tier (ADR-0001 D1.6 / D1.7).
-_OFF_BY_DEFAULT = {
-    "paid_channels",
-    "subject_first_investigations",
-    "investigation_workspace",
-}
-
+# Backwards-compatible import for existing callers/tests; policy lives centrally.
+_OFF_BY_DEFAULT = OFF_BY_DEFAULT
 
 def _flag_tier_default(flag_name: str, tenant) -> bool:
-    """The tier default a flag resolves to without a super-admin override.
+    """Compatibility wrapper around the canonical pure policy."""
+    return tier_default(flag_name, tenant.tier)
 
-    ``paid_channels``, ``subject_first_investigations`` and
-    ``investigation_workspace`` are off by default for every tier
-    (ADR-0001 D1.6/D1.7); the tier flags use their plan default.
-    """
-    if flag_name in _OFF_BY_DEFAULT:
-        return False
-    tier_default = tenant.tier in ("professional", "enterprise")
-    if flag_name == "export":
-        tier_default = tenant.tier in ("starter", "professional", "enterprise")
-    return tier_default
+
+def _manageable_tenant_query():
+    switched = session.get("switched_tenant_id")
+    query = Tenant.query
+    return query.filter(Tenant.id == switched) if switched else query
 
 
 @cms_bp.route("/admin/feature-flags")
@@ -58,7 +36,7 @@ def admin_feature_flags():
     if not current_user.is_super_admin:
         abort(403)
 
-    tenants = Tenant.query.order_by(Tenant.name).all()
+    tenants = _manageable_tenant_query().order_by(Tenant.name).all()
 
     # Build a lookup: (tenant_id, flag_name) -> FeatureFlag
     all_flags = FeatureFlag.query.all()
@@ -71,7 +49,10 @@ def admin_feature_flags():
         flags = {}
         for name in FEATURE_FLAG_ORDER:
             override = flag_map.get((t.id, name))
-            flags[name] = override
+            flags[name] = {
+                "override": override,
+                "tier_default": tier_default(name, t.tier),
+            }
         rows.append({"tenant": t, "flags": flags})
 
     return render_template(
@@ -101,34 +82,30 @@ def admin_feature_flag_toggle():
         flash(f"Unknown flag: {flag_name}", "error")
         return redirect(url_for("cms.admin_feature_flags"))
 
-    tenant = db.session.get(Tenant, tenant_id)
+    tenant = _manageable_tenant_query().filter(Tenant.id == tenant_id).first()
     if not tenant:
         flash("Tenant not found.", "error")
         return redirect(url_for("cms.admin_feature_flags"))
 
-    override = FeatureFlag.query.filter_by(
-        tenant_id=tenant_id, flag_name=flag_name
-    ).first()
+    try:
+        change = set_feature_flag_by_superadmin(
+            tenant=tenant,
+            flag_name=flag_name,
+            enabled=enabled,
+            actor=current_user,
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to change feature flag")
+        flash("Could not update feature flag.", "error")
+        return redirect(url_for("cms.admin_feature_flags"))
 
-    tier_default = _flag_tier_default(flag_name, tenant)
-
-    if enabled == tier_default:
-        # Matches tier default — remove the override
-        if override:
-            db.session.delete(override)
-            flash(f"Removed override for {flag_name} — using tier default.", "info")
-    else:
-        if override:
-            override.enabled = enabled
-        else:
-            override = FeatureFlag(
-                tenant_id=tenant_id, flag_name=flag_name, enabled=enabled
-            )
-            db.session.add(override)
+    if change.operation == "delete":
+        flash(f"Removed override for {flag_name} — using tier default.", "info")
+    elif change.changed:
         flash(
             f"{'Enabled' if enabled else 'Disabled'} {flag_name} for {tenant.name}.",
             "success",
         )
-
-    db.session.commit()
     return redirect(url_for("cms.admin_feature_flags"))

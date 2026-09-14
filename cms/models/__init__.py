@@ -4366,6 +4366,12 @@ class FeatureFlag(db.Model):
     )
     flag_name = db.Column(db.String(50), nullable=False)
     enabled = db.Column(db.Boolean, default=True, nullable=False)
+    created_by_id = db.Column(
+        db.String(36), db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_by_id = db.Column(
+        db.String(36), db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

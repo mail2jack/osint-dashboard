@@ -59,7 +59,7 @@ class TestPostgreSQLIntegration:
         # e2f3a4b5c6d7 adds tenant RLS coverage for background_tasks.
         # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
-        assert revision == "f6a7b8c9d0e1"
+        assert revision == "f8a9b0c1d2e3"
 
         protected = db.session.execute(
             text(
@@ -72,14 +72,14 @@ class TestPostgreSQLIntegration:
                     'investigations', 'case_number_counters',
                     'investigation_seq_counters',
                     'invoice_number_counters',
-                    'research_actions', 'action_findings'
+                    'research_actions', 'action_findings', 'feature_flags'
                 )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 11
+        assert protected == 12
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
@@ -1221,7 +1221,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f6a7b8c9d0e1"
+        assert revision == "f8a9b0c1d2e3"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
