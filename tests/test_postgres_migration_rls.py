@@ -132,6 +132,55 @@ def _seed_junction_data(tenant_id: str, created_by: str) -> dict:
 class TestMigrationRLSBypass:
     """Verify the orphan cleanup in a1b2c3d4e5f7 works under FORCE RLS."""
 
+    def test_invoice_item_description_width_at_head(self, app):
+        """P1: the invoice_items.description column is VARCHAR(2000) at head
+        (d5e6f7a8b9c0) and accepts over-500-char values on PostgreSQL."""
+        width = db.session.execute(
+            text(
+                "SELECT character_maximum_length "
+                "FROM information_schema.columns "
+                "WHERE table_name = 'invoice_items' AND column_name = 'description'"
+            )
+        ).scalar()
+        assert width == 2000, f"expected VARCHAR(2000), got {width}"
+
+        admin = User.query.filter_by(username="admin").one()
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        suffix = uuid.uuid4().hex[:8]
+        client = Client(tenant_id=admin.tenant_id, name=f"PG width client {suffix}")
+        db.session.add(client)
+        db.session.flush()
+        invoice = db.session.execute(
+            text(
+                "INSERT INTO invoices "
+                "(id, tenant_id, invoice_number, client_id, issue_date, due_date, status) "
+                "VALUES "
+                "(:id, :tenant, :num, :client, CURRENT_DATE, CURRENT_DATE + 30, 'draft') "
+                "RETURNING id"
+            ),
+            {
+                "id": f"iw-{suffix}",
+                "tenant": admin.tenant_id,
+                "num": f"FAC-2026-W-{suffix}",
+                "client": client.id,
+            },
+        ).scalar()
+        item = db.session.execute(
+            text(
+                "INSERT INTO invoice_items "
+                "(id, tenant_id, invoice_id, description, quantity, unit_price, vat_rate) "
+                "VALUES (:id, :tenant, :inv, :desc, 1, 10, 21) "
+                "RETURNING id, length(description)"
+            ),
+            {
+                "id": f"iwit-{suffix}",
+                "tenant": admin.tenant_id,
+                "inv": invoice,
+                "desc": "q" * 600,
+            },
+        ).first()
+        assert item[1] == 600, "PostgreSQL must store >500 chars in VARCHAR(2000)"
+
     def test_valid_junction_rows_survive_orphan_cleanup(self, app):
         """After seeding valid junction data, the migration's orphan cleanup
         must NOT delete valid rows — only true orphans should go."""

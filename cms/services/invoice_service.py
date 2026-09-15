@@ -26,6 +26,32 @@ from .sequence_service import allocate_invoice_number
 
 logger = logging.getLogger(__name__)
 
+# DB column cap for InvoiceItem.description (see billing.py + migration
+# d5e6f7a8b9c0_increase_invoice_items_description). Both the action payload
+# and the built line must stay well under it.
+INVOICE_ITEM_DESCRIPTION_MAX = 2000
+
+# CreditNoteItem.description stays at the legacy column width (billing.py);
+# this is the deliberate 500-char cap that keeps it there.
+CREDIT_NOTE_ITEM_DESCRIPTION_MAX = 500
+
+
+def normalize_description(
+    value: str | None, max_len: int = INVOICE_ITEM_DESCRIPTION_MAX
+) -> str:
+    """Single normalization point for invoice/credit-note item descriptions.
+
+    - ``None``/empty stays empty;
+    - values already at or below ``max_len`` pass through untouched;
+    - longer values are cut to ``max_len - 3`` characters plus ``"..."`` so
+      the stored result never exceeds the column width.
+    """
+    if not value:
+        return ""
+    if len(value) <= max_len:
+        return value
+    return value[: max_len - 3] + "..."
+
 DEFAULT_TERMS = (
     "Payment must be made within 30 days of the invoice date.\n"
     "Bij niet-tijdige betaling zijn wij gerechtigd rente in rekening te brengen."
@@ -91,7 +117,7 @@ def _add_invoice_line(
     item = InvoiceItem(
         invoice_id=invoice.id,
         tenant_id=tenant_id or invoice.tenant_id,
-        description=description,
+        description=normalize_description(description),
         quantity=quantity,
         unit_price=rate.unit_price,
         vat_rate=rate.vat_rate,
@@ -159,7 +185,11 @@ def auto_invoice_action_completed(action: ResearchAction) -> None:
     if not rate:
         return
     invoice = _ensure_draft_invoice(case.client_id, client.tenant_id)
-    data_str = f" ({action.data_value})" if action.data_value else ""
+    data_str = (
+        f" ({normalize_description(action.data_value, 400)})"
+        if action.data_value
+        else ""
+    )
     _add_invoice_line(
         invoice,
         f"Zoekactie {action.label or action.action_type}: {action.case.case_number}{data_str}",

@@ -13,6 +13,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import db, Invoice, InvoiceItem, Payment, Client, Case, AuditLog
 from ..services.sequence_service import allocate_invoice_number
+from ..services.invoice_service import normalize_description
 from ..auth import (
     admin_required,
     senior_required,
@@ -215,7 +216,7 @@ def invoice_create():
         for i, item in enumerate(items_data):
             inv_item = InvoiceItem(
                 invoice_id=invoice.id,
-                description=item.get("description", ""),
+                description=normalize_description(item.get("description")),
                 quantity=float(item.get("quantity", 1)),
                 unit_price=float(item.get("unit_price", 0)),
                 vat_rate=float(item.get("vat_rate", 21.00)),
@@ -337,7 +338,7 @@ def invoice_edit(invoice_id: str):
         for i, item in enumerate(items_data):
             inv_item = InvoiceItem(
                 invoice_id=invoice.id,
-                description=item.get("description", ""),
+                description=normalize_description(item.get("description")),
                 quantity=float(item.get("quantity", 1)),
                 unit_price=float(item.get("unit_price", 0)),
                 vat_rate=float(item.get("vat_rate", 21.00)),

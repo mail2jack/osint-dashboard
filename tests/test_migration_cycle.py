@@ -19,7 +19,8 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "f8a9b0c1d2e3"
+HEAD_REVISION = "d5e6f7a8b9c0"
+INVOICE_ITEM_PREV_REVISION = "f8a9b0c1d2e3"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -636,3 +637,64 @@ class TestMigrationCycle:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
         conn.close()
         assert "investigation_id" in cols
+
+    def test_invoice_item_description_width_and_downgrade_guard(self, tmp_path):
+        """P1: invoice_items.description widens to VARCHAR(2000) on upgrade and
+        the downgrade refuses to run as long as any over-long row exists.
+
+        The service layer truncates new lines, so a safe downgrade needs a data
+        pass first — the migration must abort BEFORE any DDL with a clear
+        error, never silently truncate the wider values.
+        """
+        db_file = tmp_path / "invdesc.db"
+        _run_alembic(db_file, "upgrade", INVOICE_ITEM_PREV_REVISION)
+
+        conn = sqlite3.connect(db_file)
+        cols_before = {
+            r[1]: r[2]
+            for r in conn.execute("PRAGMA table_info(invoice_items)")
+        }
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t1', 'T', 't', 1, 'enterprise', 'seed')"
+        )
+        conn.execute(
+            "INSERT INTO invoices "
+            "(id, tenant_id, invoice_number, client_id, issue_date, due_date, status) "
+            "VALUES ('i1', 't1', 'FAC-2026-00001', 'cl1', '2026-01-01', '2026-02-01', 'draft')"
+        )
+        conn.execute(
+            "INSERT INTO invoice_items "
+            "(id, tenant_id, invoice_id, description, quantity, unit_price, vat_rate, total, vat_total) "
+            "VALUES ('it1', 't1', 'i1', ?, 1, 10, 21, 10, 2.1)",
+            ("x" * 600,),
+        )
+        conn.commit()
+        conn.close()
+        assert cols_before["description"] == "VARCHAR(500)"
+
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        cols_after = {
+            r[1]: r[2]
+            for r in conn.execute("PRAGMA table_info(invoice_items)")
+        }
+        conn.close()
+        assert cols_after["description"] == "VARCHAR(2000)"
+
+        # 600 > 500: the downgrade must refuse rather than truncate data.
+        output = _run_alembic_expect_fail(
+            db_file, "downgrade", INVOICE_ITEM_PREV_REVISION
+        )
+        assert "exceed 500" in output.lower()
+
+        # Still at head; the blocked downgrade did not touch table data/DDL.
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        cols_after = {
+            r[1]: r[2]
+            for r in conn.execute("PRAGMA table_info(invoice_items)")
+        }
+        conn.close()
+        assert revision == HEAD_REVISION
+        assert cols_after["description"] == "VARCHAR(2000)"
