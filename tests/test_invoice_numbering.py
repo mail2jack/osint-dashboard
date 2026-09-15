@@ -15,6 +15,7 @@ Covers the SQLite-backed behaviour (PostgreSQL additions live in
 
 import threading
 import uuid
+import json
 from datetime import date, datetime, timezone
 
 import pytest
@@ -22,10 +23,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from cms.models import (
+    Case,
     Client,
     Invoice,
+    InvoiceItem,
     InvoiceNumberCounter,
     InvoiceStatus,
+    ResearchAction,
     Tenant,
     db,
 )
@@ -297,3 +301,179 @@ class TestInvoiceThroughCaseCreate:
         assert len(cases) == 1
         assert len(invoices) == 1
         assert invoices[0].invoice_number == f"FAC-{_YEAR}-00001"
+
+
+class TestInvoiceDescriptionTruncation:
+    """P1 regression: Google-Dork data_value must never exceed the column width.
+
+    Production hit ``psycopg2.errors.StringDataRightTruncation`` when a long
+    dork payload (full ``data_value`` JSON) was written verbatim into
+    ``invoice_items.description`` (VARCHAR(500) at the time). The fix truncates
+    in the service, the route layer and keeps credit-note items bounded.
+    """
+
+    def _completed_action_with_data(self, data_value: str):
+        tenant = _make_tenant()
+        client = _make_client(tenant.id)
+        case = Case(
+            case_number=f"TRUNC-{uuid.uuid4().hex[:8].upper()}",
+            client_id=client.id,
+            title="Truncation Case",
+            status="open",
+            priority="medium",
+            start_date=date.today(),
+        )
+        db.session.add(case)
+        db.session.flush()
+        action = ResearchAction(
+            case_id=case.id,
+            action_type="google_dork",
+            label="Google Dork",
+            status="completed",
+            data_value=data_value,
+        )
+        db.session.add(action)
+        db.session.flush()
+        return action
+
+    def test_long_dork_data_value_is_truncated(self, db_session):
+        from cms.services.invoice_service import (
+            INVOICE_ITEM_DESCRIPTION_MAX,
+            auto_invoice_action_completed,
+        )
+
+        db_session.commit()
+        long_dork = '{"query": "' + "x" * 5000 + '"}'
+        action = self._completed_action_with_data(long_dork)
+
+        auto_invoice_action_completed(action)
+        db_session.commit()
+
+        item = InvoiceItem.query.one()
+        assert len(item.description) <= INVOICE_ITEM_DESCRIPTION_MAX
+        assert "..." in item.description
+        assert item.description.startswith("Zoekactie Google Dork:")
+
+    def test_short_data_value_is_not_truncated(self, db_session):
+        from cms.services.invoice_service import auto_invoice_action_completed
+
+        db_session.commit()
+        action = self._completed_action_with_data("short-query")
+
+        auto_invoice_action_completed(action)
+        db_session.commit()
+
+        item = InvoiceItem.query.one()
+        assert "short-query" in item.description
+        assert not item.description.endswith("...")
+
+    def test_service_line_truncates_to_column_max(self, db_session):
+        from cms.services.invoice_service import (
+            INVOICE_ITEM_DESCRIPTION_MAX,
+            _add_invoice_line,
+            _ensure_draft_invoice,
+            _get_rate,
+        )
+
+        db_session.commit()
+        tenant = _make_tenant()
+        client = _make_client(tenant.id)
+        invoice = _ensure_draft_invoice(client.id, tenant.id)
+        rate = _get_rate("case_creation")
+        assert rate is not None
+
+        _add_invoice_line(invoice, "z" * 10_000, rate)
+        db_session.commit()
+
+        item = InvoiceItem.query.one()
+        assert len(item.description) == INVOICE_ITEM_DESCRIPTION_MAX
+        assert item.description == "z" * (INVOICE_ITEM_DESCRIPTION_MAX - 3) + "..."
+
+    def test_normalize_description_boundaries(self):
+        from cms.services.invoice_service import (
+            INVOICE_ITEM_DESCRIPTION_MAX,
+            normalize_description,
+        )
+
+        assert normalize_description(None) == ""
+        assert normalize_description("") == ""
+        assert normalize_description("x" * 499) == "x" * 499
+        assert normalize_description("x" * 500) == "x" * 500
+        assert normalize_description("x" * 501) == "x" * 501
+        assert normalize_description("x" * 1997) == "x" * 1997
+        assert normalize_description("x" * 1998) == "x" * 1998
+        assert normalize_description("x" * 2000) == "x" * 2000
+        assert normalize_description("x" * 2001) == "x" * 1997 + "..."
+        assert len(normalize_description("z" * 50_000)) == INVOICE_ITEM_DESCRIPTION_MAX
+        assert normalize_description("z" * 50_000) == "z" * 1997 + "..."
+
+    def test_normalize_description_credit_note_cap(self):
+        from cms.services.invoice_service import (
+            CREDIT_NOTE_ITEM_DESCRIPTION_MAX,
+            normalize_description,
+        )
+
+        assert (
+            normalize_description("x" * 499, CREDIT_NOTE_ITEM_DESCRIPTION_MAX)
+            == "x" * 499
+        )
+        assert (
+            normalize_description("x" * 500, CREDIT_NOTE_ITEM_DESCRIPTION_MAX)
+            == "x" * 500
+        )
+        assert (
+            normalize_description("x" * 501, CREDIT_NOTE_ITEM_DESCRIPTION_MAX)
+            == "x" * 497 + "..."
+        )
+        assert (
+            len(normalize_description("y" * 999, CREDIT_NOTE_ITEM_DESCRIPTION_MAX))
+            == CREDIT_NOTE_ITEM_DESCRIPTION_MAX
+        )
+
+    def test_normalize_description_unicode(self):
+        from cms.services.invoice_service import normalize_description
+
+        uni = "🚢" * 2500 + "héllo wörld"
+        out = normalize_description(uni)
+        assert len(out) == 2000
+        assert out == uni[:1997] + "..."
+
+    def test_credit_note_route_stays_at_500(self, auth_client, db_session):
+        from cms.services.invoice_service import (
+            CREDIT_NOTE_ITEM_DESCRIPTION_MAX,
+            auto_invoice_action_completed,
+        )
+        from cms.models import CreditNoteItem, Invoice
+
+        db_session.commit()
+        action = self._completed_action_with_data("short-data")
+
+        auto_invoice_action_completed(action)
+        db_session.commit()
+
+        invoice = Invoice.query.one()
+        inv_item = InvoiceItem.query.one()
+        assert len(inv_item.description) <= 2000
+
+        resp = auth_client.post(
+            f"/cms/invoices/{invoice.id}/create-credit-note",
+            data={
+                "reason": "test",
+                "items": json.dumps(
+                    [
+                        {
+                            "invoice_item_id": inv_item.id,
+                            "description": "y" * 10_000,
+                            "quantity": 1,
+                            "unit_price": 1,
+                            "vat_rate": 21.00,
+                        }
+                    ]
+                ),
+            },
+        )
+        assert resp.status_code == 302, resp.status_code
+
+        stored = CreditNoteItem.query.one()
+        assert len(stored.description) == CREDIT_NOTE_ITEM_DESCRIPTION_MAX
+        assert stored.description == "y" * 497 + "..."

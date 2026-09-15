@@ -146,7 +146,7 @@ class InvoiceItem(db.Model):
         db.String(36), db.ForeignKey("invoices.id"), nullable=False, index=True
     )
 
-    description = db.Column(db.String(500), nullable=False)
+    description = db.Column(db.String(2000), nullable=False)
     quantity = db.Column(db.Numeric(15, 2), nullable=False, default=1)
     unit_price = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=21.00)

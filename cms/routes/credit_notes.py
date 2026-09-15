@@ -20,6 +20,10 @@ from ..models import (
     Client,
     AuditLog,
 )
+from ..services.invoice_service import (
+    CREDIT_NOTE_ITEM_DESCRIPTION_MAX,
+    normalize_description,
+)
 from ..auth import (
     admin_required,
     senior_required,
@@ -137,7 +141,9 @@ def credit_note_create(invoice_id: str):
         cn_item = CreditNoteItem(
             credit_note_id=cn.id,
             invoice_item_id=item.get("invoice_item_id"),
-            description=item.get("description", ""),
+            description=normalize_description(
+                item.get("description"), CREDIT_NOTE_ITEM_DESCRIPTION_MAX
+            ),
             quantity=float(item.get("quantity", 1)),
             unit_price=float(item.get("unit_price", 0)),
             vat_rate=float(item.get("vat_rate", 21.00)),
