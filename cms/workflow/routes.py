@@ -2808,6 +2808,7 @@ def restore_action(action_id):
 
 @workflow_bp.route("/api/findings/<finding_id>/archive", methods=["POST"])
 @login_required
+@_investigator_required
 def archive_finding(finding_id):
     """Archive a single finding."""
     from cms.models import Finding, db
@@ -2838,6 +2839,7 @@ def archive_finding(finding_id):
 
 @workflow_bp.route("/api/findings/<finding_id>/restore", methods=["POST"])
 @login_required
+@_investigator_required
 def restore_finding(finding_id):
     """Restore an archived finding."""
     from cms.models import Finding, db
