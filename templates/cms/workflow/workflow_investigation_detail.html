@@ -508,4 +508,27 @@
   });
 })();
 </script>
+
+{% if can_write %}
+<script nonce="{{ csp_nonce }}">
+// Investigation workspace has no live-polite polling section; a finding
+// mutation simply refreshes the page so the UI reflects server state.
+var CASE_ID = {{ case.id|tojson }};
+var CSRF = '{{ csrf_token() }}';
+var _lastFindingsHash = '';
+var _suppressFindingsRebuild = 0;
+var _forceFindingsUpdate = false;
+function showToast(msg, type) {
+  if (window.showToast) return window.showToast(msg, type);
+  if (type === 'error') window.alert(msg);
+}
+function pollStatus() {
+  setTimeout(function () { window.location.reload(); }, 400);
+}
+{% include "cms/workflow/_finding_action_handlers.html" %}
+document.addEventListener('click', function (e) {
+  handleFindingClick(e);
+});
+</script>
+{% endif %}
 {% endblock %}

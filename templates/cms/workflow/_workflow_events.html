@@ -1,26 +1,5 @@
 // ── Finding case-id resolution (works on single-case and multi-case screens) ──
-function findingCaseId(el) {
-  var item = el && el.closest ? el.closest('.finding-item') : null;
-  if (item && item.getAttribute('data-case-id')) return item.getAttribute('data-case-id');
-  return (typeof CASE_ID !== 'undefined') ? CASE_ID : '';
-}
-
-// ── Comment auto-save (debounced) ──
-var commentTimers = {};
-document.addEventListener('input', function(e) {
-  var ta = e.target.closest('[data-action="comment-input"]');
-  if (!ta) return;
-  var fid = ta.getAttribute('data-finding-id');
-  if (commentTimers[fid]) clearTimeout(commentTimers[fid]);
-  commentTimers[fid] = setTimeout(function() {
-    fetch('/cms/workflow/api/case/' + findingCaseId(ta) + '/findings/' + fid + '/comment', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
-      body: JSON.stringify({comment: ta.value}),
-    }).catch(function() {});
-    delete commentTimers[fid];
-  }, 600);
-});
+{% include "cms/workflow/_finding_action_handlers.html" %}
 
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(pollStatus, 100);

@@ -200,6 +200,7 @@ def _make_finding(case, subject, title="WS Finding", **kwargs):
         archived_at=kwargs.get("archived_at"),
         source_url=kwargs.get("source_url"),
         detail=kwargs.get("detail"),
+        comment=kwargs.get("comment"),
         include_in_report=kwargs.get("include_in_report", True),
     )
     db.session.add(finding)
@@ -1481,6 +1482,187 @@ class TestWorkspaceStartAction:
             ).count()
             == audits_before
         )
+
+
+# ---------------------------------------------------------------------------
+# Locale catalogs (NL msgstr, EN msgid) — one shared msgid set
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceFindingActions:
+    """UX-4: findings in the workspace offer the same edit actions as legacy
+    cases (comment, verify/demote/reject, report-flag, screenshot, archive) —
+    only for users with write access; read-only otherwise."""
+
+    def _setup_case(self, viewer=False):
+        tid = _admin_tenant_id()
+        _enable_workspace(tid, enabled=True)
+        case = _make_case()
+        if viewer:
+            case.created_by = _make_user("viewer", tenant_id=tid).id
+        else:
+            case.created_by = User.query.filter_by(username="admin").first().id
+        db.session.commit()
+        inv = _make_investigation(case)
+        db.session.commit()
+        user = db.session.get(User, case.created_by)
+        _scaffold(case, inv, user, n_actions=1, n_findings=1)
+        return case, inv, user
+
+    def test_write_user_sees_finding_actions(self, auth_client):
+        case, inv, _ = self._setup_case()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'data-action="comment-input"' in body
+        assert 'data-action="verify-finding"' in body
+        assert 'data-action="reject-finding"' in body
+        assert 'data-action="report-flag"' in body
+        assert 'data-action="add-screenshot-btn"' in body
+        assert "/archive" in body
+
+    def test_viewer_does_not_see_finding_actions(self, app):
+        case, inv, viewer = self._setup_case(viewer=True)
+        client = _login_as(app.test_client(), viewer)
+        body = client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'data-action="comment-input"' not in body
+        assert 'data-action="verify-finding"' not in body
+        assert 'data-action="add-screenshot-btn"' not in body
+
+    def test_dto_carries_comment_and_report_flag(self):
+        case = _make_case()
+        subject = _make_subject(case)
+        inv = _make_investigation(case)
+        action = _make_action(case, investigation=inv, subject=subject)
+        finding = _make_finding(
+            case,
+            subject,
+            comment="intern overleg",
+            include_in_report=False,
+            created_by=User.query.filter_by(username="admin").first().id,
+        )
+        _link(action, finding)
+        db.session.commit()
+
+        ws = build_inv_workspace(inv, case)
+        assert len(ws.findings) == 1
+        assert ws.findings[0].comment == "intern overleg"
+        assert ws.findings[0].include_in_report is False
+
+    # -- UX-4: server-side authorization (direct POSTs) -----------------
+
+    def _viewer_client_with_finding(self, app):
+        case, inv, viewer = self._setup_case(viewer=True)
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        client = _login_as(app.test_client(), viewer)
+        return client, case.id, fid
+
+    def test_viewer_verify_post_403(self, app):
+        client, case_id, fid = self._viewer_client_with_finding(app)
+        resp = client.post(
+            f"/cms/workflow/api/case/{case_id}/findings/{fid}/verify",
+            json={"status": "verified"},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_comment_post_403(self, app):
+        client, case_id, fid = self._viewer_client_with_finding(app)
+        resp = client.post(
+            f"/cms/workflow/api/case/{case_id}/findings/{fid}/comment",
+            json={"comment": "geen rechten"},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_report_flag_post_403(self, app):
+        client, case_id, fid = self._viewer_client_with_finding(app)
+        resp = client.post(
+            f"/cms/workflow/api/case/{case_id}/findings/{fid}/report-flag",
+            json={"include_in_report": False},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_screenshot_post_403(self, app):
+        client, case_id, fid = self._viewer_client_with_finding(app)
+        resp = client.post(
+            f"/cms/workflow/api/case/{case_id}/findings/{fid}/screenshots",
+            json={"url": "", "source_url": "https://example.com/x", "notes": ""},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_archive_post_403(self, app):
+        client, _, fid = self._viewer_client_with_finding(app)
+        resp = client.post(f"/cms/workflow/api/findings/{fid}/archive")
+        assert resp.status_code == 403
+
+    def test_cross_tenant_finding_post_403(self, app):
+        case, inv, user = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        tenant_b = _make_other_tenant()
+        other = _make_user("investigator", tenant_id=tenant_b.id)
+        db.session.commit()
+        client = _login_as(app.test_client(), other)
+        resp = client.post(
+            f"/cms/workflow/api/case/{case.id}/findings/{fid}/verify",
+            json={"status": "verified"},
+        )
+        assert resp.status_code == 403
+
+    def test_other_case_finding_post_404(self, app, auth_client):
+        case, inv, user = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        other_case = _make_case()
+        resp = auth_client.post(
+            f"/cms/workflow/api/case/{other_case.id}/findings/{fid}/verify",
+            json={"status": "verified"},
+        )
+        assert resp.status_code == 404
+
+    # -- UX-4: mutations persist and survive a reload -------------------
+
+    def test_comment_persists_after_reload(self, auth_client):
+        case, inv, _ = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        url = f"/cms/workflow/api/case/{case.id}/findings/{fid}/comment"
+        resp = auth_client.post(url, json={"comment": "intern overleg"})
+        assert resp.status_code == 200
+        assert resp.get_json()["comment"] == "intern overleg"
+
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert ">intern overleg</textarea>" in body
+
+    def test_verify_persists_after_reload(self, auth_client):
+        case, inv, _ = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        url = f"/cms/workflow/api/case/{case.id}/findings/{fid}/verify"
+        resp = auth_client.post(url, json={"status": "verified"})
+        assert resp.status_code == 200
+        assert resp.get_json()["verified"] is True
+
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert '<button type="button" data-action="verify-finding"' not in body
+        assert 'data-action="demote-finding"' in body
+        assert "✅" in body
+
+    def test_report_flag_persists_after_reload(self, auth_client):
+        case, inv, _ = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        url = f"/cms/workflow/api/case/{case.id}/findings/{fid}/report-flag"
+        resp = auth_client.post(url, json={"include_in_report": False})
+        assert resp.status_code == 200
+        assert resp.get_json()["include_in_report"] is False
+
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'data-report-flag="false"' in body
+
+    def test_screenshot_source_url_persists_after_reload(self, auth_client):
+        case, inv, _ = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        url = f"/cms/workflow/api/case/{case.id}/findings/{fid}/screenshots"
+        resp = auth_client.post(
+            url, json={"url": "", "source_url": "https://example.com/page", "notes": ""}
+        )
+        assert resp.status_code == 200
+
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'href="https://example.com/page"' in body
 
 
 # ---------------------------------------------------------------------------
