@@ -59,7 +59,8 @@ class TestPostgreSQLIntegration:
         # e2f3a4b5c6d7 adds tenant RLS coverage for background_tasks.
         # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
-        assert revision == "f8a9b0c1d2e3"
+        # d5e6f7a8b9c0 increases invoice item description length to 2000.
+        assert revision == "d5e6f7a8b9c0"
 
         protected = db.session.execute(
             text(
@@ -1221,7 +1222,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f8a9b0c1d2e3"
+        assert revision == "d5e6f7a8b9c0"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
