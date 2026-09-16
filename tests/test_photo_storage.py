@@ -707,8 +707,8 @@ class TestPhotoAnalysisUploadRoute:
             case2.id,
             files={"photo": (io.BytesIO(_make_png_bytes()), "two.png")},
         )
-        assert second.status_code == 403
-        assert "quota" in second.get_json()["error"].lower()
+        assert second.status_code == 413
+        assert "storage" in second.get_json()["error"].lower()
 
     def test_quota_bytes_cap(
         self, auth_client, workflow_case, photo_root, monkeypatch, no_worker
@@ -746,7 +746,70 @@ class TestPhotoAnalysisUploadRoute:
             case2.id,
             files={"photo": (io.BytesIO(_make_png_bytes()), "two.png")},
         )
-        assert second.status_code == 403
+        assert second.status_code == 413
+
+    def test_regular_tier_storage_limit_is_checked_separately(
+        self, auth_client, workflow_case, monkeypatch, no_worker
+    ):
+        monkeypatch.setattr(
+            "cms.tier_limits.check_storage_limit",
+            lambda tenant_id, extra_bytes=0: (False, 50, 50),
+        )
+        resp = self._post(
+            auth_client,
+            workflow_case.id,
+            files={"photo": (io.BytesIO(_make_png_bytes()), "tier-limit.png")},
+        )
+        assert resp.status_code == 413
+        body = resp.get_json()
+        assert body["limit"] == "tier_storage"
+        assert "tenant storage" in body["error"].lower()
+
+    @pytest.mark.parametrize("status", ["pending", "running"])
+    def test_archived_active_action_does_not_block_upload(
+        self, auth_client, workflow_case, status, no_worker
+    ):
+        action = ResearchAction(
+            case_id=workflow_case.id,
+            tenant_id=_admin_tenant_id(),
+            action_type="photo_analysis",
+            status=status,
+            archived_at=datetime.now(),
+        )
+        db.session.add(action)
+        db.session.commit()
+        resp = self._post(
+            auth_client,
+            workflow_case.id,
+            files={"photo": (io.BytesIO(_make_png_bytes()), "archived-ok.png")},
+        )
+        assert resp.status_code == 200, resp.get_json()
+
+    def test_restore_archived_active_conflict_returns_409(
+        self, auth_client, workflow_case
+    ):
+        tenant_id = _admin_tenant_id()
+        archived = ResearchAction(
+            case_id=workflow_case.id,
+            tenant_id=tenant_id,
+            action_type="photo_analysis",
+            status="pending",
+            archived_at=datetime.now(),
+        )
+        active = ResearchAction(
+            case_id=workflow_case.id,
+            tenant_id=tenant_id,
+            action_type="photo_analysis",
+            status="running",
+        )
+        db.session.add_all([archived, active])
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/actions/{archived.id}/restore", json={}
+        )
+        assert resp.status_code == 409
+        db.session.refresh(archived)
+        assert archived.archived_at is not None
 
     # -----------------------------------------------------------------------
     # Failure-atomic (route level)
@@ -1064,6 +1127,28 @@ class TestConcurrentDuplicateUpload:
             ).first()
             assert row is not None
 
+    def test_partial_unique_index_excludes_archived_actions(self):
+        if db.engine.dialect.name == "postgresql":
+            from sqlalchemy import text
+
+            predicate = db.session.execute(
+                text(
+                    "SELECT pg_get_expr(i.indpred, i.indrelid) "
+                    "FROM pg_index i "
+                    "JOIN pg_class c ON c.oid = i.indexrelid "
+                    "WHERE c.relname = 'uq_research_actions_active_photo_analysis'"
+                )
+            ).scalar_one()
+            assert "archived_at IS NULL" in predicate
+        else:
+            sql = db.session.execute(
+                db.text(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type = 'index' "
+                    "AND name = 'uq_research_actions_active_photo_analysis'"
+                )
+            ).scalar_one()
+            assert "archived_at IS NULL" in sql
     def test_duplicate_active_row_flush_raises_integrity_error(self, workflow_case):
         """Two pending rows for same (tenant, case, subject=None) is a DB error."""
         tid = _admin_tenant_id()
@@ -1217,3 +1302,61 @@ class TestConcurrentDuplicateUpload:
         tenant_dir = os.path.join(str(photo_root), tenant_id)
         if os.path.isdir(tenant_dir):
             assert len(os.listdir(tenant_dir)) <= 1
+
+    def test_threaded_uploads_serialize_transient_quota(
+        self, app, workflow_case, photo_root, no_worker, monkeypatch, auth_client
+    ):
+        """Different scopes cannot jointly pass the transient tenant cap."""
+        tenant_id = _admin_tenant_id()
+        png_size = len(_make_png_bytes())
+        monkeypatch.setattr(photo_storage, "PHOTO_ANALYSIS_TENANT_MAX_FILES", 256)
+        monkeypatch.setattr(
+            photo_storage, "PHOTO_ANALYSIS_TENANT_MAX_BYTES", png_size + 1
+        )
+        second_case_response = auth_client.post(
+            "/cms/workflow/case/new",
+            data={
+                "client_name": "Quota Race Client",
+                "title": "Quota Race Case 2",
+                "priority": "medium",
+            },
+        )
+        assert second_case_response.status_code in (200, 302)
+        from cms.models import Case
+
+        case_ids = [
+            workflow_case.id,
+            Case.query.filter_by(title="Quota Race Case 2").first().id,
+        ]
+        user_id = str(User.query.filter_by(role="admin").first().id)
+        barrier = threading.Barrier(2, timeout=5)
+        results = []
+
+        def do_upload(case_id):
+            client = app.test_client()
+            with client.session_transaction() as sess:
+                sess["_user_id"] = user_id
+                sess["_fresh"] = True
+                sess["_remember"] = "set"
+            barrier.wait(timeout=5)
+            response = client.post(
+                f"/cms/workflow/api/case/{case_id}/photo-analysis",
+                data={"photo": (io.BytesIO(_make_png_bytes()), "quota-race.png")},
+                content_type="multipart/form-data",
+            )
+            results.append(response.status_code)
+
+        threads = [threading.Thread(target=do_upload, args=(case_id,)) for case_id in case_ids]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        assert sorted(results) == [200, 413]
+        active = ResearchAction.query.filter(
+            ResearchAction.tenant_id == tenant_id,
+            ResearchAction.action_type == "photo_analysis",
+            ResearchAction.status.in_(["pending", "running"]),
+        ).count()
+        assert active == 1
+        assert len(os.listdir(os.path.join(str(photo_root), tenant_id))) == 1

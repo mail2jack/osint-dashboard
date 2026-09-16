@@ -703,3 +703,32 @@ class TestMigrationCycle:
         conn.close()
         assert revision == INVOICE_ITEM_DOWNGRADE_STOP
         assert cols_after["description"] == "VARCHAR(2000)"
+
+    def test_photo_analysis_index_preflight_rejects_existing_duplicates(self, tmp_path):
+        """The new index migration fails closed without partial DDL."""
+        db_file = tmp_path / "photo-duplicates.db"
+        _run_alembic(db_file, "upgrade", "d5e6f7a8b9c0")
+        conn = sqlite3.connect(db_file)
+        conn.executemany(
+            "INSERT INTO research_actions "
+            "(id, tenant_id, case_id, action_type, status, archived_at) "
+            "VALUES (?, ?, ?, 'photo_analysis', 'pending', NULL)",
+            [("photo-a", "tenant-a", "case-a"), ("photo-b", "tenant-a", "case-a")],
+        )
+        conn.commit()
+        conn.close()
+
+        output = _run_alembic_expect_fail(db_file, "upgrade", "head")
+        assert "duplicate active scope" in output.lower()
+        assert "tenant-a" in output
+
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        index = conn.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type = 'index' AND name = "
+            "'uq_research_actions_active_photo_analysis'"
+        ).fetchone()
+        conn.close()
+        assert revision == "d5e6f7a8b9c0"
+        assert index is None

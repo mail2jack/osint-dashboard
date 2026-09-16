@@ -43,7 +43,9 @@ Uploads are transient:
 import logging
 import os
 import re
+import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -83,6 +85,8 @@ STALE_FILE_MAX_AGE = timedelta(hours=6)
 
 # Sweep budget per call so cleanup never walks unbounded directories.
 _SWEEP_LIMIT = 50
+_TENANT_QUOTA_LOCKS: dict[str, threading.Lock] = {}
+_TENANT_QUOTA_LOCKS_GUARD = threading.Lock()
 
 
 class InvalidTenantComponent(ValueError):
@@ -164,6 +168,38 @@ def tenant_photo_analysis_usage(tenant_id: str) -> tuple[int, int]:
     except OSError:
         return count, total
     return count, total
+
+
+@contextmanager
+def tenant_photo_quota_lock(tenant_id: str):
+    """Serialize one tenant's transient quota operation."""
+    from cms import db
+    from sqlalchemy import text
+
+    if db.engine.dialect.name == "postgresql":
+        db.session.execute(
+            text(
+                "SELECT pg_advisory_xact_lock("
+                "hashtextextended(:tenant_id, 0))"
+            ),
+            {"tenant_id": tenant_id},
+        )
+        try:
+            yield
+        finally:
+            # Advisory locks are transaction-scoped. Roll back an unfinished
+            # quota transaction so early quota returns also release the lock.
+            if db.session.in_transaction():
+                db.session.rollback()
+        return
+
+    with _TENANT_QUOTA_LOCKS_GUARD:
+        lock = _TENANT_QUOTA_LOCKS.setdefault(tenant_id, threading.Lock())
+    lock.acquire()
+    try:
+        yield
+    finally:
+        lock.release()
 
 
 def store_photo(file_storage, ext: str, tenant_id: str) -> str:

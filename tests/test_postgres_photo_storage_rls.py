@@ -282,6 +282,16 @@ class TestPartialUniqueIndexOnPostgres:
         ).first()
         assert row is not None
 
+    def test_index_predicate_excludes_archived_actions(self, app):
+        predicate = db.session.execute(
+            text(
+                "SELECT pg_get_expr(i.indpred, i.indrelid) "
+                "FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+                "WHERE c.relname = 'uq_research_actions_active_photo_analysis'"
+            )
+        ).scalar_one()
+        assert "archived_at IS NULL" in predicate
+
     def test_duplicate_active_row_is_integrity_error(self, app):
         tid = uuid.uuid4().hex
         case = _seed_case(tid, "PG-RLS-IDX")
