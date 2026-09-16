@@ -60,7 +60,8 @@ class TestPostgreSQLIntegration:
         # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
         # d5e6f7a8b9c0 increases invoice item description length to 2000.
-        assert revision == "d5e6f7a8b9c0"
+        # e0f1a2b3c4d6 adds the photo-analysis partial unique index.
+        assert revision == "e0f1a2b3c4d6"
 
         protected = db.session.execute(
             text(
@@ -1218,11 +1219,12 @@ class TestInvoiceRLSAndNumbering:
         combined = " ".join(text_blob for text_blob in blobs if text_blob).lower()
         assert "downgrade" in combined and "not safe" in combined
 
-        # Aborted before any DDL: still at the head, counter table present.
+        # Aborted before any DDL: single-transaction downgrade rolled back, so
+        # the DB is still at the head (photo-analysis index present).
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "d5e6f7a8b9c0"
+        assert revision == "e0f1a2b3c4d6"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
