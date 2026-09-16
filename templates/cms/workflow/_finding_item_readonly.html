@@ -1,4 +1,4 @@
-<div class="finding-item" data-finding-id="{{ fd.id }}">
+<div class="finding-item" data-finding-id="{{ fd.id }}" data-case-id="{{ case.id }}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <strong>{{ fd.title }}</strong>
@@ -59,6 +59,44 @@
       {% if ss.notes %}<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">{{ ss.notes }}</div>{% endif %}
     </div>
     {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if can_write %}
+  <div style="margin-top:0.4rem;">
+    <textarea data-action="comment-input" data-finding-id="{{ fd.id }}" placeholder="{{ _('Note / comment...') }}" style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">{{ fd.comment or '' }}</textarea>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">
+    {% if fd.verified %}
+    <span style="border:1px solid #10b981;border-radius:4px;padding:0.15rem 0.5rem;font-size:0.78rem;color:#10b981;background:rgba(16,185,129,0.08);">✅ {{ _('Verified') }}</span>
+    <button type="button" data-action="demote-finding" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">↩ {{ _('Back to pending') }}</button>
+    {% else %}
+    <button type="button" data-action="verify-finding" data-finding-id="{{ fd.id }}" data-verified="false" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">⏳ {{ _('Verify') }}</button>
+    <button type="button" data-action="reject-finding" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ {{ _('Reject') }}</button>
+    {% endif %}
+    <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _('Screenshot') }}</button>
+    {% if fd.include_in_report is sameas false %}
+    <button type="button" data-action="report-flag" data-finding-id="{{ fd.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Excluded from official reports') }}">🚫 {{ _('Exclude') }}</button>
+    {% else %}
+    <button type="button" data-action="report-flag" data-finding-id="{{ fd.id }}" data-report-flag="true" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);" title="{{ _('Included in official reports') }}">📄 {{ _('In report') }}</button>
+    {% endif %}
+    <form method="POST" action="{{ url_for('workflow.archive_finding', finding_id=fd.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
+    </form>
+  </div>
+
+  <div class="ss-upload-form" data-finding-id="{{ fd.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
+    <div style="display:flex;flex-direction:column;gap:0.3rem;">
+      <input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">
+      <input type="text" class="ss-source-input" placeholder="{{ _('Source URL (optional, website the screenshot is from)') }}" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
+      <input type="text" class="ss-notes-input" placeholder="{{ _('Note (optional)') }}" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
+      <div style="display:flex;gap:0.3rem;">
+        <button type="button" data-action="save-screenshot" data-finding-id="{{ fd.id }}" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _('Save') }}</button>
+        <button type="button" data-action="cancel-screenshot" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _('Cancel') }}</button>
+      </div>
+    </div>
   </div>
   {% endif %}
 </div>

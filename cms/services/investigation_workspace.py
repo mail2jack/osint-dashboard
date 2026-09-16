@@ -118,6 +118,8 @@ class FindingDTO:
     source_type: str | None
     status: str | None
     verified: bool
+    comment: str | None
+    include_in_report: bool | None
     created_at: datetime | None
     screenshots: list[ScreenshotDTO]
     # Only the actions of THIS investigation that produced this finding.
@@ -403,6 +405,8 @@ def load_inv_findings(
             source_type=f.source_type,
             status=f.status,
             verified=f.verified,
+            comment=f.comment,
+            include_in_report=f.include_in_report,
             created_at=f.created_at,
             screenshots=_screenshot_dtos(f),
             action_ids=sorted(finding_actions_map.get(f.id, [])),
@@ -751,6 +755,8 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
             source_type=f.source_type,
             status=f.status,
             verified=f.verified,
+            comment=f.comment,
+            include_in_report=f.include_in_report,
             created_at=f.created_at,
             screenshots=_screenshot_dtos(f),
             action_ids=sorted(finding_actions_map.get(f.id, [])),

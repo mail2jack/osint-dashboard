@@ -144,6 +144,56 @@ def _investigator_required(f):
     return wrapper
 
 
+def _resolve_mutable_finding(case_id, finding_id):
+    """Central guard for case-scoped finding mutations.
+
+    Enforces (in order):
+      - finding exists AND is bound to ``case_id``              → else 404;
+      - finding is not soft-deleted                              → else 404;
+      - caller has tenant/case access                            → else 403;
+      - finding is not archived (normal mutations)               → else 409.
+
+    Returns ``(finding, None)`` on success, or ``(None, (payload, status))``
+    with a JSON error stanza the caller must return verbatim.  On failure
+    nothing is mutated and no audit is written.
+    """
+    finding = db.session.get(WorkflowFinding, finding_id)
+    if not finding or finding.case_id != case_id or finding.is_deleted:
+        return None, ({"error": "Not found"}, 404)
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_case_access(case)
+    elif (
+        not current_user.is_super_admin and finding.tenant_id != current_user.tenant_id
+    ):
+        return None, ({"error": "Forbidden"}, 403)
+    if finding.archived_at is not None:
+        return None, ({"error": "Finding is archived"}, 409)
+    return finding, None
+
+
+def _resolve_findings_for_archive_restore(finding_id):
+    """Central guard for the id-only archive/restore endpoints.
+
+    ``case_id`` is not in the URL, so the case is derived from the finding and
+    tenant access is the fallback.  Enforces existence (else 404), not
+    soft-deleted (else 404) and tenant/case access (else 403).  Lifecycle
+    state (archived or not) is the caller's business so it can return the
+    correct 409 for double-archive / double-restore.
+
+    Returns ``(finding, None)`` on success, else ``(None, (payload, status))``.
+    """
+    finding = db.session.get(WorkflowFinding, finding_id)
+    if not finding or finding.is_deleted:
+        return None, ({"error": "Not found"}, 404)
+    case = db.session.get(WorkflowCase, finding.case_id)
+    if case:
+        ensure_case_access(case)
+    else:
+        ensure_tenant_access(finding)
+    return finding, None
+
+
 def _combine_address_number(number: str, addition: str) -> str:
     """Combine house number and addition into a single field (e.g. '45A')."""
     n = number.strip()
@@ -350,6 +400,31 @@ SCREENSHOT_DIR = os.path.join(
     "instance",
     "finding_screenshots",
 )
+
+# Screenshot upload hardening (P2-5): per-file size cap and a per-finding
+# count cap.  The finding screenshots table carries no file_size column, so
+# the tier storage quota (Document/Screenshot only) cannot cover these files;
+# these two caps keep growth bounded without a migration.
+MAX_SCREENSHOT_FILE_BYTES = 8 * 1024 * 1024  # 8 MB per uploaded file
+MAX_SCREENSHOTS_PER_FINDING = 25
+
+
+def _remove_orphan_screenshot(file_path):
+    """Best-effort removal of a screenshot file written to *file_path*.
+
+    Only ever touches the exact computed destination file (never a directory,
+    never a guessed path).  Cleanup failures are logged but never mask the
+    original error the caller is already reporting.
+    """
+    if not file_path:
+        return
+    try:
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    except OSError:
+        logger.exception(
+            "add_screenshot cleanup: could not remove orphaned file %s", file_path
+        )
 
 
 @workflow_bp.route("/")
@@ -2366,12 +2441,9 @@ def pv_edit(case_id):
 @login_required
 @_investigator_required
 def delete_finding(case_id, finding_id):
-    finding = db.session.get(WorkflowFinding, finding_id)
-    if not finding or finding.case_id != case_id:
-        return jsonify({"error": "Not found"}), 404
-    case = db.session.get(WorkflowCase, case_id)
-    if case:
-        ensure_case_access(case)
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
     finding.soft_delete()
     AuditLog.log(
         user_id=current_user.id,
@@ -2399,10 +2471,13 @@ def batch_delete_findings(case_id):
         return jsonify({"error": "No IDs provided"}), 400
     deleted = 0
     for fid in ids:
-        finding = db.session.get(WorkflowFinding, fid)
-        if finding and finding.case_id == case_id:
-            finding.soft_delete()
-            deleted += 1
+        finding, err = _resolve_mutable_finding(case_id, fid)
+        if err is not None and err[1] == 409:
+            return jsonify(err[0]), 409
+        if err is not None:
+            continue  # already deleted / unknown — idempotent, nothing to do
+        finding.soft_delete()
+        deleted += 1
     AuditLog.log(
         user_id=current_user.id,
         action="bulk_delete",
@@ -2425,12 +2500,9 @@ _verify_cooldown = {}  # {finding_id: timestamp}
 @login_required
 @_investigator_required
 def verify_finding(case_id, finding_id):
-    finding = db.session.get(WorkflowFinding, finding_id)
-    if not finding or finding.case_id != case_id:
-        return jsonify({"error": "Not found"}), 404
-    case = db.session.get(WorkflowCase, case_id)
-    if case:
-        ensure_case_access(case)
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
     body = request.get_json(silent=True) or {}
     logger.debug(
         "verify_finding body=%s finding_id=%s user=%s", body, finding_id, current_user.id
@@ -2513,12 +2585,9 @@ def verify_finding(case_id, finding_id):
 @login_required
 @_investigator_required
 def save_comment(case_id, finding_id):
-    finding = db.session.get(WorkflowFinding, finding_id)
-    if not finding or finding.case_id != case_id:
-        return jsonify({"error": "Not found"}), 404
-    case = db.session.get(WorkflowCase, case_id)
-    if case:
-        ensure_case_access(case)
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
     body = request.get_json(silent=True) or {}
     new_comment = body.get("comment", "")
     finding.comment = new_comment
@@ -2545,16 +2614,9 @@ def set_report_flag(case_id, finding_id):
     ``include_in_report`` semantics: NULL/True = included in official reports,
     False = excluded. Backward compatible — existing findings are unchanged.
     """
-    finding = db.session.get(WorkflowFinding, finding_id)
-    if not finding or finding.case_id != case_id:
-        return jsonify({"error": "Not found"}), 404
-    case = db.session.get(WorkflowCase, case_id)
-    if case:
-        ensure_case_access(case)
-    elif (
-        not current_user.is_super_admin and finding.tenant_id != current_user.tenant_id
-    ):
-        return jsonify({"error": "Forbidden"}), 403
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
     body = request.get_json(silent=True) or {}
     include = body.get("include_in_report")
     if not isinstance(include, bool):
@@ -2632,12 +2694,13 @@ def delete_action_api(case_id, action_id):
 @login_required
 @_investigator_required
 def add_screenshot(case_id, finding_id):
-    finding = db.session.get(WorkflowFinding, finding_id)
-    if not finding or finding.case_id != case_id:
-        return jsonify({"error": "Not found"}), 404
-    case = db.session.get(WorkflowCase, case_id)
-    if case:
-        ensure_case_access(case)
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+
+    existing_count = WorkflowScreenshot.query.filter_by(finding_id=finding_id).count()
+    if existing_count >= MAX_SCREENSHOTS_PER_FINDING:
+        return jsonify({"error": "Screenshot limit reached for this finding"}), 409
 
     url = ""
     source_url = ""
@@ -2657,12 +2720,29 @@ def add_screenshot(case_id, finding_id):
             is_valid, detected = validate_upload(file, ext)
             if not is_valid:
                 return jsonify({"error": "File content does not match extension"}), 400
+            file.seek(0, os.SEEK_END)
+            upload_size = file.tell()
+            file.seek(0)
+            if upload_size > MAX_SCREENSHOT_FILE_BYTES:
+                return (
+                    jsonify(
+                        {"error": "Screenshot file is too large (max 8 MB)"}
+                    ),
+                    413,
+                )
             stored_name = f"{uuid.uuid4()}.{ext}"
             finding_dir = os.path.join(SCREENSHOT_DIR, finding_id)
-            os.makedirs(finding_dir, exist_ok=True)
             dest = os.path.join(finding_dir, stored_name)
-            file.save(dest)
-            file_path = dest
+            file_path = dest  # known before the write: clean unlink target
+            try:
+                os.makedirs(finding_dir, exist_ok=True)
+                file.save(dest)
+            except Exception:
+                _remove_orphan_screenshot(file_path)
+                logger.exception(
+                    "add_screenshot save error finding_id=%s", finding_id
+                )
+                return jsonify({"error": "Internal error"}), 500
             url = url_for(
                 "workflow.serve_screenshot",
                 finding_id=finding_id,
@@ -2685,16 +2765,22 @@ def add_screenshot(case_id, finding_id):
         captured_at=datetime.now(),
         tenant_id=current_user.tenant_id,
     )
-    db.session.add(ss)
-    AuditLog.log(
-        user_id=current_user.id,
-        action="create",
-        entity_type="finding_screenshot",
-        entity_id=ss.id,
-        ip_address=request.remote_addr,
-        description=f"Workflow added screenshot to finding {finding_id}",
-    )
-    db.session.commit()
+    try:
+        db.session.add(ss)
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="finding_screenshot",
+            entity_id=ss.id,
+            ip_address=request.remote_addr,
+            description=f"Workflow added screenshot to finding {finding_id}",
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        _remove_orphan_screenshot(file_path)
+        logger.exception("add_screenshot DB error finding_id=%s", finding_id)
+        return jsonify({"error": "Internal error"}), 500
     ss_data = {
         "url": ss.url,
         "source_url": ss.source_url,
@@ -2808,16 +2894,14 @@ def restore_action(action_id):
 
 @workflow_bp.route("/api/findings/<finding_id>/archive", methods=["POST"])
 @login_required
+@_investigator_required
 def archive_finding(finding_id):
     """Archive a single finding."""
-    from cms.models import Finding, db
-
-    finding = db.session.get(Finding, finding_id) or abort(404)
-    case = db.session.get(WorkflowCase, finding.case_id)
-    if case:
-        ensure_case_access(case)
-    else:
-        ensure_tenant_access(finding)
+    finding, err = _resolve_findings_for_archive_restore(finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    if finding.archived_at is not None:
+        return jsonify({"error": "Finding is already archived"}), 409
     finding.archived_at = datetime.now(UTC)
     AuditLog.log(
         user_id=current_user.id,
@@ -2838,16 +2922,14 @@ def archive_finding(finding_id):
 
 @workflow_bp.route("/api/findings/<finding_id>/restore", methods=["POST"])
 @login_required
+@_investigator_required
 def restore_finding(finding_id):
     """Restore an archived finding."""
-    from cms.models import Finding, db
-
-    finding = db.session.get(Finding, finding_id) or abort(404)
-    case = db.session.get(WorkflowCase, finding.case_id)
-    if case:
-        ensure_case_access(case)
-    else:
-        ensure_tenant_access(finding)
+    finding, err = _resolve_findings_for_archive_restore(finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    if finding.archived_at is None:
+        return jsonify({"error": "Finding is not archived"}), 409
     finding.archived_at = None
     AuditLog.log(
         user_id=current_user.id,
