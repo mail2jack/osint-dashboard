@@ -245,6 +245,7 @@ class TestSweepUnderRLS:
         case = _seed_case(tid, "PG-RLS")
         action = _make_action(case, tid, "active.png", status="running")
         db.session.commit()
+        action_id = action.id
 
         set_tenant_context(db, tid)
         active = photo_storage.collect_active_photo_data_values()
@@ -254,7 +255,7 @@ class TestSweepUnderRLS:
         set_tenant_context(db, other_tenant.id)
         db.session.expire_all()
         assert photo_storage.collect_active_photo_data_values() == set()
-        assert ResearchAction.query.filter_by(id=action.id).count() == 0
+        assert ResearchAction.query.filter_by(id=action_id).count() == 0
 
     def test_sweep_never_removes_file_referenced_in_other_tenant(
         self, app, tmp_path, monkeypatch
