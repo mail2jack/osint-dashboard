@@ -65,7 +65,16 @@ function handleFindingClick(e) {
     e.preventDefault();
     var rfid = rej.getAttribute('data-finding-id');
     if (!rfid) return true;
-    if (!window.confirm('{{ _("Reject this finding? It will be removed from this case.") }}')) return true;
+    if (rej.dataset.busy === '1') return true;
+    rej.dataset.busy = '1';
+    rej.disabled = true;
+    rej.style.opacity = '0.5';
+    if (!window.confirm('{{ _("Reject this finding? It will be removed from this case.") }}')) {
+      rej.dataset.busy = '';
+      rej.disabled = false;
+      rej.style.opacity = '1';
+      return true;
+    }
     var rcsrf = (typeof CSRF !== 'undefined') ? CSRF : '';
     fetch('/cms/workflow/api/case/' + findingCaseId(rej) + '/findings/' + rfid + '/verify', {
       method: 'POST',
@@ -80,9 +89,19 @@ function handleFindingClick(e) {
         var item = rej.closest('.finding-item');
         if (item) item.remove();
         if (typeof pollStatus === 'function') pollStatus();
+      } else {
+        rej.dataset.busy = '';
+        rej.disabled = false;
+        rej.style.opacity = '1';
+        if (typeof showToast === 'function') showToast(data.error || '{{ _("Could not update finding") }}', 'error');
       }
     })
-    .catch(function() {});
+    .catch(function() {
+      rej.dataset.busy = '';
+      rej.disabled = false;
+      rej.style.opacity = '1';
+      if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+    });
     return true;
   }
 
@@ -112,7 +131,11 @@ function handleFindingClick(e) {
         if (typeof showToast === 'function') showToast(data.error || '{{ _("Could not update finding") }}', 'error');
       }
     })
-    .catch(function() { dem.disabled = false; dem.style.opacity = '1'; });
+    .catch(function() {
+      dem.disabled = false;
+      dem.style.opacity = '1';
+      if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+    });
     return true;
   }
 
@@ -147,7 +170,11 @@ function handleFindingClick(e) {
         if (typeof showToast === 'function') showToast(data.error || '{{ _("Could not update finding") }}', 'error');
       }
     })
-    .catch(function() { vfy.disabled = false; vfy.style.opacity = '1'; });
+    .catch(function() {
+      vfy.disabled = false;
+      vfy.style.opacity = '1';
+      if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+    });
     return true;
   }
 
@@ -179,7 +206,11 @@ function handleFindingClick(e) {
       if (typeof _lastFindingsHash    !== 'undefined') _lastFindingsHash = '';
       if (typeof pollStatus === 'function') pollStatus();
     })
-    .catch(function() { rfl.disabled = false; rfl.style.opacity = '1'; });
+    .catch(function() {
+      rfl.disabled = false;
+      rfl.style.opacity = '1';
+      if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+    });
     return true;
   }
 
@@ -202,6 +233,7 @@ function handleFindingClick(e) {
       form.querySelector('.ss-source-input').value = '';
       form.querySelector('.ss-notes-input').value = '';
       form.style.display = 'none';
+      form.setAttribute('data-saving', '0');
     }
     return true;
   }
@@ -212,20 +244,29 @@ function handleFindingClick(e) {
     var fid = save.getAttribute('data-finding-id');
     var form = document.querySelector('.ss-upload-form[data-finding-id="' + fid + '"]');
     if (!form) return true;
+    if (form.getAttribute('data-saving') === '1') return true;
     var fileInput = form.querySelector('.ss-file-input');
     var source = form.querySelector('.ss-source-input').value.trim();
     var notes = form.querySelector('.ss-notes-input').value.trim();
     var file = fileInput.files[0];
     if (!file && !source) return true;
 
+    form.setAttribute('data-saving', '1');
     if (typeof save.disabled !== 'undefined') save.disabled = true;
     save.style.opacity = '0.5';
     var csrf = (typeof CSRF !== 'undefined') ? CSRF : '';
+    var onFail = function(msg) {
+      form.setAttribute('data-saving', '0');
+      save.disabled = false;
+      save.style.opacity = '1';
+      if (typeof showToast === 'function') showToast(msg || '{{ _("Could not update finding") }}', 'error');
+    };
     var onSuccess = function() {
       fileInput.value = '';
       form.querySelector('.ss-source-input').value = '';
       form.querySelector('.ss-notes-input').value = '';
       form.style.display = 'none';
+      form.setAttribute('data-saving', '0');
       if (typeof pollStatus === 'function') pollStatus();
     };
     if (file) {
@@ -240,8 +281,8 @@ function handleFindingClick(e) {
         body: fd,
       })
       .then(function(r) { return r.json(); })
-      .then(function(data) { if (data.ok) onSuccess(); else { save.disabled = false; save.style.opacity = '1'; } })
-      .catch(function() { save.disabled = false; save.style.opacity = '1'; });
+      .then(function(data) { if (data.ok) onSuccess(); else onFail(data.error); })
+      .catch(function() { onFail('{{ _("Network error — please try again") }}'); });
     } else {
       fetch('/cms/workflow/api/case/' + findingCaseId(save) + '/findings/' + fid + '/screenshots', {
         method: 'POST',
@@ -249,8 +290,8 @@ function handleFindingClick(e) {
         body: JSON.stringify({url: '', source_url: source, notes: notes}),
       })
       .then(function(r) { return r.json(); })
-      .then(function(data) { if (data.ok) onSuccess(); else { save.disabled = false; save.style.opacity = '1'; } })
-      .catch(function() { save.disabled = false; save.style.opacity = '1'; });
+      .then(function(data) { if (data.ok) onSuccess(); else onFail(data.error); })
+      .catch(function() { onFail('{{ _("Network error — please try again") }}'); });
     }
     return true;
   }

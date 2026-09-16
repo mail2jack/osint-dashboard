@@ -72,7 +72,16 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       var rfid = rej.getAttribute('data-finding-id');
       if (!rfid) return;
-      if (!confirm('{{ _("Reject this finding? It will be removed from this case.") }}')) return;
+      if (rej.dataset.busy === '1') return;
+      rej.dataset.busy = '1';
+      rej.disabled = true;
+      rej.style.opacity = '0.5';
+      if (!confirm('{{ _("Reject this finding? It will be removed from this case.") }}')) {
+        rej.dataset.busy = '';
+        rej.disabled = false;
+        rej.style.opacity = '1';
+        return;
+      }
       var rcsrf = '{{ csrf_token() }}';
       fetch('/cms/workflow/api/case/' + findingCaseId(rej) + '/findings/' + rfid + '/verify', {
         method: 'POST',
@@ -91,9 +100,19 @@ document.addEventListener('DOMContentLoaded', function() {
             var n = document.querySelectorAll('.finding-item').length;
             cnt.textContent = n + ' findings';
           }
+        } else {
+          rej.dataset.busy = '';
+          rej.disabled = false;
+          rej.style.opacity = '1';
+          if (typeof showToast === 'function') showToast(data.error || '{{ _("Could not update finding") }}', 'error');
         }
       })
-      .catch(function() {});
+      .catch(function() {
+        rej.dataset.busy = '';
+        rej.disabled = false;
+        rej.style.opacity = '1';
+        if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+      });
       return;
     }
     var dem = e.target.closest('[data-action="demote-finding"]');
@@ -200,9 +219,14 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
           vfy.disabled = false;
           vfy.style.opacity = '1';
+          if (typeof showToast === 'function') showToast(data.error || '{{ _("Could not update finding") }}', 'error');
         }
       })
-      .catch(function() { vfy.disabled = false; vfy.style.opacity = '1'; });
+      .catch(function() {
+        vfy.disabled = false;
+        vfy.style.opacity = '1';
+        if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error');
+      });
       return;
     }
     var ssBtn = e.target.closest('[data-action="add-screenshot-btn"]');
@@ -223,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
         form.querySelector('.ss-source-input').value = '';
         form.querySelector('.ss-notes-input').value = '';
         form.style.display = 'none';
+        form.setAttribute('data-saving', '0');
       }
       return;
     }
@@ -238,13 +263,19 @@ document.addEventListener('DOMContentLoaded', function() {
       var fid = save.getAttribute('data-finding-id');
       var form = document.querySelector('.ss-upload-form[data-finding-id="' + fid + '"]');
       if (!form) return;
+      if (form.getAttribute('data-saving') === '1') return;
       var fileInput = form.querySelector('.ss-file-input');
       var source = form.querySelector('.ss-source-input').value.trim();
       var notes = form.querySelector('.ss-notes-input').value.trim();
       var file = fileInput.files[0];
       if (!file && !source) return;
 
+      form.setAttribute('data-saving', '1');
       var csrf = '{{ csrf_token() }}';
+      var onFail = function(msg) {
+        form.setAttribute('data-saving', '0');
+        if (typeof showToast === 'function') showToast(msg || '{{ _("Could not update finding") }}', 'error');
+      };
       if (file) {
         var fd = new FormData();
         fd.append('file', file);
@@ -263,10 +294,13 @@ document.addEventListener('DOMContentLoaded', function() {
             form.querySelector('.ss-source-input').value = '';
             form.querySelector('.ss-notes-input').value = '';
             form.style.display = 'none';
+            form.setAttribute('data-saving', '0');
             pollStatus();
+          } else {
+            onFail(data.error);
           }
         })
-        .catch(function() {});
+        .catch(function() { onFail('{{ _("Network error — please try again") }}'); });
       } else {
         fetch('/cms/workflow/api/case/' + findingCaseId(save) + '/findings/' + fid + '/screenshots', {
           method: 'POST',
@@ -279,10 +313,13 @@ document.addEventListener('DOMContentLoaded', function() {
             form.querySelector('.ss-source-input').value = '';
             form.querySelector('.ss-notes-input').value = '';
             form.style.display = 'none';
+            form.setAttribute('data-saving', '0');
             pollStatus();
+          } else {
+            onFail(data.error);
           }
         })
-        .catch(function() {});
+        .catch(function() { onFail('{{ _("Network error — please try again") }}'); });
       }
       return;
     }
@@ -320,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         rfl.parentNode.replaceChild(btn, rfl);
       })
-      .catch(function() {});
+      .catch(function() { if (typeof showToast === 'function') showToast('{{ _("Network error — please try again") }}', 'error'); });
       return;
     }
     var rdwToggle = e.target.closest('.rdw-raw-toggle');
