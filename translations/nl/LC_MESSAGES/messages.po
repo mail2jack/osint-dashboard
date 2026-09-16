@@ -4730,6 +4730,15 @@ msgstr "Actie gestart."
 msgid "Network error — could not start the action."
 msgstr "Netwerkfout — de actie kon niet worden gestart."
 
+msgid "Network error — please try again"
+msgstr "Netwerkfout — probeer het opnieuw"
+
+msgid "Note (optional)"
+msgstr "Notitie (optioneel)"
+
+msgid "Source URL (optional, website the screenshot is from)"
+msgstr "Bron-URL (optioneel, website waar de screenshot vandaan komt)"
+
 msgid "— Case-wide target —"
 msgstr "— Zaakbreed doelwit —"
 

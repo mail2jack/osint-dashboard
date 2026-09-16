@@ -4938,6 +4938,15 @@ msgstr "Action started."
 msgid "Network error — could not start the action."
 msgstr "Network error — could not start the action."
 
+msgid "Network error — please try again"
+msgstr "Network error — please try again"
+
+msgid "Note (optional)"
+msgstr "Note (optional)"
+
+msgid "Source URL (optional, website the screenshot is from)"
+msgstr "Source URL (optional, website the screenshot is from)"
+
 msgid "— Case-wide target —"
 msgstr "— Case-wide target —"
 
