@@ -237,7 +237,11 @@ class TestSweepUnderRLS:
         self, app, tmp_path, monkeypatch
     ):
         _root(tmp_path, monkeypatch)
-        tid = uuid.uuid4().hex
+        tenant = _new_tenant("Collect")
+        other_tenant = _new_tenant("CollectOther")
+        db.session.commit()
+        tid = tenant.id
+        set_tenant_context(db, tid, bypass_rls=True)
         case = _seed_case(tid, "PG-RLS")
         action = _make_action(case, tid, "active.png", status="running")
         db.session.commit()
@@ -247,8 +251,7 @@ class TestSweepUnderRLS:
         assert "active.png" in active
 
         # A different tenant (RLS hides A's rows) sees no photo actions.
-        other_tid = uuid.uuid4().hex
-        set_tenant_context(db, other_tid)
+        set_tenant_context(db, other_tenant.id)
         db.session.expire_all()
         assert photo_storage.collect_active_photo_data_values() == set()
         assert ResearchAction.query.filter_by(id=action.id).count() == 0
@@ -324,7 +327,10 @@ class TestPartialUniqueIndexOnPostgres:
         assert "archived_at IS NULL" in predicate
 
     def test_duplicate_active_row_is_integrity_error(self, app):
-        tid = uuid.uuid4().hex
+        tenant = _new_tenant("Duplicate")
+        db.session.commit()
+        tid = tenant.id
+        set_tenant_context(db, tid, bypass_rls=True)
         case = _seed_case(tid, "PG-RLS-IDX")
         a = _make_action(case, tid, "a.png", status="pending")
         db.session.commit()
@@ -343,16 +349,25 @@ class TestPartialUniqueIndexOnPostgres:
         db.session.rollback()
 
     def test_different_tenants_can_both_be_active(self, app):
-        tid_a = uuid.uuid4().hex
-        tid_b = uuid.uuid4().hex
+        tenant_a = _new_tenant("ActiveA")
+        tenant_b = _new_tenant("ActiveB")
+        db.session.commit()
+        tid_a = tenant_a.id
+        tid_b = tenant_b.id
+        set_tenant_context(db, tid_a, bypass_rls=True)
         case_a = _seed_case(tid_a, "PG-RLS-A")
+        db.session.commit()
+        set_tenant_context(db, tid_b, bypass_rls=True)
         case_b = _seed_case(tid_b, "PG-RLS-B")
         _make_action(case_a, tid_a, "a.png", status="pending")
         _make_action(case_b, tid_b, "b.png", status="pending")
         db.session.commit()
 
     def test_completed_does_not_block_new_active(self, app):
-        tid = uuid.uuid4().hex
+        tenant = _new_tenant("Completed")
+        db.session.commit()
+        tid = tenant.id
+        set_tenant_context(db, tid, bypass_rls=True)
         case = _seed_case(tid, "PG-RLS-C")
         _make_action(case, tid, "a.png", status="completed")
         db.session.commit()
@@ -421,8 +436,12 @@ class TestColdWorkerPhotoAnalysis:
         assert photo_storage.resolve_photo_path(name, tenant.id) is None
 
     def test_cold_worker_cannot_see_other_tenant_action(self, app):
-        tid_a = uuid.uuid4().hex
-        tid_b = uuid.uuid4().hex
+        tenant_a = _new_tenant("ColdA")
+        tenant_b = _new_tenant("ColdB")
+        db.session.commit()
+        tid_a = tenant_a.id
+        tid_b = tenant_b.id
+        set_tenant_context(db, tid_a, bypass_rls=True)
         case = _seed_case(tid_a, "PG-RLS-ISO")
         action = _make_action(case, tid_a, "x.png", status="pending")
         db.session.commit()
