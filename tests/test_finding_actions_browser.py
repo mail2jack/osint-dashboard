@@ -2,7 +2,9 @@
 
 Proves in real Chromium:
   - 390px viewport: finding action controls don't overflow horizontally;
-  - reject double-click guard: exactly one POST is sent even with rapid clicks.
+  - reject double-click guard: exactly one POST is sent even with rapid clicks;
+  - comment auto-save: an out-of-order (stale) response triggers a trailing
+    save so the newest text always lands last in the DB and the UI.
 
 Requires Playwright (``pip install playwright && playwright install chromium``).
 Falls back gracefully when Chromium is not installed.
@@ -11,6 +13,7 @@ Falls back gracefully when Chromium is not installed.
 import re
 import socket
 import threading
+import time
 import uuid
 from datetime import UTC, datetime
 
@@ -320,3 +323,112 @@ def test_reject_double_click_sends_one_request(app, workspace_case):
     finally:
         server.shutdown()
         thread.join(timeout=3)
+
+
+def test_comment_autosave_out_of_order_keeps_newest(app, workspace_case):
+    # Delay the FIRST comment response server-side (2s) so the second POST's
+    # response reaches the browser first — i.e. the stale response arrives last.
+    # Production client JS is untouched; no Playwright route interception.
+    comment_view = app.view_functions["workflow.save_comment"]
+    call_state = {"count": 0}
+
+    def _delayed_comment(**kwargs):
+        call_state["count"] += 1
+        resp = comment_view(**kwargs)
+        if call_state["count"] == 1:
+            time.sleep(2.0)
+        return resp
+
+    app.view_functions["workflow.save_comment"] = _delayed_comment
+
+    server, thread, port = _start_server(app)
+    try:
+        s = _requests.Session()
+        _, base = _login_http(s, port)
+        case_id, inv_id = workspace_case
+        with app.app_context():
+            finding = Finding.query.filter_by(
+                case_id=case_id, title="Browser Finding"
+            ).first()
+            finding_id = str(finding.id)
+        with PW.sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            try:
+                ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+                try:
+                    ctx.add_cookies([
+                        {"name": c.name, "value": c.value,
+                         "domain": "127.0.0.1", "path": "/"}
+                        for c in s.cookies
+                    ])
+                    page = ctx.new_page()
+                    diag = _browser_diagnostics(page)
+                    comment_requests = []
+                    page.on(
+                        "request",
+                        lambda r: comment_requests.append(r)
+                        if "/findings/" in r.url and r.url.endswith("/comment")
+                        else None,
+                    )
+
+                    resp = page.goto(
+                        f"{base}{INVESTIGATION_URL.format(case_id=case_id, inv_id=inv_id)}"
+                    )
+                    assert resp is not None and resp.status == 200
+                    page.wait_for_selector(".finding-item", timeout=5000)
+                    ta = page.locator('[data-action="comment-input"]').first
+
+                    # First save (older text): fired ~600ms after input; the
+                    # view holds its response for 2s.
+                    ta.fill("out-of-order A")
+                    page.wait_for_timeout(800)
+                    # Keep typing while the first request is in flight: the
+                    # debounced second save (newest text) is dispatched and its
+                    # response returns first.
+                    ta.fill("out-of-order AB")
+                    page.wait_for_timeout(800)
+                    assert len(comment_requests) == 2, (
+                        "expected the two comment saves, "
+                        f"got {len(comment_requests)}"
+                    )
+
+                    # Once the stale (first) response finally arrives, the seq
+                    # guard must schedule a trailing save carrying newest text.
+                    deadline = time.time() + 8
+                    while len(comment_requests) < 3 and time.time() < deadline:
+                        page.wait_for_timeout(100)
+                    assert len(comment_requests) == 3, (
+                        "expected a trailing save after the stale response, "
+                        f"got {len(comment_requests)} comment requests"
+                    )
+                    trailing = comment_requests[2]
+                    assert '"out-of-order AB"' in trailing.post_data, (
+                        "trailing save must carry the newest comment text"
+                    )
+
+                    page.wait_for_timeout(700)
+                    assert diag == {"console": [], "page": [], "requests": []}, diag
+
+                    with app.app_context():
+                        comment = db.session.get(Finding, finding_id).comment
+                    assert comment == "out-of-order AB", (
+                        f"stale response overwrote newest comment, DB has {comment!r}"
+                    )
+
+                    page.reload()
+                    page.wait_for_selector(".finding-item", timeout=5000)
+                    reloaded_value = page.locator(
+                        '[data-action="comment-input"]'
+                    ).first.input_value()
+                    assert reloaded_value == "out-of-order AB", (
+                        f"UI shows {reloaded_value!r} after reload, "
+                        "expected out-of-order AB"
+                    )
+                finally:
+                    ctx.close()
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=3)
+        app.view_functions["workflow.save_comment"] = comment_view
