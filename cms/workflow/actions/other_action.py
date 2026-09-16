@@ -166,42 +166,53 @@ def _subdomain_check(action):
 
 
 def _photo_analysis(action):
-    """Analyze photo EXIF metadata, GPS, camera info, and generate reverse search links."""
+    """Analyze photo EXIF metadata, GPS, camera info, and generate reverse search links.
+
+    Photo source priority:
+    1. ``action.data_value`` resolved through the canonical storage helper
+       (current ad-hoc uploads stored under ``instance/photo_analysis``).
+    2. ``subject.photo_path`` translated via ``current_app.root_path`` (the
+       existing permanent subject photo under ``static/uploads/subjects``).
+
+    Historical ``data_value`` entries that point to the old ``cms/static``
+    location will *not* resolve inside the canonical root; the worker then
+    falls back to the subject photo (if present) and otherwise emits a clean
+    "photo unavailable" finding — never a 500.
+    """
+    from flask import current_app
+
     from cms.services.photo_analysis import (
         analyze_photo,
         format_analysis_finding,
     )
+    from cms.services.photo_storage import resolve_photo_path, unlink_photo
 
     subject = _action_subject(action)
     findings = []
 
-    # Determine photo path
     photo_path = None
     photo_url = None
+    is_adhoc_upload = False
 
-    if subject and subject.photo_path:
-        photo_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    # 1. Resolve ad-hoc upload via the canonical storage root.
+    if action.data_value:
+        resolved = resolve_photo_path(action.data_value)
+        if resolved:
+            photo_path = resolved
+            is_adhoc_upload = True
+
+    # 2. Fall back to the permanent subject photo (served by Flask /static).
+    if not photo_path and subject and subject.photo_path:
+        candidate = os.path.join(
+            current_app.root_path,
             "static",
             subject.photo_path.lstrip("/"),
         )
-        photo_url = subject.photo_path
+        if os.path.isfile(candidate):
+            photo_path = candidate
+            photo_url = subject.photo_path
 
-    # If no subject photo, check data_value for a path
-    if not photo_path and action.data_value:
-        data_val = action.data_value
-        if os.path.isfile(data_val):
-            photo_path = data_val
-            static_root = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "static",
-            )
-            if data_val.startswith(static_root):
-                photo_url = "/" + os.path.relpath(data_val, static_root)
-        elif data_val.startswith("/"):
-            photo_path = data_val
-
-    if not photo_path or not os.path.exists(photo_path):
+    if not photo_path or not os.path.isfile(photo_path):
         findings.append(
             {
                 "title": "No photo available for analysis",
@@ -213,7 +224,6 @@ def _photo_analysis(action):
         )
         return findings
 
-    # Run full analysis
     try:
         analysis = analyze_photo(photo_path, photo_url=photo_url)
         finding = format_analysis_finding(
@@ -223,7 +233,6 @@ def _photo_analysis(action):
             finding["subject_id"] = subject.id
         findings.append(finding)
 
-        # Store EXIF metadata on subject
         if subject:
             subject.photo_metadata = {
                 "gps": analysis.get("gps"),
@@ -246,13 +255,19 @@ def _photo_analysis(action):
             }
         )
 
-    # AI geolocation fallback (Picarta) — only if no GPS in EXIF
+    # AI geolocation fallback (Picarta) — only if no GPS in EXIF.
+    # Still needs photo_path so cleanup must happen afterwards.
     if findings and not findings[0].get("raw_data", {}).get("gps"):
         try:
             picarta_findings = _picarta_geolocate(photo_path, subject)
             findings.extend(picarta_findings)
         except Exception as e:
             logger.debug("Picarta geolocation failed: %s", e)
+
+    # Remove the transient ad-hoc upload. Subject photos (permanent) are
+    # never touched. Cleanup is best-effort; errors are swallowed.
+    if is_adhoc_upload:
+        unlink_photo(action.data_value)
 
     return findings
 

@@ -1966,40 +1966,29 @@ def start_proposal(case_id, action_id):
 @login_required
 @_investigator_required
 def photo_analysis_upload(case_id):
+    """Upload a photo for analysis (photo_analysis action).
+
+    All validation (access, subject, duplicate/stale run, size, magic bytes,
+    storage quota) happens *before* any file is persisted. When the file is
+    saved and the action row created, the whole unit (file save, action
+    create, audit, commit) is failure-atomic: on any error the session is
+    rolled back and the just-written file is removed, so no orphan file or
+    orphan action survives (P1 fix / ADR-0005 D3/D8).
+    """
+    from cms.services.action_scope import action_scope_label
+    from cms.services.photo_storage import (
+        MAX_PHOTO_FILE_BYTES,
+        store_photo,
+        sweep_stale_photos,
+        unlink_photo,
+        validate_photo,
+    )
+    from cms.tier_limits import check_storage_limit
+
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
     ensure_case_access(case)
-
-    photo = request.files.get("photo")
-    if not photo:
-        return jsonify({"error": "No photo uploaded"}), 400
-
-    allowed = {"image/jpeg", "image/png", "image/heic", "image/webp", "image/gif"}
-    if photo.content_type not in allowed:
-        return jsonify({"error": f"Unsupported file type: {photo.content_type}"}), 400
-
-    import os
-    import uuid as _uuid
-
-    upload_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "static",
-        "uploads",
-        "photos",
-    )
-    os.makedirs(upload_dir, exist_ok=True)
-
-    ext = (
-        photo.filename.rsplit(".", 1)[-1].lower()
-        if photo.filename and "." in photo.filename
-        else "jpg"
-    )
-    filename = f"{_uuid.uuid4().hex[:12]}.{ext}"
-    filepath = os.path.join(upload_dir, filename)
-    photo.save(filepath)
-
-    data_value = filepath
 
     subject_id = request.form.get("subject_id") or None
     subject = None
@@ -2010,6 +1999,12 @@ def photo_analysis_upload(case_id):
         if not case.subjects.filter_by(id=subject_id).first():
             return jsonify({"error": "Subject is not linked to this case"}), 400
 
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify({"error": "No photo uploaded"}), 400
+
+    # No duplicate/parallel run for the same case (+subject) is accepted;
+    # stale runs are auto-reset as before — all before touching the filesystem.
     _STALE_TIMEOUT = 600
     existing_query = WorkflowResearchAction.query.filter_by(
         case_id=case_id, action_type="photo_analysis", status="running"
@@ -2028,21 +2023,72 @@ def photo_analysis_upload(case_id):
         else:
             return jsonify({"error": "Action already running"}), 409
 
-    action = WorkflowResearchAction(
-        id=str(uuid.uuid4()),
-        case_id=case_id,
-        subject_id=subject_id,
-        target_kind="subject" if subject_id else "case",
-        action_type="photo_analysis",
-        data_value=data_value,
-        label=ACTION_REGISTRY["photo_analysis"]["label"],
-        status="pending",
-        tenant_id=current_user.tenant_id,
+    # File validation (size + magic bytes) before any write. The file cursor
+    # must be rewound after the size probe; validate_photo itself rewinds.
+    photo.seek(0, os.SEEK_END)
+    upload_size = photo.tell()
+    photo.seek(0)
+    if upload_size > MAX_PHOTO_FILE_BYTES:
+        return jsonify({"error": "Photo is too large (max 8 MB)"}), 413
+
+    is_valid, ext = validate_photo(photo)
+    if not is_valid or not ext:
+        return jsonify({"error": "Invalid photo content"}), 400
+
+    ok, _used_mb, _max_mb = check_storage_limit(
+        current_user.tenant_id, extra_bytes=upload_size
     )
-    action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
-    db.session.add(action)
-    db.session.commit()
-    action_id = action.id
+    if not ok:
+        return jsonify({"error": "Storage quota exceeded"}), 403
+
+    # Persist only now; data_value stores the relative file name (never an
+    # absolute local path) so no local path leaks to UI/audit/findings.
+    data_value = store_photo(photo, ext)
+    logger.info(
+        "Stored photo-analysis upload for case %s (subject %s)",
+        case_id,
+        subject_id or "none",
+    )
+
+    try:
+        action = WorkflowResearchAction(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            subject_id=subject_id,
+            target_kind="subject" if subject_id else "case",
+            action_type="photo_analysis",
+            data_value=data_value,
+            label=ACTION_REGISTRY["photo_analysis"]["label"],
+            status="pending",
+            tenant_id=current_user.tenant_id,
+        )
+        action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
+        db.session.add(action)
+        db.session.flush()
+        action_id = action.id
+
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Started {ACTION_REGISTRY['photo_analysis']['label']} action ({action_scope_label(action)})",
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        unlink_photo(data_value)
+        logger.exception(
+            "Photo-analysis action create failed for case %s", case_id
+        )
+        return jsonify({"error": "Internal error"}), 500
+
+    # Opportunistic bounded cleanup of long-since-analyzed uploads.
+    try:
+        sweep_stale_photos()
+    except Exception:
+        logger.debug("Photo-analysis stale sweep failed", exc_info=True)
 
     start_action_async(action_id)
     return jsonify({"id": action_id, "status": "started"})
