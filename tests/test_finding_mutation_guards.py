@@ -515,6 +515,40 @@ class TestScreenshotUploadHardening:
         )
         assert leftover_files == []
 
+    def test_save_failure_removes_partial_file(self, auth_client, tmp_path):
+        case, _, finding = _scaffold()
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+
+        def _partial_save(self2, dest, buffer_size=16384):
+            with open(dest, "wb") as fh:
+                fh.write(png[:8])
+            raise OSError("disk full")
+
+        from werkzeug.datastructures import FileStorage
+
+        with patch("cms.workflow.routes.SCREENSHOT_DIR", str(tmp_path)):
+            with patch.object(FileStorage, "save", _partial_save):
+                resp = auth_client.post(
+                    _findings_json(case.id, finding.id) + "/screenshots",
+                    data={
+                        "file": (io.BytesIO(png), "fail.png"),
+                        "source_url": "",
+                        "notes": "",
+                    },
+                    content_type="multipart/form-data",
+                )
+        assert resp.status_code == 500
+        assert resp.get_json()["error"] == "Internal error"
+        assert str(tmp_path) not in resp.get_data(as_text=True)
+        assert FindingScreenshot.query.filter_by(finding_id=finding.id).count() == 0
+        assert AuditLog.query.filter_by(entity_type="finding_screenshot").count() == 0
+        leftover_files = sorted(
+            str(p.relative_to(tmp_path))
+            for p in tmp_path.rglob("*")
+            if p.is_file()
+        )
+        assert leftover_files == []
+
 
 # ---------------------------------------------------------------------------
 # Viewer + junior_investigator → 403 (role gate)

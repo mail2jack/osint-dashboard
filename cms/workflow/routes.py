@@ -409,6 +409,24 @@ MAX_SCREENSHOT_FILE_BYTES = 8 * 1024 * 1024  # 8 MB per uploaded file
 MAX_SCREENSHOTS_PER_FINDING = 25
 
 
+def _remove_orphan_screenshot(file_path):
+    """Best-effort removal of a screenshot file written to *file_path*.
+
+    Only ever touches the exact computed destination file (never a directory,
+    never a guessed path).  Cleanup failures are logged but never mask the
+    original error the caller is already reporting.
+    """
+    if not file_path:
+        return
+    try:
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    except OSError:
+        logger.exception(
+            "add_screenshot cleanup: could not remove orphaned file %s", file_path
+        )
+
+
 @workflow_bp.route("/")
 @login_required
 @_investigator_required
@@ -2714,10 +2732,17 @@ def add_screenshot(case_id, finding_id):
                 )
             stored_name = f"{uuid.uuid4()}.{ext}"
             finding_dir = os.path.join(SCREENSHOT_DIR, finding_id)
-            os.makedirs(finding_dir, exist_ok=True)
             dest = os.path.join(finding_dir, stored_name)
-            file.save(dest)
-            file_path = dest
+            file_path = dest  # known before the write: clean unlink target
+            try:
+                os.makedirs(finding_dir, exist_ok=True)
+                file.save(dest)
+            except Exception:
+                _remove_orphan_screenshot(file_path)
+                logger.exception(
+                    "add_screenshot save error finding_id=%s", finding_id
+                )
+                return jsonify({"error": "Internal error"}), 500
             url = url_for(
                 "workflow.serve_screenshot",
                 finding_id=finding_id,
@@ -2753,14 +2778,7 @@ def add_screenshot(case_id, finding_id):
         db.session.commit()
     except Exception:
         db.session.rollback()
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                logger.exception(
-                    "add_screenshot cleanup: could not remove orphaned file %s",
-                    file_path,
-                )
+        _remove_orphan_screenshot(file_path)
         logger.exception("add_screenshot DB error finding_id=%s", finding_id)
         return jsonify({"error": "Internal error"}), 500
     ss_data = {
