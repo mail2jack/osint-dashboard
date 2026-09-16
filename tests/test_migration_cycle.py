@@ -5,9 +5,11 @@ database (already migrated to head by conftest) is never downgraded.
 """
 
 import os
+import importlib.util
 import sqlite3
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -732,3 +734,73 @@ class TestMigrationCycle:
         conn.close()
         assert revision == "d5e6f7a8b9c0"
         assert index is None
+
+    def test_photo_preflight_fails_closed_without_verified_rls_visibility(
+        self, monkeypatch
+    ):
+        """The PostgreSQL migration never treats an unverified context as empty."""
+        path = (
+            REPO_ROOT
+            / "migrations"
+            / "versions"
+            / "e0f1a2b3c4d6_photo_analysis_active_unique.py"
+        )
+        spec = importlib.util.spec_from_file_location("photo_unique_migration", path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+
+        class Bind:
+            dialect = SimpleNamespace(name="postgresql")
+
+            def execute(self, statement):
+                if "SET LOCAL" in str(statement):
+                    return None
+                return SimpleNamespace(one=lambda: ("cms_test", "false"))
+
+        with pytest.raises(RuntimeError, match="not RLS-visible"):
+            migration._enable_verified_duplicate_visibility(Bind())
+
+    def test_photo_preflight_verified_context_checks_duplicates_before_ddl(
+        self, monkeypatch
+    ):
+        path = (
+            REPO_ROOT
+            / "migrations"
+            / "versions"
+            / "e0f1a2b3c4d6_photo_analysis_active_unique.py"
+        )
+        spec = importlib.util.spec_from_file_location("photo_unique_migration_ok", path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        ddl = []
+
+        class Result:
+            def one(self):
+                return ("cms_test", "true")
+
+            def fetchall(self):
+                return [
+                    SimpleNamespace(
+                        tenant_id="tenant-a",
+                        case_id="case-a",
+                        subject_key="",
+                        active_count=2,
+                    )
+                ]
+
+        class Bind:
+            dialect = SimpleNamespace(name="postgresql")
+
+            def execute(self, statement):
+                sql = str(statement)
+                if "current_user" in sql:
+                    return Result()
+                if "GROUP BY tenant_id" in sql:
+                    return Result()
+                return None
+
+        monkeypatch.setattr(migration.op, "get_bind", lambda: Bind())
+        monkeypatch.setattr(migration.op, "execute", lambda statement: ddl.append(statement))
+        with pytest.raises(RuntimeError, match="duplicate active scope"):
+            migration.upgrade()
+        assert ddl == []

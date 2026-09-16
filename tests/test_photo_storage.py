@@ -788,6 +788,8 @@ class TestPhotoAnalysisUploadRoute:
     def test_restore_archived_active_conflict_returns_409(
         self, auth_client, workflow_case
     ):
+        from cms.models import ActionFinding, Finding
+
         tenant_id = _admin_tenant_id()
         archived = ResearchAction(
             case_id=workflow_case.id,
@@ -802,12 +804,51 @@ class TestPhotoAnalysisUploadRoute:
             action_type="photo_analysis",
             status="running",
         )
-        db.session.add_all([archived, active])
+        finding = Finding(
+            case_id=workflow_case.id,
+            title="Archived photo finding",
+            content="must remain archived",
+            source_type="photo_analysis",
+            created_by=User.query.filter_by(role="admin").first().id,
+            archived_at=datetime.now(),
+        )
+        db.session.add_all([archived, active, finding])
+        db.session.flush()
+        db.session.add(ActionFinding(action_id=archived.id, finding_id=finding.id))
         db.session.commit()
         resp = auth_client.post(
             f"/cms/workflow/api/actions/{archived.id}/restore", json={}
         )
         assert resp.status_code == 409
+        db.session.refresh(archived)
+        db.session.refresh(finding)
+        assert archived.archived_at is not None
+        assert finding.archived_at is not None
+
+    def test_restore_archived_active_conflict_non_json_redirects(
+        self, auth_client, workflow_case
+    ):
+        tenant_id = _admin_tenant_id()
+        archived = ResearchAction(
+            case_id=workflow_case.id,
+            tenant_id=tenant_id,
+            action_type="photo_analysis",
+            status="running",
+            archived_at=datetime.now(),
+        )
+        active = ResearchAction(
+            case_id=workflow_case.id,
+            tenant_id=tenant_id,
+            action_type="photo_analysis",
+            status="pending",
+        )
+        db.session.add_all([archived, active])
+        db.session.commit()
+        resp = auth_client.post(
+            f"/cms/workflow/api/actions/{archived.id}/restore", data={}
+        )
+        assert resp.status_code == 302
+        assert "case" in resp.headers["Location"]
         db.session.refresh(archived)
         assert archived.archived_at is not None
 

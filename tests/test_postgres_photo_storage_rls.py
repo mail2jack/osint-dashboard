@@ -273,6 +273,37 @@ class TestSweepUnderRLS:
 
 
 class TestPartialUniqueIndexOnPostgres:
+    def test_duplicate_preflight_visibility_requires_explicit_bypass(self, app):
+        """FORCE RLS must not turn an unscoped inventory into valid zero rows."""
+        admin = User.query.filter_by(role="admin").first()
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        case = _seed_case(admin.tenant_id, "PG-RLS-VIS")
+        _make_action(case, admin.tenant_id, "visible.png", status="pending")
+        db.session.commit()
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        hidden = db.session.execute(
+            text(
+                "SELECT COUNT(*) FROM research_actions "
+                "WHERE action_type = 'photo_analysis' "
+                "AND status IN ('pending', 'running') "
+                "AND archived_at IS NULL"
+            )
+        ).scalar_one()
+        assert hidden == 0
+
+        db.session.execute(text("SET LOCAL app.bypass_rls = 'true'"))
+        visible = db.session.execute(
+            text(
+                "SELECT COUNT(*) FROM research_actions "
+                "WHERE action_type = 'photo_analysis' "
+                "AND status IN ('pending', 'running') "
+                "AND archived_at IS NULL"
+            )
+        ).scalar_one()
+        assert visible == 1
+
     def test_index_exists(self, app):
         row = db.session.execute(
             text(
