@@ -146,6 +146,7 @@ class TestFindingGuardRLSIsolation:
             _login_as(client, user_b)
             resp = client.post(
                 f"/cms/workflow/api/findings/{finding_id}/archive",
+                json={},
             )
             assert resp.status_code == 404
 
@@ -172,5 +173,6 @@ class TestFindingGuardRLSIsolation:
             _login_as(client, admin)
             resp = client.post(
                 f"/cms/workflow/api/findings/{finding_id}/archive",
+                json={},
             )
             assert resp.status_code == 200
