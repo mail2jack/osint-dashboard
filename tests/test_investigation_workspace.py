@@ -1692,8 +1692,15 @@ class TestWorkspaceLocaleCatalog:
             'msgstr "Subjects betrokken via onderzoeksacties"' in po
         )
         assert 'msgid "Activity"\nmsgstr "Activiteiten"' in po
+        assert (
+            'msgid "Source URL (optional, website the screenshot is from)"\n'
+            'msgstr "Bron-URL (optioneel, website waar de screenshot vandaan komt)"' in po
+        )
+        assert 'msgid "Note (optional)"\nmsgstr "Notitie (optioneel)"' in po
 
     def test_en_locale_strings(self):
         po = self._po("en")
         assert 'msgid "Subjects referenced by research actions"' in po
         assert 'msgid "Activity"' in po
+        assert 'msgid "Source URL (optional, website the screenshot is from)"' in po
+        assert 'msgid "Note (optional)"' in po
