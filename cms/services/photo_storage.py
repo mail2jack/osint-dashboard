@@ -1,35 +1,48 @@
-"""Canonical photo-analysis file storage.
+"""Canonical photo-analysis file storage (tenant-scoped).
 
 Central helper used by both the photo-analysis upload route and the async
 worker so the storage root is defined in exactly one place.
 
-Canonical root: ``<instance_path>/photo_analysis``. In production this is
-``/opt/osint-dashboard/instance/photo_analysis`` (Flask ``instance_path``),
-which:
+Storage layout::
 
-- is listed in the systemd ``ReadWritePaths`` for the dashboard service, so
-  ``os.makedirs``/``save`` succeed without read-only filesystem errors;
-- is *not* served by Flask's ``/static`` (the static folder is
-  ``<root>/static``), so uploaded research photos are never publicly
-  reachable and require no new public serve route.
+    <instance_path>/photo_analysis/<tenant_id>/<uuid4.hex>.<ext>
 
-Design decisions
-----------------
-- File names are server-generated UUIDs; the extension is derived from
-  validated magic bytes (``cms.image_validation.validate_image_file``), never
+- ``<instance_path>`` on production is ``/opt/osint-dashboard/instance``,
+  which is listed in the systemd ``ReadWritePaths`` and is *not* served by
+  Flask's ``/static`` folder — uploaded research photos are never publicly
+  reachable and no public serve route is added.
+- ``<tenant_id>`` isolates tenants on disk. Every helper call (store / resolve
+  / unlink / sweep) takes the tenant it operates on; a data_value from tenant
+  A can never resolve or delete a file of tenant B, even if the stored
+  ``data_value`` is hand-manipulated.
+- File names are fully random ``uuid4().hex`` (32 hex chars); the extension
+  is derived from validated magic bytes (``cms.image_validation``), never
   from the client-supplied Content-Type header or original filename.
-- ``data_value`` stores only the file *name* (relative to the canonical
-  root). Absolute local paths never reach the UI, audit logs, worker-facing
-  values, or error responses.
-- ``resolve_photo_path`` only ever returns paths that live under the
-  canonical root (via a ``commonpath`` guard). Historical `photo_analysis`
-  rows whose ``data_value`` is an absolute path under the old
-  ``/cms/static/uploads/photos`` location will not resolve, so the worker
-  produces a clean "photo unavailable" finding instead of a 500.
+
+data_value contract
+-------------------
+``action.data_value`` stores only the file *name* (relative to the tenant's
+directory under the root). Absolute local paths never reach the UI, audit
+logs, worker-facing values, or error responses. Historical rows that hold an
+absolute path under the old ``/cms/static/uploads/photos`` location resolve to
+``None`` (fail-safe "photo unavailable" finding in the worker) instead of a
+500.
+
+Lifecycle policy
+----------------
+Uploads are transient:
+- The worker deletes the file after analysis (success or failure) via
+  ``unlink_photo``.
+- If a worker crashes mid-run, the row ends in ``pending``/``running`` and
+  ``sweep_stale_photos`` never touches it (it is still referenced).
+- Only files *not referenced by any pending/running* photo_analysis action
+  and older than the retention window are removed by the sweep. The sweep is
+  tenant-scoped, bounded per call, and never bypasses RLS.
 """
 
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -41,34 +54,66 @@ logger = logging.getLogger(__name__)
 
 PHOTO_ANALYSIS_DIRNAME = "photo_analysis"
 
-# Redelijke maximale uploadgrootte per foto (consistent met screenshot-limit).
-MAX_PHOTO_FILE_BYTES = 8 * 1024 * 1024  # 8 MB
+# Max upload per single photo (mirrors the screenshot limit).
+MAX_PHOTO_FILE_BYTES = 8 * 1024 * 1024  # 8 MB per file
+
+# Hard per-tenant cap on transient photo-analysis storage (bytes + count).
+# Photos are transient (deleted after analysis / by sweep) but pending uploads
+# for one tenant must not be able to fill the disk.
+PHOTO_ANALYSIS_TENANT_MAX_BYTES = 256 * 1024 * 1024  # 256 MB per tenant
+PHOTO_ANALYSIS_TENANT_MAX_FILES = 256
+
 
 # Magic-byte detected formats we actually accept for photo analysis.
-# jpeg/jpg normalized to "jpg".
-DETECTED_TO_EXT = {"png": "png", "jpg": "jpg", "jpeg": "jpg", "gif": "gif", "webp": "webp"}
+DETECTED_TO_EXT = {
+    "png": "png",
+    "jpg": "jpg",
+    "jpeg": "jpg",
+    "gif": "gif",
+    "webp": "webp",
+}
 
-# Stale-file retention. Analyses run async; retries within this window reuse
-# the uploaded file, so we never delete anything younger than this.
+# Tenant component is a single path segment: no separators, no traversal,
+# no dots, safe on every filesystem. Drop-in for tenant ids (uuid strings).
+_TENANT_COMPONENT_RE = re.compile(r"^[A-Za-z0-9-_]{1,64}$")
+
+# Stale-file retention. Files referenced by a pending/running action are never
+# removed; unreferenced leftovers older than this are swept.
 STALE_FILE_MAX_AGE = timedelta(hours=6)
 
 # Sweep budget per call so cleanup never walks unbounded directories.
 _SWEEP_LIMIT = 50
 
 
-def photo_analysis_dir() -> str:
-    """Absolute path of the canonical photo-analysis storage root."""
+class InvalidTenantComponent(ValueError):
+    """Raised when a tenant id is not usable as a storage directory component."""
+
+
+def _validate_tenant_component(tenant_id) -> str:
+    """Validate a tenant id as a single safe directory component."""
+    if not tenant_id:
+        raise InvalidTenantComponent("tenant_id is required")
+    if not isinstance(tenant_id, str) or not _TENANT_COMPONENT_RE.match(tenant_id):
+        raise InvalidTenantComponent("invalid tenant_id for storage path")
+    return tenant_id
+
+
+def photo_analysis_root() -> str:
+    """Absolute path of the canonical photo-analysis base (instance dir)."""
     return os.path.join(current_app.instance_path, PHOTO_ANALYSIS_DIRNAME)
 
 
-def ensure_photo_analysis_dir() -> str:
-    """Create (and return) the canonical photo-analysis storage root."""
-    directory = photo_analysis_dir()
-    os.makedirs(directory, exist_ok=True)
-    return directory
+def photo_analysis_dir(tenant_id: str) -> str:
+    """Absolute path of one tenant's photo-analysis directory.
+
+    The tenant component is strictly validated; the returned path is always a
+    direct child of the canonical root (no traversal).
+    """
+    tenant_dir = _validate_tenant_component(tenant_id)
+    return os.path.join(photo_analysis_root(), tenant_dir)
 
 
-def allowed_detected_format(detected: str) -> str | None:
+def allowed_detected_format(detected: str | None) -> str | None:
     """Map a magic-byte detected format to a canonical extension, or None."""
     if not detected:
         return None
@@ -80,7 +125,10 @@ def validate_photo(file_storage):
 
     Returns ``(is_valid, ext)`` where ``ext`` is the canonical extension
     (``jpg``/``png``/``gif``/``webp``) or ``""``. The file cursor is left at
-    the beginning after validation (``validate_image_file`` rewind behavior).
+    the beginning after validation (``validate_image_file`` rewinds it).
+
+    Note: HEIC is intentionally NOT accepted — magic-byte detection does not
+    cover HEIC, so we fail closed rather than trust a Content-Type header.
     """
     if file_storage is None:
         return False, ""
@@ -93,108 +141,181 @@ def validate_photo(file_storage):
     return True, ext
 
 
-def store_photo(file_storage, ext: str) -> str:
-    """Persist a validated photo under the canonical root.
+def tenant_photo_analysis_usage(tenant_id: str) -> tuple[int, int]:
+    """Return (file_count, total_bytes) currently used by a tenant.
 
-    Returns the server-generated file *name* (relative to the root). Raises on
-    write failure; a partially written file is removed before re-raising so no
-    orphan stays behind.
+    Used for an honest quota: transient photo-analysis files are counted so
+    multiple pending uploads cannot jointly exceed the per-tenant cap.
     """
-    directory = ensure_photo_analysis_dir()
-    filename = f"{uuid.uuid4().hex[:12]}.{ext}"
+    directory = photo_analysis_dir(tenant_id)
+    if not os.path.isdir(directory):
+        return 0, 0
+    count = 0
+    total = 0
+    try:
+        for entry in os.listdir(directory):
+            path = os.path.join(directory, entry)
+            if os.path.isfile(path):
+                try:
+                    total += os.path.getsize(path)
+                    count += 1
+                except OSError:
+                    continue
+    except OSError:
+        return count, total
+    return count, total
+
+
+def store_photo(file_storage, ext: str, tenant_id: str) -> str:
+    """Persist a validated photo under the tenant's canonical directory.
+
+    Returns the full server-generated random file *name* (relative to the
+    tenant directory, never an absolute path). Raises on write failure; a
+    partially written file is removed before re-raising so no orphan stays.
+    """
+    directory = photo_analysis_dir(tenant_id)
+    os.makedirs(directory, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(directory, filename)
     try:
         file_storage.save(filepath)
-    except OSError:
-        unlink_photo(filepath)
+    except Exception:
+        _unlink_raw(filepath)
         raise
     return filename
 
 
-def _path_under_root(path: str) -> bool:
-    """Whether a resolved path is inside the canonical root (no traversal)."""
-    root = os.path.realpath(photo_analysis_dir())
+def _path_under_dir(path: str, directory: str) -> bool:
+    """Whether a resolved path is inside `directory` (no traversal)."""
+    root_real = os.path.realpath(directory)
     resolved = os.path.realpath(path)
     try:
-        common = os.path.commonpath([root, resolved])
+        common = os.path.commonpath([root_real, resolved])
     except ValueError:
         return False
-    return common == root
+    return common == root_real
 
 
-def resolve_photo_path(data_value: str | None) -> str | None:
-    """Resolve a stored name/path to an absolute path under the canonical root.
+def resolve_photo_path(data_value: str | None, expected_tenant_id: str) -> str | None:
+    """Resolve a stored name to an absolute path in the tenant's directory.
 
-    Accepts plain names (current format) and historical absolute paths, but
-    only if they resolve inside the canonical root. Returns ``None`` for old
-    ``/cms/static`` paths, other roots, removable files, or non-existent files
-    so the worker can emit a clean "photo unavailable" finding.
+    - ``data_value`` must be the relative file name (current format);
+    - absolute paths (historical rows) are fail-safe ``None`` → the worker
+      emits a clean "photo unavailable" finding instead of a 500;
+    - only paths under ``photo_analysis/<expected_tenant_id>`` resolve; a
+      tenant A action can never resolve a tenant B file.
     """
     if not data_value:
         return None
-    root_real = os.path.realpath(photo_analysis_dir())
     if os.path.isabs(data_value):
-        candidate = data_value
-    else:
-        candidate = os.path.join(root_real, data_value)
-    if not _path_under_root(candidate):
+        return None
+    tenant_dir = photo_analysis_dir(expected_tenant_id)
+    candidate = os.path.join(os.path.realpath(tenant_dir), data_value)
+    if not _path_under_dir(candidate, tenant_dir):
         return None
     if not os.path.isfile(candidate):
         return None
     return os.path.realpath(candidate)
 
 
-def unlink_photo(data_value: str | None) -> None:
-    """Best-effort removal of a single file under the canonical root.
-
-    Never removes anything outside the canonical root (traversal-safe). Any
-    missing file or permission error is logged and swallowed, so a cleanup
-    failure never masks the original analysis/route error.
-    """
-    if not data_value:
-        return
-    candidate = data_value
-    if not os.path.isabs(candidate):
-        candidate = os.path.join(os.path.realpath(photo_analysis_dir()), candidate)
-    if not _path_under_root(candidate):
-        return
+def _unlink_raw(path: str) -> None:
     try:
-        os.unlink(candidate)
+        os.unlink(path)
     except FileNotFoundError:
         pass
     except OSError as exc:
-        logger.warning("Could not remove photo-analysis file %s: %s", candidate, exc)
+        logger.warning("Could not remove photo-analysis file %s: %s", path, exc)
 
 
-def sweep_stale_photos() -> int:
-    """Remove photo-analysis files older than the retention window.
+def unlink_photo(data_value: str | None, expected_tenant_id: str) -> bool:
+    """Best-effort removal of a single file in the tenant's directory.
 
-    Bounded (max ``_SWEEP_LIMIT`` deletions per call) and only touches
-    regular files directly inside the canonical root. Returns the number of
-    removed files.
+    Returns ``True`` when the file was actually removed (used by the sweep to
+    count only successful removals). Never removes anything outside the
+    tenant's canonical directory (traversal-safe). Absolute values are
+    ignored (fail-safe; historical rows).
     """
-    root = os.path.realpath(photo_analysis_dir())
-    if not os.path.isdir(root):
+    if not data_value or os.path.isabs(data_value):
+        return False
+    tenant_dir = photo_analysis_dir(expected_tenant_id)
+    candidate = os.path.join(os.path.realpath(tenant_dir), data_value)
+    if not _path_under_dir(candidate, tenant_dir):
+        return False
+    try:
+        os.unlink(candidate)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+    return True
+
+
+def collect_active_photo_data_values(tenant_id: str | None = None) -> set[str]:
+    """Collect ``data_value`` names referenced by pending/running photo actions.
+
+    Runs in the caller's tenant context (never bypasses RLS): under FORCE RLS
+    the query is already row-filtered to the current tenant, and `tenant_id`
+    is an additional defensive filter. The sweep uses these names to never
+    delete a file an active action may still need (delayed worker / retry).
+    """
+    from cms.models import ResearchAction
+
+    query = ResearchAction.query.filter(
+        ResearchAction.action_type == "photo_analysis",
+        ResearchAction.status.in_(["pending", "running"]),
+    )
+    if tenant_id:
+        query = query.filter(ResearchAction.tenant_id == tenant_id)
+    names = set()
+    try:
+        for value in query.with_entities(ResearchAction.data_value).all():
+            if value and value[0]:
+                names.add(value[0])
+    except Exception:
+        logger.warning(
+            "Could not collect active photo-analysis references", exc_info=True
+        )
+    return names
+
+
+def sweep_stale_photos(tenant_id: str, referenced: set[str] | None = None) -> int:
+    """Remove unreferenced photo-analysis files older than the retention.
+
+    - Only files in the *tenant's* directory are candidates (tenant-scoped).
+    - Files whose name is in ``referenced`` (pending/running actions) are
+      never removed, regardless of age.
+    - Only regular files older than ``STALE_FILE_MAX_AGE`` are removed.
+    - Bounded per call (``_SWEEP_LIMIT``), and only successful unlinks count.
+
+    Returns the number of actually removed files.
+    """
+    if referenced is None:
+        referenced = set()
+    directory = photo_analysis_dir(tenant_id)
+    if not os.path.isdir(directory):
         return 0
     cutoff = datetime.now() - STALE_FILE_MAX_AGE
     removed = 0
     try:
-        entries = os.listdir(root)
+        entries = os.listdir(directory)
     except OSError:
         return 0
     for entry in entries:
         if removed >= _SWEEP_LIMIT:
             break
-        path = os.path.join(root, entry)
+        if entry in referenced:
+            continue
+        path = os.path.join(directory, entry)
         if not os.path.isfile(path):
             continue
         try:
             mtime = datetime.fromtimestamp(os.path.getmtime(path))
         except OSError:
             continue
-        if mtime < cutoff:
-            unlink_photo(path)
+        if mtime < cutoff and unlink_photo(entry, tenant_id):
             removed += 1
     if removed:
-        logger.info("Swept %d stale photo-analysis file(s) from %s", removed, root)
+        logger.info(
+            "Swept %d stale photo-analysis file(s) for tenant %s", removed, tenant_id
+        )
     return removed

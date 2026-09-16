@@ -169,15 +169,17 @@ def _photo_analysis(action):
     """Analyze photo EXIF metadata, GPS, camera info, and generate reverse search links.
 
     Photo source priority:
-    1. ``action.data_value`` resolved through the canonical storage helper
-       (current ad-hoc uploads stored under ``instance/photo_analysis``).
+    1. ``action.data_value`` resolved through the canonical storage helper,
+       scoped to ``action.tenant_id`` (current ad-hoc uploads stored under
+       ``instance/photo_analysis/<tenant_id>/``).
     2. ``subject.photo_path`` translated via ``current_app.root_path`` (the
        existing permanent subject photo under ``static/uploads/subjects``).
 
     Historical ``data_value`` entries that point to the old ``cms/static``
-    location will *not* resolve inside the canonical root; the worker then
-    falls back to the subject photo (if present) and otherwise emits a clean
-    "photo unavailable" finding — never a 500.
+    location resolve to None (fail-safe), the worker then falls back to the
+    subject photo (if present) and otherwise emits a clean "photo unavailable"
+    finding — never a 500. Transient uploads are deleted after analysis (not
+    subject photos, which are permanent).
     """
     from flask import current_app
 
@@ -194,9 +196,9 @@ def _photo_analysis(action):
     photo_url = None
     is_adhoc_upload = False
 
-    # 1. Resolve ad-hoc upload via the canonical storage root.
+    # 1. Resolve ad-hoc upload via the canonical, tenant-scoped storage root.
     if action.data_value:
-        resolved = resolve_photo_path(action.data_value)
+        resolved = resolve_photo_path(action.data_value, action.tenant_id)
         if resolved:
             photo_path = resolved
             is_adhoc_upload = True
@@ -243,31 +245,24 @@ def _photo_analysis(action):
             }
             db.session.commit()
 
-    except Exception as e:
-        logger.warning("Photo analysis failed: %s", e)
-        findings.append(
-            {
-                "title": f"Photo analysis error: {e}",
-                "detail": str(e),
-                "source_type": "photo_analysis",
-                "icon": "📷",
-                "verified": False,
-            }
-        )
-
-    # AI geolocation fallback (Picarta) — only if no GPS in EXIF.
-    # Still needs photo_path so cleanup must happen afterwards.
-    if findings and not findings[0].get("raw_data", {}).get("gps"):
-        try:
-            picarta_findings = _picarta_geolocate(photo_path, subject)
-            findings.extend(picarta_findings)
-        except Exception as e:
-            logger.debug("Picarta geolocation failed: %s", e)
-
-    # Remove the transient ad-hoc upload. Subject photos (permanent) are
-    # never touched. Cleanup is best-effort; errors are swallowed.
-    if is_adhoc_upload:
-        unlink_photo(action.data_value)
+        # AI geolocation fallback (Picarta) — only if no GPS in EXIF. Picarta
+        # failures are swallowed here (debug) and can never mask the cleanup
+        # below, which runs in the finally regardless.
+        if not findings[0].get("raw_data", {}).get("gps"):
+            try:
+                picarta_findings = _picarta_geolocate(photo_path, subject)
+                findings.extend(picarta_findings)
+            except Exception as e:
+                logger.debug("Picarta geolocation failed: %s", e)
+    finally:
+        # Remove the transient ad-hoc upload (tenant-scoped; a tenant A action
+        # can never delete a tenant B file). Subject photos (permanent) are
+        # never touched. Cleanup is best-effort and swallowed, so it never
+        # masks an analysis failure: any exception from analyze_photo /
+        # format_analysis_finding / metadata-commit propagates to run_action,
+        # which marks the action "error".
+        if is_adhoc_upload:
+            unlink_photo(action.data_value, action.tenant_id)
 
     return findings
 

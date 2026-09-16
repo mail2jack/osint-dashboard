@@ -19,8 +19,12 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "d5e6f7a8b9c0"
+HEAD_REVISION = "e0f1a2b3c4d6"
 INVOICE_ITEM_PREV_REVISION = "f8a9b0c1d2e3"
+# The blocked invoice-items downgrade stops one revision below head: the
+# photo-analysis index migration (e0f1a2b3c4d6) above it downgrades cleanly,
+# then d5e6f7a8b9c0's guard aborts before any column DDL.
+INVOICE_ITEM_DOWNGRADE_STOP = "d5e6f7a8b9c0"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -688,7 +692,8 @@ class TestMigrationCycle:
         )
         assert "exceed 500" in output.lower()
 
-        # Still at head; the blocked downgrade did not touch table data/DDL.
+        # The blocked downgrade stopped at the guarding revision (just below
+        # head); the description column stayed untouched at 2000.
         conn = sqlite3.connect(db_file)
         revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
         cols_after = {
@@ -696,5 +701,5 @@ class TestMigrationCycle:
             for r in conn.execute("PRAGMA table_info(invoice_items)")
         }
         conn.close()
-        assert revision == HEAD_REVISION
+        assert revision == INVOICE_ITEM_DOWNGRADE_STOP
         assert cols_after["description"] == "VARCHAR(2000)"

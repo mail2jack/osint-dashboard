@@ -1969,21 +1969,34 @@ def photo_analysis_upload(case_id):
     """Upload a photo for analysis (photo_analysis action).
 
     All validation (access, subject, duplicate/stale run, size, magic bytes,
-    storage quota) happens *before* any file is persisted. When the file is
-    saved and the action row created, the whole unit (file save, action
-    create, audit, commit) is failure-atomic: on any error the session is
-    rolled back and the just-written file is removed, so no orphan file or
-    orphan action survives (P1 fix / ADR-0005 D3/D8).
+    storage quota) happens *before* any file is persisted. Uploads are stored
+    tenant-scoped under ``instance/photo_analysis/<tenant_id>/`` and
+    ``data_value`` holds only the relative file name — an absolute local path
+    never reaches the UI, audit log, findings, or error responses.
+
+    Failure-atomicity (P1 fix / ADR-0005 D3/D8): the file save, action create,
+    audit and commit are one unit. On ANY failure the session is rolled back,
+    the just-written file is removed, and no orphan file or orphan action
+    survives. The partial unique index
+    ``uq_research_actions_active_photo_analysis`` turns a concurrent duplicate
+    upload into an IntegrityError, which this route maps to 409 (+cleanup).
     """
+    from sqlalchemy.exc import IntegrityError
+
     from cms.services.action_scope import action_scope_label
     from cms.services.photo_storage import (
         MAX_PHOTO_FILE_BYTES,
+        PHOTO_ANALYSIS_TENANT_MAX_BYTES,
+        PHOTO_ANALYSIS_TENANT_MAX_FILES,
+        collect_active_photo_data_values,
         store_photo,
         sweep_stale_photos,
+        tenant_photo_analysis_usage,
         unlink_photo,
         validate_photo,
     )
-    from cms.tier_limits import check_storage_limit
+
+    tenant_id = current_user.tenant_id
 
     case = db.session.get(WorkflowCase, case_id)
     if not case:
@@ -2003,25 +2016,34 @@ def photo_analysis_upload(case_id):
     if not photo:
         return jsonify({"error": "No photo uploaded"}), 400
 
-    # No duplicate/parallel run for the same case (+subject) is accepted;
-    # stale runs are auto-reset as before — all before touching the filesystem.
+    # Block BOTH active states (pending and running) for the same
+    # tenant/case/subject scope. Stale-auto-reset applies ONLY to genuinely
+    # running actions — a pending action is never silently resurrected.
     _STALE_TIMEOUT = 600
-    existing_query = WorkflowResearchAction.query.filter_by(
-        case_id=case_id, action_type="photo_analysis", status="running"
+    active_query = WorkflowResearchAction.query.filter(
+        WorkflowResearchAction.tenant_id == tenant_id,
+        WorkflowResearchAction.case_id == case_id,
+        WorkflowResearchAction.action_type == "photo_analysis",
+        WorkflowResearchAction.status.in_(["pending", "running"]),
     )
     if subject_id:
-        existing_query = existing_query.filter_by(subject_id=subject_id)
-    existing = existing_query.first()
+        active_query = active_query.filter(
+            WorkflowResearchAction.subject_id == subject_id
+        )
+    else:
+        active_query = active_query.filter(WorkflowResearchAction.subject_id.is_(None))
+    existing = active_query.first()
     if existing:
         if (
-            existing.started_at
+            existing.status == "running"
+            and existing.started_at
             and (datetime.now() - existing.started_at).total_seconds() > _STALE_TIMEOUT
         ):
             existing.status = "error"
             existing.error = "Stale action auto-reset (timed out)"
             db.session.commit()
         else:
-            return jsonify({"error": "Action already running"}), 409
+            return jsonify({"error": "Action already running or pending"}), 409
 
     # File validation (size + magic bytes) before any write. The file cursor
     # must be rewound after the size probe; validate_photo itself rewinds.
@@ -2035,15 +2057,24 @@ def photo_analysis_upload(case_id):
     if not is_valid or not ext:
         return jsonify({"error": "Invalid photo content"}), 400
 
-    ok, _used_mb, _max_mb = check_storage_limit(
-        current_user.tenant_id, extra_bytes=upload_size
-    )
-    if not ok:
+    # Honest per-tenant quota: count the tenant's transient photo-analysis
+    # storage (bytes AND file count) plus this upload, so many pending
+    # uploads can never jointly exceed the cap.
+    used_files, used_bytes = tenant_photo_analysis_usage(tenant_id)
+    if used_files >= PHOTO_ANALYSIS_TENANT_MAX_FILES or (
+        used_bytes + upload_size > PHOTO_ANALYSIS_TENANT_MAX_BYTES
+    ):
         return jsonify({"error": "Storage quota exceeded"}), 403
 
-    # Persist only now; data_value stores the relative file name (never an
-    # absolute local path) so no local path leaks to UI/audit/findings.
-    data_value = store_photo(photo, ext)
+    # Persist only now, tenant-scoped; data_value = relative file name only.
+    # store_photo removes a partially written file before re-raising, so a
+    # save failure leaves no orphan on disk and (nothing persisted yet) no
+    # action row — map it to a clean generic 500.
+    try:
+        data_value = store_photo(photo, ext, tenant_id)
+    except Exception:
+        logger.exception("Photo-analysis file save failed for case %s", case_id)
+        return jsonify({"error": "Internal error"}), 500
     logger.info(
         "Stored photo-analysis upload for case %s (subject %s)",
         case_id,
@@ -2060,7 +2091,7 @@ def photo_analysis_upload(case_id):
             data_value=data_value,
             label=ACTION_REGISTRY["photo_analysis"]["label"],
             status="pending",
-            tenant_id=current_user.tenant_id,
+            tenant_id=tenant_id,
         )
         action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
         db.session.add(action)
@@ -2076,21 +2107,42 @@ def photo_analysis_upload(case_id):
             description=f"Started {ACTION_REGISTRY['photo_analysis']['label']} action ({action_scope_label(action)})",
         )
         db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        unlink_photo(data_value, tenant_id)
+        logger.warning(
+            "Concurrent photo-analysis duplicate upload for case %s", case_id
+        )
+        return jsonify({"error": "Action already running or pending"}), 409
     except Exception:
         db.session.rollback()
-        unlink_photo(data_value)
-        logger.exception(
-            "Photo-analysis action create failed for case %s", case_id
-        )
+        unlink_photo(data_value, tenant_id)
+        logger.exception("Photo-analysis action create failed for case %s", case_id)
         return jsonify({"error": "Internal error"}), 500
 
-    # Opportunistic bounded cleanup of long-since-analyzed uploads.
+    # Opportunistic, tenant-scoped, status-aware cleanup of stale leftovers.
     try:
-        sweep_stale_photos()
+        sweep_stale_photos(
+            tenant_id,
+            referenced=collect_active_photo_data_values(tenant_id),
+        )
     except Exception:
         logger.debug("Photo-analysis stale sweep failed", exc_info=True)
 
-    start_action_async(action_id)
+    try:
+        start_action_async(action_id)
+    except Exception:
+        # The worker could not be dispatched: mark the action failed and
+        # remove the transient file so no pending row/filesystem leak stays.
+        action = db.session.get(WorkflowResearchAction, action_id)
+        if action:
+            action.status = "error"
+            action.error = "Photo-analysis worker could not be started"
+            db.session.commit()
+        unlink_photo(data_value, tenant_id)
+        logger.exception("Could not start photo-analysis worker for case %s", case_id)
+        return jsonify({"error": "Internal error"}), 500
+
     return jsonify({"id": action_id, "status": "started"})
 
 
