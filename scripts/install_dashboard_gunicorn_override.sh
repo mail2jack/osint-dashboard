@@ -34,19 +34,37 @@ restore_previous() {
     systemctl daemon-reload
 }
 
-# Drift comparison: whitespace-collapsed, flag-stripped equality. The ONLY
-# permitted difference from the repo source is an absent --no-control-socket
-# (the known pre-fix legacy variant). This must never degrade into a loose
-# "contains" match; any other content is an unexpected operator change.
-flagless() {
-    sed 's/--no-control-socket//g' "$1"
+# Drift comparison: whitespace-normalized exact equality. Apart from the
+# managed source, there is precisely one accepted historical live variant:
+# it lacks BOTH additions introduced by this change,
+# --no-control-socket and Environment=LOG_FILE=/dev/null. A partial variant
+# (only one addition absent) or any other difference is unexpected drift.
+normalize_override() {
+    tr -s '[:space:]' ' ' | sed 's/^ *//;s/ *$//'
+}
+
+known_legacy_source() {
+    sed \
+        -e 's/--no-control-socket//g' \
+        -e '/^[[:space:]]*Environment=LOG_FILE=\/dev\/null[[:space:]]*$/d' \
+        "$1" | normalize_override
 }
 
 same_override() {
-    local a b
-    a="$( flagless "$1" | tr -s '[:space:]' ' ' | sed 's/^ *//;s/ *$//' )"
-    b="$( flagless "$2" | tr -s '[:space:]' ' ' | sed 's/^ *//;s/ *$//' )"
-    [ "$a" = "$b" ]
+    local managed live legacy
+    managed="$(normalize_override < "$1")"
+    live="$(normalize_override < "$2")"
+    [ "$managed" = "$live" ] && return 0
+
+    # The legacy variant must omit both additions. Do not normalize those out
+    # of the live file: that would accidentally accept a partial or modified
+    # override.
+    if grep -Fq -- '--no-control-socket' "$2" \
+        || grep -Eq '^[[:space:]]*Environment=LOG_FILE=/dev/null[[:space:]]*$' "$2"; then
+        return 1
+    fi
+    legacy="$(known_legacy_source "$1")"
+    [ "$legacy" = "$live" ]
 }
 
 # Read-only, fail-closed capability guard against the installed venv binary at
@@ -78,14 +96,14 @@ run_install() {
     gunicorn_supports_flag || return 1
 
     # Drift guard, before any change at all. The live override may only be the
-    # exact repo source or the known legacy variant missing solely the
-    # control-socket flag. Any other content is an unexpected operator change:
+    # exact repo source or the known legacy variant missing both managed
+    # additions. Any other content is an unexpected operator change:
     # nothing is written, backed up, reloaded, or restarted until a human
     # reviews it.
     if [ -e "$DST" ] && ! same_override "$SRC" "$DST"; then
         echo "ERROR: existing $DST deviates unexpectedly from the managed override" >&2
         echo "The only accepted contents are the exact repo source or the legacy" >&2
-        echo "variant that differs solely by an absent --no-control-socket." >&2
+        echo "variant that lacks both --no-control-socket and LOG_FILE=/dev/null." >&2
         echo "Nothing was written, backed up, reloaded, or restarted. Review manually." >&2
         return 1
     fi

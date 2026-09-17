@@ -14,6 +14,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OVERRIDE = ROOT / "deploy/osint-dashboard-gunicorn2.override.conf"
@@ -59,11 +61,13 @@ def _sandbox(tmp_path, deploy_text=None, dst_text=None, venv_gunicorn_text=None)
     return tmp_path, src_path
 
 
-LEGACY = "ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 " \
+LEGACY_EXEC = "ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 " \
     "--worker-class sync --threads 1 --bind 127.0.0.1:5000 --timeout 120 app:app"
 REPO_LINE = "ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 " \
     "--worker-class sync --threads 1 --bind 127.0.0.1:5000 --timeout 120 " \
     "--no-control-socket app:app"
+MANAGED_OVERRIDE = "[Service]\nExecStart=\n" + REPO_LINE + "\nEnvironment=LOG_FILE=/dev/null\n"
+KNOWN_LIVE_LEGACY = "[Service]\nExecStart=\n" + LEGACY_EXEC + "\n"
 
 
 def test_override_preserves_current_parameters_and_disables_control_socket():
@@ -115,10 +119,10 @@ def test_non_root_installer_refuses_before_target_access(tmp_path):
 
 
 def test_drift_guard_accepts_exact_repo_source(tmp_path):
-    sandbox, src_path = _sandbox(tmp_path, deploy_text=REPO_LINE)
+    sandbox, src_path = _sandbox(tmp_path, deploy_text=MANAGED_OVERRIDE)
     dst_dir = sandbox / "osint-dashboard.service.d"
     dst_dir.mkdir(parents=True)
-    (dst_dir / "override.conf").write_text(REPO_LINE, encoding="utf-8")
+    (dst_dir / "override.conf").write_text(MANAGED_OVERRIDE, encoding="utf-8")
 
     result = _run_bash(
         f'source {INSTALLER} && same_override "$SRC" "$DST"',
@@ -128,11 +132,11 @@ def test_drift_guard_accepts_exact_repo_source(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def test_drift_guard_accepts_known_legacy_without_flag(tmp_path):
-    sandbox, src_path = _sandbox(tmp_path, deploy_text=REPO_LINE)
+def test_drift_guard_accepts_exact_known_live_legacy(tmp_path):
+    sandbox, src_path = _sandbox(tmp_path, deploy_text=MANAGED_OVERRIDE)
     dst_dir = sandbox / "osint-dashboard.service.d"
     dst_dir.mkdir(parents=True)
-    (dst_dir / "override.conf").write_text(LEGACY, encoding="utf-8")
+    (dst_dir / "override.conf").write_text(KNOWN_LIVE_LEGACY, encoding="utf-8")
 
     result = _run_bash(
         f'source {INSTALLER} && same_override "$SRC" "$DST"',
@@ -140,11 +144,32 @@ def test_drift_guard_accepts_known_legacy_without_flag(tmp_path):
         {"APP_DIR": str(sandbox), "DST_BASE": str(sandbox)},
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "partial",
+    [
+        "[Service]\nExecStart=\n" + REPO_LINE + "\n",
+        "[Service]\nExecStart=\n" + LEGACY_EXEC + "\nEnvironment=LOG_FILE=/dev/null\n",
+    ],
+)
+def test_drift_guard_refuses_partial_legacy_variants(tmp_path, partial):
+    sandbox, src_path = _sandbox(tmp_path, deploy_text=MANAGED_OVERRIDE)
+    dst_dir = sandbox / "osint-dashboard.service.d"
+    dst_dir.mkdir(parents=True)
+    (dst_dir / "override.conf").write_text(partial, encoding="utf-8")
+
+    result = _run_bash(
+        f'source {INSTALLER} && same_override "$SRC" "$DST"',
+        sandbox,
+        {"APP_DIR": str(sandbox), "DST_BASE": str(sandbox)},
+    )
+    assert result.returncode != 0
 
 
 def test_drift_guard_refuses_unexpected_extra_rule_without_write(tmp_path):
-    sandbox, src_path = _sandbox(tmp_path, deploy_text=REPO_LINE)
-    unexpected = REPO_LINE + " ExtraRule=whatever"
+    sandbox, src_path = _sandbox(tmp_path, deploy_text=MANAGED_OVERRIDE)
+    unexpected = MANAGED_OVERRIDE + "ExtraRule=whatever\n"
     dst_dir = sandbox / "osint-dashboard.service.d"
     dst_dir.mkdir(parents=True)
     dst_path = dst_dir / "override.conf"
