@@ -1966,40 +1966,43 @@ def start_proposal(case_id, action_id):
 @login_required
 @_investigator_required
 def photo_analysis_upload(case_id):
+    """Upload a photo for analysis (photo_analysis action).
+
+    All validation (access, subject, duplicate/stale run, size, magic bytes,
+    storage quota) happens *before* any file is persisted. Uploads are stored
+    tenant-scoped under ``instance/photo_analysis/<tenant_id>/`` and
+    ``data_value`` holds only the relative file name — an absolute local path
+    never reaches the UI, audit log, findings, or error responses.
+
+    Failure-atomicity (P1 fix / ADR-0005 D3/D8): the file save, action create,
+    audit and commit are one unit. On ANY failure the session is rolled back,
+    the just-written file is removed, and no orphan file or orphan action
+    survives. The partial unique index
+    ``uq_research_actions_active_photo_analysis`` turns a concurrent duplicate
+    upload into an IntegrityError, which this route maps to 409 (+cleanup).
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    from cms.services.action_scope import action_scope_label
+    from cms.services.photo_storage import (
+        MAX_PHOTO_FILE_BYTES,
+        PHOTO_ANALYSIS_TENANT_MAX_BYTES,
+        PHOTO_ANALYSIS_TENANT_MAX_FILES,
+        collect_active_photo_data_values,
+        store_photo,
+        sweep_stale_photos,
+        tenant_photo_quota_lock,
+        tenant_photo_analysis_usage,
+        unlink_photo,
+        validate_photo,
+    )
+
+    tenant_id = current_user.tenant_id
+
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
     ensure_case_access(case)
-
-    photo = request.files.get("photo")
-    if not photo:
-        return jsonify({"error": "No photo uploaded"}), 400
-
-    allowed = {"image/jpeg", "image/png", "image/heic", "image/webp", "image/gif"}
-    if photo.content_type not in allowed:
-        return jsonify({"error": f"Unsupported file type: {photo.content_type}"}), 400
-
-    import os
-    import uuid as _uuid
-
-    upload_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "static",
-        "uploads",
-        "photos",
-    )
-    os.makedirs(upload_dir, exist_ok=True)
-
-    ext = (
-        photo.filename.rsplit(".", 1)[-1].lower()
-        if photo.filename and "." in photo.filename
-        else "jpg"
-    )
-    filename = f"{_uuid.uuid4().hex[:12]}.{ext}"
-    filepath = os.path.join(upload_dir, filename)
-    photo.save(filepath)
-
-    data_value = filepath
 
     subject_id = request.form.get("subject_id") or None
     subject = None
@@ -2010,41 +2013,170 @@ def photo_analysis_upload(case_id):
         if not case.subjects.filter_by(id=subject_id).first():
             return jsonify({"error": "Subject is not linked to this case"}), 400
 
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify({"error": "No photo uploaded"}), 400
+
+    # Block BOTH active states (pending and running) for the same
+    # tenant/case/subject scope, but never archived actions. An archived
+    # pending/running action intentionally does not block a new upload.
+    # Stale-auto-reset applies ONLY to genuinely running actions.
     _STALE_TIMEOUT = 600
-    existing_query = WorkflowResearchAction.query.filter_by(
-        case_id=case_id, action_type="photo_analysis", status="running"
+    active_query = WorkflowResearchAction.query.filter(
+        WorkflowResearchAction.tenant_id == tenant_id,
+        WorkflowResearchAction.case_id == case_id,
+        WorkflowResearchAction.action_type == "photo_analysis",
+        WorkflowResearchAction.status.in_(["pending", "running"]),
+        WorkflowResearchAction.archived_at.is_(None),
     )
     if subject_id:
-        existing_query = existing_query.filter_by(subject_id=subject_id)
-    existing = existing_query.first()
+        active_query = active_query.filter(
+            WorkflowResearchAction.subject_id == subject_id
+        )
+    else:
+        active_query = active_query.filter(WorkflowResearchAction.subject_id.is_(None))
+    existing = active_query.first()
     if existing:
         if (
-            existing.started_at
+            existing.status == "running"
+            and existing.started_at
             and (datetime.now() - existing.started_at).total_seconds() > _STALE_TIMEOUT
         ):
             existing.status = "error"
             existing.error = "Stale action auto-reset (timed out)"
             db.session.commit()
         else:
-            return jsonify({"error": "Action already running"}), 409
+            return jsonify({"error": "Action already running or pending"}), 409
 
-    action = WorkflowResearchAction(
-        id=str(uuid.uuid4()),
-        case_id=case_id,
-        subject_id=subject_id,
-        target_kind="subject" if subject_id else "case",
-        action_type="photo_analysis",
-        data_value=data_value,
-        label=ACTION_REGISTRY["photo_analysis"]["label"],
-        status="pending",
-        tenant_id=current_user.tenant_id,
-    )
-    action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
-    db.session.add(action)
-    db.session.commit()
-    action_id = action.id
+    # File validation (size + magic bytes) before any write. The file cursor
+    # must be rewound after the size probe; validate_photo itself rewinds.
+    photo.seek(0, os.SEEK_END)
+    upload_size = photo.tell()
+    photo.seek(0)
+    if upload_size > MAX_PHOTO_FILE_BYTES:
+        return jsonify({"error": "Photo is too large (max 8 MB)"}), 413
 
-    start_action_async(action_id)
+    is_valid, ext = validate_photo(photo)
+    if not is_valid or not ext:
+        return jsonify({"error": "Invalid photo content"}), 400
+
+    # Both the commercial tier quota and the transient photo cap apply. The
+    # tenant-scoped lock covers usage-check, save, action insert, and commit.
+    try:
+        with tenant_photo_quota_lock(tenant_id):
+            from cms.tier_limits import check_storage_limit
+
+            storage_ok, _storage_used_mb, storage_max_mb = check_storage_limit(
+                tenant_id, extra_bytes=upload_size
+            )
+            if not storage_ok:
+                return (
+                    jsonify(
+                        {
+                            "error": "Tenant storage limit exceeded",
+                            "limit": "tier_storage",
+                            "max_mb": storage_max_mb,
+                        }
+                    ),
+                    413,
+                )
+
+            used_files, used_bytes = tenant_photo_analysis_usage(tenant_id)
+            if used_files >= PHOTO_ANALYSIS_TENANT_MAX_FILES or (
+                used_bytes + upload_size > PHOTO_ANALYSIS_TENANT_MAX_BYTES
+            ):
+                return (
+                    jsonify(
+                        {
+                            "error": "Temporary photo-analysis storage limit exceeded",
+                            "limit": "photo_analysis_transient",
+                        }
+                    ),
+                    413,
+                )
+
+            # Persist only now, tenant-scoped; data_value = relative file name.
+            try:
+                data_value = store_photo(photo, ext, tenant_id)
+            except Exception:
+                logger.exception("Photo-analysis file save failed for case %s", case_id)
+                return jsonify({"error": "Internal error"}), 500
+            logger.info(
+                "Stored photo-analysis upload for case %s (subject %s)",
+                case_id,
+                subject_id or "none",
+            )
+
+            try:
+                action = WorkflowResearchAction(
+                    id=str(uuid.uuid4()),
+                    case_id=case_id,
+                    subject_id=subject_id,
+                    target_kind="subject" if subject_id else "case",
+                    action_type="photo_analysis",
+                    data_value=data_value,
+                    label=ACTION_REGISTRY["photo_analysis"]["label"],
+                    status="pending",
+                    tenant_id=tenant_id,
+                )
+                action.target_snapshot = json.dumps(
+                    action.build_target_snapshot(subject, None)
+                )
+                db.session.add(action)
+                db.session.flush()
+                action_id = action.id
+
+                log_scope_audit(
+                    action=action,
+                    audit_action="create",
+                    user_id=current_user.id,
+                    ip_address=request.remote_addr,
+                    case_id=case_id,
+                    description=f"Started {ACTION_REGISTRY['photo_analysis']['label']} action ({action_scope_label(action)})",
+                )
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                unlink_photo(data_value, tenant_id)
+                logger.warning(
+                    "Concurrent photo-analysis duplicate upload for case %s", case_id
+                )
+                return jsonify({"error": "Action already running or pending"}), 409
+            except Exception:
+                db.session.rollback()
+                unlink_photo(data_value, tenant_id)
+                logger.exception(
+                    "Photo-analysis action create failed for case %s", case_id
+                )
+                return jsonify({"error": "Internal error"}), 500
+    except Exception:
+        db.session.rollback()
+        logger.exception("Photo-analysis quota lock failed for tenant %s", tenant_id)
+        return jsonify({"error": "Internal error"}), 500
+
+    # Opportunistic, tenant-scoped, status-aware cleanup of stale leftovers.
+    try:
+        sweep_stale_photos(
+            tenant_id,
+            referenced=collect_active_photo_data_values(tenant_id),
+        )
+    except Exception:
+        logger.debug("Photo-analysis stale sweep failed", exc_info=True)
+
+    try:
+        start_action_async(action_id)
+    except Exception:
+        # The worker could not be dispatched: mark the action failed and
+        # remove the transient file so no pending row/filesystem leak stays.
+        action = db.session.get(WorkflowResearchAction, action_id)
+        if action:
+            action.status = "error"
+            action.error = "Photo-analysis worker could not be started"
+            db.session.commit()
+        unlink_photo(data_value, tenant_id)
+        logger.exception("Could not start photo-analysis worker for case %s", case_id)
+        return jsonify({"error": "Internal error"}), 500
+
     return jsonify({"id": action_id, "status": "started"})
 
 
@@ -2860,6 +2992,7 @@ def archive_action(action_id):
 def restore_action(action_id):
     """Restore a research action and its linked findings."""
     from cms.models import ActionFinding, Finding, ResearchAction, db
+    from sqlalchemy.exc import IntegrityError
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
     case = db.session.get(WorkflowCase, action.case_id)
@@ -2867,23 +3000,70 @@ def restore_action(action_id):
         ensure_case_access(case)
     else:
         ensure_tenant_access(action)
-    AuditLog.log(
-        user_id=current_user.id,
-        action="restore",
-        entity_type="research_action",
-        entity_id=action.id,
-        ip_address=request.remote_addr,
-        description=f"Workflow restored action: {action.label} (case {action.case_id})",
-    )
-    action.archived_at = None
-    finding_ids = [
-        af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
-    ]
-    if finding_ids:
-        Finding.query.filter(Finding.id.in_(finding_ids)).update(
-            {"archived_at": None}, synchronize_session=False
+    if action.archived_at is not None and action.status in ("pending", "running"):
+        conflict_query = ResearchAction.query.filter(
+            ResearchAction.id != action.id,
+            ResearchAction.tenant_id == action.tenant_id,
+            ResearchAction.case_id == action.case_id,
+            ResearchAction.action_type == "photo_analysis",
+            ResearchAction.status.in_(["pending", "running"]),
+            ResearchAction.archived_at.is_(None),
         )
-    db.session.commit()
+        if action.subject_id:
+            conflict_query = conflict_query.filter(
+                ResearchAction.subject_id == action.subject_id
+            )
+        else:
+            conflict_query = conflict_query.filter(ResearchAction.subject_id.is_(None))
+        if conflict_query.first():
+            if request.is_json:
+                return (
+                    jsonify(
+                        {
+                            "error": "Cannot restore archived photo-analysis action: active action already exists"
+                        }
+                    ),
+                    409,
+                )
+            flash("Cannot restore: an active photo-analysis action already exists.", "warning")
+            return redirect(
+                request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
+            )
+    try:
+        AuditLog.log(
+            user_id=current_user.id,
+            action="restore",
+            entity_type="research_action",
+            entity_id=action.id,
+            ip_address=request.remote_addr,
+            description=f"Workflow restored action: {action.label} (case {action.case_id})",
+        )
+        action.archived_at = None
+        finding_ids = [
+            af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
+        ]
+        if finding_ids:
+            Finding.query.filter(Finding.id.in_(finding_ids)).update(
+                {"archived_at": None}, synchronize_session=False
+            )
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        if action.action_type != "photo_analysis":
+            raise
+        if request.is_json:
+            return (
+                jsonify(
+                    {
+                        "error": "Cannot restore archived photo-analysis action: active action already exists"
+                    }
+                ),
+                409,
+            )
+        flash("Cannot restore: an active photo-analysis action already exists.", "warning")
+        return redirect(
+            request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
+        )
     if request.is_json:
         return jsonify({"ok": True})
     flash("Action restored.", "info")

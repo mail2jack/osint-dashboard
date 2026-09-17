@@ -5,9 +5,11 @@ database (already migrated to head by conftest) is never downgraded.
 """
 
 import os
+import importlib.util
 import sqlite3
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -19,8 +21,12 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "d5e6f7a8b9c0"
+HEAD_REVISION = "e0f1a2b3c4d6"
 INVOICE_ITEM_PREV_REVISION = "f8a9b0c1d2e3"
+# The blocked invoice-items downgrade stops one revision below head: the
+# photo-analysis index migration (e0f1a2b3c4d6) above it downgrades cleanly,
+# then d5e6f7a8b9c0's guard aborts before any column DDL.
+INVOICE_ITEM_DOWNGRADE_STOP = "d5e6f7a8b9c0"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -688,7 +694,8 @@ class TestMigrationCycle:
         )
         assert "exceed 500" in output.lower()
 
-        # Still at head; the blocked downgrade did not touch table data/DDL.
+        # The blocked downgrade stopped at the guarding revision (just below
+        # head); the description column stayed untouched at 2000.
         conn = sqlite3.connect(db_file)
         revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
         cols_after = {
@@ -696,5 +703,104 @@ class TestMigrationCycle:
             for r in conn.execute("PRAGMA table_info(invoice_items)")
         }
         conn.close()
-        assert revision == HEAD_REVISION
+        assert revision == INVOICE_ITEM_DOWNGRADE_STOP
         assert cols_after["description"] == "VARCHAR(2000)"
+
+    def test_photo_analysis_index_preflight_rejects_existing_duplicates(self, tmp_path):
+        """The new index migration fails closed without partial DDL."""
+        db_file = tmp_path / "photo-duplicates.db"
+        _run_alembic(db_file, "upgrade", "d5e6f7a8b9c0")
+        conn = sqlite3.connect(db_file)
+        conn.executemany(
+            "INSERT INTO research_actions "
+            "(id, tenant_id, case_id, action_type, status, archived_at) "
+            "VALUES (?, ?, ?, 'photo_analysis', 'pending', NULL)",
+            [("photo-a", "tenant-a", "case-a"), ("photo-b", "tenant-a", "case-a")],
+        )
+        conn.commit()
+        conn.close()
+
+        output = _run_alembic_expect_fail(db_file, "upgrade", "head")
+        assert "duplicate active scope" in output.lower()
+        assert "tenant-a" in output
+
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        index = conn.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type = 'index' AND name = "
+            "'uq_research_actions_active_photo_analysis'"
+        ).fetchone()
+        conn.close()
+        assert revision == "d5e6f7a8b9c0"
+        assert index is None
+
+    def test_photo_preflight_fails_closed_without_verified_rls_visibility(
+        self, monkeypatch
+    ):
+        """The PostgreSQL migration never treats an unverified context as empty."""
+        path = (
+            REPO_ROOT
+            / "migrations"
+            / "versions"
+            / "e0f1a2b3c4d6_photo_analysis_active_unique.py"
+        )
+        spec = importlib.util.spec_from_file_location("photo_unique_migration", path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+
+        class Bind:
+            dialect = SimpleNamespace(name="postgresql")
+
+            def execute(self, statement):
+                if "SET LOCAL" in str(statement):
+                    return None
+                return SimpleNamespace(one=lambda: ("cms_test", "false"))
+
+        with pytest.raises(RuntimeError, match="not RLS-visible"):
+            migration._enable_verified_duplicate_visibility(Bind())
+
+    def test_photo_preflight_verified_context_checks_duplicates_before_ddl(
+        self, monkeypatch
+    ):
+        path = (
+            REPO_ROOT
+            / "migrations"
+            / "versions"
+            / "e0f1a2b3c4d6_photo_analysis_active_unique.py"
+        )
+        spec = importlib.util.spec_from_file_location("photo_unique_migration_ok", path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        ddl = []
+
+        class Result:
+            def one(self):
+                return ("cms_test", "true")
+
+            def fetchall(self):
+                return [
+                    SimpleNamespace(
+                        tenant_id="tenant-a",
+                        case_id="case-a",
+                        subject_key="",
+                        active_count=2,
+                    )
+                ]
+
+        class Bind:
+            dialect = SimpleNamespace(name="postgresql")
+
+            def execute(self, statement):
+                sql = str(statement)
+                if "current_user" in sql:
+                    return Result()
+                if "GROUP BY tenant_id" in sql:
+                    return Result()
+                return None
+
+        monkeypatch.setattr(migration.op, "get_bind", lambda: Bind())
+        monkeypatch.setattr(migration.op, "execute", lambda statement: ddl.append(statement))
+        with pytest.raises(RuntimeError, match="duplicate active scope"):
+            migration.upgrade()
+        assert ddl == []
