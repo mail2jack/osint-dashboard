@@ -20,6 +20,9 @@ import os
 import uuid
 from unittest.mock import patch
 
+import pytest
+from sqlalchemy import event
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from cms.models import (
     AuditLog,
@@ -362,8 +365,61 @@ class TestArchiveRestoreInvariants:
         case, _, finding = _scaffold()
         auth_client.post(_archive_json(finding.id))
         auth_client.post(_restore_json(finding.id))
+        audit_count = AuditLog.query.filter_by(
+            entity_type="finding", action="restore", entity_id=finding.id
+        ).count()
         resp = auth_client.post(_restore_json(finding.id))
         assert resp.status_code == 409
+        assert AuditLog.query.filter_by(
+            entity_type="finding", action="restore", entity_id=finding.id
+        ).count() == audit_count
+
+
+class TestFindingArchiveRestoreNonJson:
+    @pytest.mark.parametrize(
+        ("endpoint", "initially_archived"),
+        [("archive", False), ("restore", True)],
+    )
+    @pytest.mark.parametrize("referer", [None, "/cms/workflow/case/example"])
+    def test_non_json_redirect_never_refreshes_finding_after_commit(
+        self, auth_client, endpoint, initially_archived, referer
+    ):
+        case, _, finding = _scaffold()
+        if initially_archived:
+            finding.archived_at = datetime.now(UTC)
+            db.session.commit()
+
+        headers = {"Referer": referer} if referer else {}
+        committed = False
+
+        def mark_committed(session):
+            nonlocal committed
+            committed = True
+
+        def reject_expired_refresh(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            if committed and "FROM findings" in statement.upper():
+                raise ObjectDeletedError(
+                    "finding refresh after commit should not occur"
+                )
+
+        event.listen(db.session, "after_commit", mark_committed)
+        event.listen(db.engine, "before_cursor_execute", reject_expired_refresh)
+        try:
+            response = auth_client.post(
+                f"/cms/workflow/api/findings/{finding.id}/{endpoint}",
+                headers=headers,
+            )
+        finally:
+            event.remove(db.session, "after_commit", mark_committed)
+            event.remove(db.engine, "before_cursor_execute", reject_expired_refresh)
+
+        assert response.status_code == 302
+        if referer:
+            assert response.headers["Location"] == referer
+        else:
+            assert f"/cms/workflow/case/{case.id}" in response.headers["Location"]
 
 
 # ---------------------------------------------------------------------------

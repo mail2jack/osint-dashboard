@@ -3082,6 +3082,7 @@ def archive_finding(finding_id):
         return jsonify(err[0]), err[1]
     if finding.archived_at is not None:
         return jsonify({"error": "Finding is already archived"}), 409
+    case_id = finding.case_id
     finding.archived_at = datetime.now(UTC)
     AuditLog.log(
         user_id=current_user.id,
@@ -3096,7 +3097,7 @@ def archive_finding(finding_id):
         return jsonify({"ok": True})
     flash("Finding archived.", "info")
     return redirect(
-        request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
+        request.referrer or url_for("workflow.case_detail", case_id=case_id)
     )
 
 
@@ -3110,6 +3111,7 @@ def restore_finding(finding_id):
         return jsonify(err[0]), err[1]
     if finding.archived_at is None:
         return jsonify({"error": "Finding is not archived"}), 409
+    case_id = finding.case_id
     finding.archived_at = None
     AuditLog.log(
         user_id=current_user.id,
@@ -3124,7 +3126,7 @@ def restore_finding(finding_id):
         return jsonify({"ok": True})
     flash("Finding restored.", "info")
     return redirect(
-        request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
+        request.referrer or url_for("workflow.case_detail", case_id=case_id)
     )
 
 
