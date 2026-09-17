@@ -55,16 +55,17 @@ daemon-reload, and explicitly restart. Verify health after either rollback.
 Before writing, backing up, reloading, or restarting anything, the installer
 compares the live `/etc/systemd/system/osint-dashboard.service.d/override.conf`
 against the managed repo source (`deploy/osint-dashboard-gunicorn2.override.conf`)
-with whitespace collapsed and the `--no-control-socket` flag stripped.
+with whitespace normalized.
 
 Only two contents are accepted:
 
 - the **exact repo source**, or
-- the **known legacy variant** that differs solely by an absent
-  `--no-control-socket` (the pre-fix override).
+- the **known historical live variant** that lacks *both*
+  `--no-control-socket` and `Environment=LOG_FILE=/dev/null`.
 
 Any other content — an unexpected extra rule, reordered parameters, or a
-different parameter value — is treated as an unplanned operator change. The
+different parameter value, including a partial variant that lacks only one of
+the two managed additions — is treated as an unplanned operator change. The
 installer refuses with an explicit `ERROR` telling you that nothing was
 written, backed up, reloaded, or restarted, and asks you to review the
 existing override by hand. This is an exact equality check, never a loose
