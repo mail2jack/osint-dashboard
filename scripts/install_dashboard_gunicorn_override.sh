@@ -128,10 +128,30 @@ run_install() {
     echo "Review the unit, then explicitly run: systemctl restart $SERVICE"
 }
 
+# Fail-closed fixed-path guard for deployed/direct execution. In production the
+# source, Gunicorn binary, backup root, and systemd drop-in root are always the
+# same fixed paths. APP_DIR/DST_BASE overrides are honored ONLY when this file
+# is `source`d by the test harness (which drives run_install against a sandbox).
+# A direct run handed a deviant APP_DIR or DST_BASE is refused before the root
+# check and before any access to the source file, venv --help, backup, write,
+# daemon-reload, or systemd-analyze.
+guard_fixed_paths() {
+    if [ "$APP_DIR" != "/opt/osint-dashboard" ]; then
+        echo "ERROR: APP_DIR must be /opt/osint-dashboard in a deployed run (got: $APP_DIR); refusing" >&2
+        return 1
+    fi
+    if [ "$DST_BASE" != "/etc/systemd/system" ]; then
+        echo "ERROR: DST_BASE must be /etc/systemd/system in a deployed run (got: $DST_BASE); refusing" >&2
+        return 1
+    fi
+    return 0
+}
+
 # Sourceable guard: when this file is `source`d by the test harness the
 # functions above are available (with APP_DIR/DST_BASE overridden to a sandbox)
 # but nothing executes. When run as a script, the operator flow runs.
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    guard_fixed_paths || exit 1
     if [ "$(id -u)" -ne 0 ]; then
         echo "ERROR: run as root (sudo ./scripts/install_dashboard_gunicorn_override.sh)" >&2
         exit 1

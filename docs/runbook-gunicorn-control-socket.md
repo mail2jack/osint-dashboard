@@ -70,6 +70,17 @@ written, backed up, reloaded, or restarted, and asks you to review the
 existing override by hand. This is an exact equality check, never a loose
 "contains" match.
 
+## Fixed production paths (fail-closed)
+
+The deployed installer always uses the fixed paths `APP_DIR=/opt/osint-dashboard`
+and `DST_BASE=/etc/systemd/system`. When run directly (the production
+deployment mode), the installer refuses fail-closed if `APP_DIR` or `DST_BASE`
+deviate from these values — before the root check and before any access to the
+source file, the venv binary, a backup, a write, `systemctl daemon-reload`, or
+`systemd-analyze verify`. Environment overrides are honored ONLY when the
+installer is `source`d by the test harness, which drives `run_install` against a
+sandbox.
+
 ## Read-only real-venv flag check (fail-closed)
 
 Before any change, the installer runs the **real installed binary** at the

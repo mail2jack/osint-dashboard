@@ -232,6 +232,42 @@ def test_installer_env_defaults_always_resolve_to_fixed_paths():
     assert 'GUNICORN="$APP_DIR/venv/bin/gunicorn"' in source
 
 
+def test_direct_execute_refuses_deviant_paths_before_any_change(tmp_path):
+    """Direct (deployed) execution is fail-closed on deviant APP_DIR/DST_BASE:
+    it fails before the root check, any file access, gunicorn --help, backup,
+    write, daemon-reload, or systemd-analyze — nothing is written anywhere."""
+    deviant_app = tmp_path / "deviant-app"
+    deviant_app.mkdir(parents=True)
+    deploy = deviant_app / "deploy"
+    deploy.mkdir()
+    (deploy / "osint-dashboard-gunicorn2.override.conf").write_text(
+        "ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 "
+        "--worker-class sync --threads 1 --bind 127.0.0.1:5000 --timeout 120 "
+        "--no-control-socket app:app\n",
+        encoding="utf-8",
+    )
+    venv_bin = deviant_app / "venv" / "bin"
+    venv_bin.mkdir(parents=True)
+    shim = venv_bin / "gunicorn"
+    shim.write_text(
+        "#!/usr/bin/env bash\ntouch \"$APP_DIR/ran.txt\"\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+
+    result = _run_bash(
+        "bash {}".format(str(INSTALLER)),
+        tmp_path,
+        {"APP_DIR": str(deviant_app), "DST_BASE": str(deviant_app)},
+    )
+    assert result.returncode != 0
+    assert "must be /opt/osint-dashboard" in result.stderr
+    assert "run as root" not in result.stderr
+    assert not (deviant_app / "ran.txt").exists()          # gunicorn never invoked
+    assert not list(tmp_path.rglob("override.conf"))       # nothing written
+    assert not list(tmp_path.rglob("*override.conf.backup*"))
+
+
 def test_runbook_documents_explicit_install_restart_and_rollback():
     source = RUNBOOK.read_text(encoding="utf-8")
     assert "update.sh" in source
