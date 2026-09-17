@@ -50,6 +50,41 @@ sudo systemctl restart osint-dashboard
 If there was no prior override, remove only the newly installed drop-in,
 daemon-reload, and explicitly restart. Verify health after either rollback.
 
+## Drift guard (fail-closed)
+
+Before writing, backing up, reloading, or restarting anything, the installer
+compares the live `/etc/systemd/system/osint-dashboard.service.d/override.conf`
+against the managed repo source (`deploy/osint-dashboard-gunicorn2.override.conf`)
+with whitespace collapsed and the `--no-control-socket` flag stripped.
+
+Only two contents are accepted:
+
+- the **exact repo source**, or
+- the **known legacy variant** that differs solely by an absent
+  `--no-control-socket` (the pre-fix override).
+
+Any other content — an unexpected extra rule, reordered parameters, or a
+different parameter value — is treated as an unplanned operator change. The
+installer refuses with an explicit `ERROR` telling you that nothing was
+written, backed up, reloaded, or restarted, and asks you to review the
+existing override by hand. This is an exact equality check, never a loose
+"contains" match.
+
+## Read-only real-venv flag check (fail-closed)
+
+Before any change, the installer runs the **real installed binary** at the
+fixed path `$APP_DIR/venv/bin/gunicorn --help` (read-only — never starting a
+service, never creating a control socket, never touching systemd). It fails
+closed and aborts before any filesystem change when:
+
+- the installed binary is missing or not executable,
+- `gunicorn --help` cannot be run, or
+- the help output does not contain `--no-control-socket` (an outdated/broken
+  venv build).
+
+The check is read-only against the production venv; it is never skipped in
+deployment.
+
 ## Verification
 
 The expected effective command retains two sync workers, `threads=1`, bind
