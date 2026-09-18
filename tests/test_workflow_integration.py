@@ -34,6 +34,10 @@ class TestModelsExist:
     def test_finding_screenshot_table(self, app):
         assert self._has_table(app, "finding_screenshots")
 
+    def test_finding_screenshot_evidence_metadata(self, app):
+        assert hasattr(FindingScreenshot, "file_size")
+        assert hasattr(FindingScreenshot, "capture_provenance")
+
     def test_service_rate_table(self, app):
         assert self._has_table(app, "service_rates")
 
@@ -416,13 +420,20 @@ class TestFindingScreenshot:
             id="test-ss-id",
             finding_id=finding.id,
             url="https://example.com/screenshot.png",
+            source_url="https://example.com/original-page",
             file_path="screenshots/test.png",
+            file_size=1234,
+            capture_provenance={"kind": "manual_upload"},
         )
         db.session.add(ss)
         db.session.commit()
 
         assert len(finding.finding_screenshots) == 1
         assert finding.finding_screenshots[0].file_path == "screenshots/test.png"
+        assert finding.finding_screenshots[0].file_size == 1234
+        assert finding.finding_screenshots[0].capture_provenance == {
+            "kind": "manual_upload"
+        }
 
 
 class TestEmailCheckPGP:

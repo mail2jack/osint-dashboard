@@ -2268,6 +2268,11 @@ class FindingScreenshot(db.Model):
     url = db.Column(db.String(500))
     source_url = db.Column(db.String(500))
     file_path = db.Column(db.String(500))
+    # Evidence metadata for automated captures.  Legacy/manual screenshots
+    # intentionally keep these nullable; a capture worker will populate both
+    # values atomically before the feature is enabled for any tenant.
+    file_size = db.Column(db.Integer, nullable=True)
+    capture_provenance = db.Column(SafeJSON, nullable=True)
     captured_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
