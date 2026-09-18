@@ -36,7 +36,12 @@ def verify_sandbox(*, unit_path: Path, chromium_path: Path | None) -> tuple[bool
     except OSError:
         return False, ["worker unit is unreadable"]
 
-    if "--no-sandbox" in unit_text or "--disable-setuid-sandbox" in unit_text:
+    # Unit comments document the forbidden flags, so inspect only actual
+    # systemd directives.  A comment must never turn a safe unit into NO_GO.
+    directives = "\n".join(
+        line for line in unit_text.splitlines() if not line.lstrip().startswith("#")
+    )
+    if "--no-sandbox" in directives or "--disable-setuid-sandbox" in directives:
         reasons.append("worker unit permits an unsafe Chromium sandbox bypass")
     if "User=osint" not in unit_text:
         reasons.append("worker unit must run as osint")
