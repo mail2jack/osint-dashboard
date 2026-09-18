@@ -79,8 +79,8 @@ def validate_capture_url(url: str) -> tuple[bool, str]:
     return True, ""
 
 
-def _guard_handler(route, request) -> None:
-    ok, reason = validate_url(request.url)
+def _guard_handler(route, request, validator=validate_url) -> None:
+    ok, reason = validator(request.url)
     if not ok:
         logger.info("SSRF guard blocked %s (%s)", request.url, reason)
         try:
@@ -105,3 +105,16 @@ def _guard_handler(route, request) -> None:
 def install_request_guard(page) -> None:
     """Block any Playwright request that resolves to a private/reserved address."""
     page.route("**/*", _guard_handler)
+
+
+def install_capture_request_guard(page) -> None:
+    """Install the fail-closed SSRF guard required for evidence capture.
+
+    Unlike the legacy fetch guard, *each* browser request must resolve at the
+    time it is made.  This covers redirects and DNS rebinding without allowing
+    an unresolved target to reach Chromium.
+    """
+    page.route(
+        "**/*",
+        lambda route, request: _guard_handler(route, request, validate_capture_url),
+    )

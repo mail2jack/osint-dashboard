@@ -61,8 +61,8 @@ class TestPostgreSQLIntegration:
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
         # d5e6f7a8b9c0 increases invoice item description length to 2000.
         # e1f2a3b4c5d7 adds workflow screenshot evidence metadata.
-        # f2a3b4c5d8e adds the isolated finding-capture worker queue.
-        assert revision == "f2a3b4c5d8e"
+        # f3a4b5c6d9e0 preserves full capture source URLs as evidence.
+        assert revision == "f3a4b5c6d9e0"
 
         protected = db.session.execute(
             text(
@@ -1226,7 +1226,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f2a3b4c5d8e"
+        assert revision == "f3a4b5c6d9e0"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
