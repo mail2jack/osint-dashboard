@@ -18,6 +18,7 @@ from ..models import (
     db,
     report_include_filter,
 )
+from ..services.report_evidence import report_screenshots, safe_source_url
 from . import cms_bp
 
 logger = logging.getLogger(__name__)
@@ -351,7 +352,10 @@ def case_report(case_id: str) -> str:
         comments_q = comments_q.filter_by(subject_id=subject_filter)
 
     findings = (
-        findings_q.options(db.joinedload(Finding.author))
+        findings_q.options(
+            db.joinedload(Finding.author),
+            db.joinedload(Finding.finding_screenshots),
+        )
         .order_by(Finding.created_at.asc())
         .all()
     )
@@ -388,11 +392,12 @@ def case_report(case_id: str) -> str:
                 "content": f.content,
                 "source_type": f.source_type,
                 "confidence": f.confidence_level,
-                "source_url": f.source_url,
+                "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
                 "subject_name": subject.name if subject else "-",
                 "subject_id": f.subject_id,
                 "finding_type": f.finding_type,
+                "screenshots": report_screenshots(f),
             }
         )
     for c in comments:
@@ -456,7 +461,10 @@ def case_report_pdf(case_id: str) -> flask.Response:
     comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
 
     findings = (
-        findings_q.options(db.joinedload(Finding.author))
+        findings_q.options(
+            db.joinedload(Finding.author),
+            db.joinedload(Finding.finding_screenshots),
+        )
         .order_by(Finding.created_at.asc())
         .all()
     )
@@ -491,9 +499,10 @@ def case_report_pdf(case_id: str) -> flask.Response:
                 "title": f.title,
                 "content": f.content,
                 "source_type": f.source_type,
-                "source_url": f.source_url,
+                "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
                 "subject_name": subject.name if subject else "-",
+                "screenshots": report_screenshots(f, for_pdf=True),
             }
         )
     for c in comments:

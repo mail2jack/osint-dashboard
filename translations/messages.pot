@@ -4169,3 +4169,14 @@ msgstr ""
 msgid "remaining"
 msgstr ""
 
+msgid "Open original screenshot"
+msgstr ""
+
+msgid "Screenshot evidence"
+msgstr ""
+
+msgid "Screenshot file unavailable"
+msgstr ""
+
+msgid "Original source"
+msgstr ""

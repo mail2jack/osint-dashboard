@@ -279,6 +279,22 @@ table tr:nth-child(even) td {
         {% if entry.source_url %}
         <div style="font-size:8pt;margin-top:0.1cm;"><a href="{{ entry.source_url }}">{{ entry.source_url }}</a></div>
         {% endif %}
+        {% if entry.screenshots %}
+        <div style="margin-top:0.25cm;display:flex;gap:0.2cm;flex-wrap:wrap;">
+            {% for screenshot in entry.screenshots %}
+            <div style="max-width:8cm;">
+                {% if screenshot.pdf_thumbnail_data_uri %}
+                <img src="{{ screenshot.pdf_thumbnail_data_uri }}" alt="{{ _('Screenshot evidence') }}" style="max-width:8cm;max-height:5cm;border:1px solid #d1d5db;">
+                {% else %}
+                <span style="font-size:8pt;color:#6b7280;">{{ _('Screenshot file unavailable') }}</span>
+                {% endif %}
+                {% if screenshot.source_url %}
+                <div style="font-size:8pt;"><a href="{{ screenshot.source_url }}">{{ _('Original source') }}</a></div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
     {% endfor %}

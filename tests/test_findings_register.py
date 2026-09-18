@@ -11,8 +11,11 @@ Covers:
 
 from datetime import datetime, timezone
 
-from cms.models import Case, Client, Finding, User, db
+from PIL import Image
+
+from cms.models import Case, Client, Finding, FindingScreenshot, User, db
 from cms.routes.templates import _build_report_context
+from cms.services.report_evidence import report_screenshots
 
 
 def _orm_case(title="Register Case"):
@@ -206,3 +209,90 @@ class TestReportRoutesRespectFlag:
         titles = {f["title"] for f in ctx["findings"]}
         assert "tpl-keep" in titles
         assert "tpl-drop" not in titles
+
+
+class TestReportScreenshotEvidence:
+    def test_html_report_uses_private_evidence_not_external_image(
+        self, app, auth_client, db_session, monkeypatch, tmp_path
+    ):
+        """An external DB value can be provenance, never an image request."""
+        monkeypatch.setattr(app, "instance_path", str(tmp_path))
+        case = _orm_case("Screenshot Evidence")
+        finding = _orm_finding(case, _admin_user(), "evidence finding")
+        evidence_dir = tmp_path / "finding_screenshots" / finding.id
+        evidence_dir.mkdir(parents=True)
+        evidence_file = evidence_dir / "evidence.png"
+        Image.new("RGB", (8, 8), "navy").save(evidence_file)
+        db.session.add(
+            FindingScreenshot(
+                tenant_id=case.tenant_id,
+                finding_id=finding.id,
+                url="https://evil.example/tracker.png",
+                source_url="https://source.example/original",
+                file_path=str(evidence_file),
+                file_size=evidence_file.stat().st_size,
+                capture_provenance={"kind": "test"},
+            )
+        )
+        db.session.commit()
+
+        response = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        local_url = f"/cms/workflow/uploads/{finding.id}/evidence.png"
+        assert f'src="{local_url}"' in body
+        assert f'href="{local_url}"' in body
+        assert 'href="https://source.example/original"' in body
+        assert 'src="https://evil.example/tracker.png"' not in body
+        assert 'href="https://evil.example/tracker.png"' not in body
+
+        pv_response = auth_client.get(f"/cms/workflow/case/{case.id}/pv")
+        assert pv_response.status_code == 200
+        pv_body = pv_response.get_data(as_text=True)
+        assert f'src="{local_url}"' in pv_body
+        assert 'src="https://evil.example/tracker.png"' not in pv_body
+        assert 'href="https://evil.example/tracker.png"' not in pv_body
+
+    def test_pdf_evidence_thumbnail_is_embedded_and_bounded(
+        self, app, db_session, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(app, "instance_path", str(tmp_path))
+        case = _orm_case("PDF Evidence")
+        finding = _orm_finding(case, _admin_user(), "pdf evidence")
+        evidence_dir = tmp_path / "finding_screenshots" / finding.id
+        evidence_dir.mkdir(parents=True)
+        evidence_file = evidence_dir / "evidence.png"
+        Image.new("RGBA", (1200, 900), "green").save(evidence_file)
+        screenshot = FindingScreenshot(
+            tenant_id=case.tenant_id,
+            finding_id=finding.id,
+            file_path=str(evidence_file),
+            source_url="https://source.example/original",
+        )
+        finding.finding_screenshots = [screenshot]
+        db.session.commit()
+
+        with app.test_request_context("/"):
+            evidence = report_screenshots(finding, for_pdf=True)[0]
+        assert evidence["pdf_thumbnail_data_uri"].startswith("data:image/jpeg;base64,")
+        assert evidence["original_url"].endswith(f"/{finding.id}/evidence.png")
+        assert evidence["source_url"] == "https://source.example/original"
+
+    def test_invalid_screenshot_url_is_not_report_link(self, auth_client, db_session):
+        case = _orm_case("Unsafe Evidence")
+        finding = _orm_finding(case, _admin_user(), "unsafe evidence")
+        db.session.add(
+            FindingScreenshot(
+                tenant_id=case.tenant_id,
+                finding_id=finding.id,
+                url="javascript:alert(1)",
+                source_url="data:text/html,boom",
+            )
+        )
+        db.session.commit()
+
+        response = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert 'href="javascript:' not in body
+        assert 'href="data:' not in body

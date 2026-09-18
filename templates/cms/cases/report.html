@@ -77,6 +77,24 @@
                     {% if entry.source_url %}
                     <div style="margin-top:0.25rem;"><a href="{{ entry.source_url }}" target="_blank" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ entry.source_url }}</a></div>
                     {% endif %}
+                    {% if entry.screenshots %}
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">
+                        {% for screenshot in entry.screenshots %}
+                        <div style="max-width:240px;">
+                            {% if screenshot.thumbnail_url %}
+                            <a href="{{ screenshot.original_url }}" target="_blank" rel="noopener" aria-label="{{ _('Open original screenshot') }}">
+                                <img src="{{ screenshot.thumbnail_url }}" alt="{{ _('Screenshot evidence') }}" loading="lazy" style="display:block;max-width:240px;max-height:160px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;">
+                            </a>
+                            {% else %}
+                            <span style="font-size:0.8rem;color:var(--text-muted);">{{ _('Screenshot file unavailable') }}</span>
+                            {% endif %}
+                            {% if screenshot.source_url %}
+                            <div><a href="{{ screenshot.source_url }}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--link-color);">{{ _('Original source') }}</a></div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-muted);display:flex;gap:1rem;flex-wrap:wrap;">
                         <span>👤 {{ entry.author }}</span>
                         {% if entry.subject_name != '-' %}<span>📎 {{ entry.subject_name }}</span>{% endif %}
