@@ -1692,7 +1692,9 @@ class Finding(db.Model):
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
     detail = db.Column(db.Text)  # Optional extended detail from workflow findings
-    source_url = db.Column(db.String(500))
+    # A queued capture target accepts up to 2000 characters.  Preserve that
+    # exact original reference with its evidence instead of truncating it.
+    source_url = db.Column(db.String(2000))
     source_type = db.Column(db.String(50))  # osint, interview, document, etc.
 
     # Integrity stamp — SHA-256 hash computed at creation for chain-of-custody
