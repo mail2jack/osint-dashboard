@@ -65,7 +65,16 @@ def capture_page_as_png(target_url: str) -> CapturedPage:
             # --no-sandbox or --disable-setuid-sandbox. The optional executable
             # path is a root-owned, AppArmor-approved browser installed by the
             # dedicated operator script. A failed sandbox remains a hard error.
-            launch_options = {"headless": True, "timeout": CAPTURE_TIMEOUT_MS}
+            # Playwright adds ``--no-sandbox`` to Chromium's default launch
+            # arguments.  That is not acceptable for evidence capture: remove
+            # that default explicitly rather than merely avoiding it in our
+            # own ``args`` list.
+            launch_options = {
+                "headless": True,
+                "timeout": CAPTURE_TIMEOUT_MS,
+                "ignore_default_args": ["--no-sandbox"],
+                "args": ["--disable-crash-reporter"],
+            }
             chromium_path = _configured_chromium_path()
             if chromium_path is not None:
                 launch_options["executable_path"] = chromium_path

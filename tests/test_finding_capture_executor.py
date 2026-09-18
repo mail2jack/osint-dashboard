@@ -97,6 +97,8 @@ def test_capture_uses_configured_executable_path(tmp_path, monkeypatch):
         capture_page_as_png("https://example.test/")
 
     assert seen["executable_path"] == str(chromium)
+    assert seen["ignore_default_args"] == ["--no-sandbox"]
+    assert "--disable-crash-reporter" in seen["args"]
 
 
 def test_capture_rejects_missing_configured_executable(monkeypatch, tmp_path):
