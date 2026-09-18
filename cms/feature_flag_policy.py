@@ -8,12 +8,18 @@ FEATURE_FLAG_NAMES = {
     "paid_channels": "💰 Paid Channels",
     "subject_first_investigations": "👤 Subject-First Investigations",
     "investigation_workspace": "🔬 Investigation Workspace",
+    "finding_screenshot_capture": "📷 Finding Screenshot Capture",
 }
 
 FEATURE_FLAG_ORDER = tuple(FEATURE_FLAG_NAMES)
 
 OFF_BY_DEFAULT = frozenset(
-    {"paid_channels", "subject_first_investigations", "investigation_workspace"}
+    {
+        "paid_channels",
+        "subject_first_investigations",
+        "investigation_workspace",
+        "finding_screenshot_capture",
+    }
 )
 
 

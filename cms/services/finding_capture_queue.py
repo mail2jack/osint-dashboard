@@ -28,7 +28,9 @@ class CaptureStateError(RuntimeError):
     """A worker attempted an invalid queue state transition."""
 
 
-def enqueue_finding_capture(*, case, finding, actor, target_url: str) -> FindingCaptureJob:
+def enqueue_finding_capture(
+    *, case, finding, actor, target_url: str, request_metadata: dict | None = None
+) -> FindingCaptureJob:
     """Create a queued capture request, or fail without a partial row.
 
     The partial unique indexes are authoritative for both per-tenant and
@@ -50,6 +52,7 @@ def enqueue_finding_capture(*, case, finding, actor, target_url: str) -> Finding
         requested_by_id=actor.id,
         target_url=target_url,
         status="queued",
+        request_metadata=request_metadata,
     )
     try:
         db.session.add(job)
