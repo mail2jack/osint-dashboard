@@ -67,7 +67,12 @@ def probe_sandbox(chromium_path: Path) -> tuple[bool, str]:
     no credentials and disables browser background networking.  It never uses
     a sandbox-bypass flag.  Chromium exits after dumping the blank document.
     """
-    with tempfile.TemporaryDirectory(prefix="finding-capture-sandbox-") as profile:
+    # Chromium can leave auxiliary profile files behind briefly after it exits.
+    # This probe runs in a PrivateTmp systemd sandbox, so tolerate only that
+    # cleanup race; the service's private /tmp is discarded with the probe.
+    with tempfile.TemporaryDirectory(
+        prefix="finding-capture-sandbox-", ignore_cleanup_errors=True
+    ) as profile:
         try:
             completed = subprocess.run(
                 [

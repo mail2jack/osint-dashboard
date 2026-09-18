@@ -70,6 +70,17 @@ def test_sandbox_probe_fails_closed(tmp_path, monkeypatch):
     assert not ok
 
 
+def test_sandbox_probe_tolerates_chromium_profile_cleanup_races():
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parent.parent
+        / "scripts/verify_finding_capture_sandbox.py"
+    ).read_text()
+    assert "ignore_cleanup_errors=True" in source
+    assert "PrivateTmp systemd sandbox" in source
+
+
 def test_worker_unit_reads_only_the_managed_capture_environment_file():
     from pathlib import Path
 
