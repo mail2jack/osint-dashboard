@@ -97,15 +97,19 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
       <td>{{ loop.index }}.</td>
       <td>
         {{ f.title }}{% if f.detail %}<br><span style="font-size:10pt;color:#555;">{{ f.detail }}</span>{% endif %}
-        {% if f.finding_screenshots %}
+        {% if screenshot_evidence.get(f.id) %}
         <br>
-        {% for ss in f.finding_screenshots %}
+        {% for ss in screenshot_evidence.get(f.id, []) %}
         <div style="margin-top:4pt;">
-          <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #ccc;border-radius:3pt;overflow:hidden;text-decoration:none;">
-            <img src="{{ ss.url }}" alt="Screenshot" style="max-width:240px;max-height:120px;display:block;object-fit:cover;" loading="lazy">
+          {% if ss.thumbnail_url %}
+          <a href="{{ ss.original_url }}" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #ccc;border-radius:3pt;overflow:hidden;text-decoration:none;">
+            <img src="{{ ss.thumbnail_url }}" alt="{{ _('Screenshot evidence') }}" style="max-width:240px;max-height:120px;display:block;object-fit:cover;" loading="lazy">
           </a>
-          {% if ss.source_url and ss.source_url != ss.url %}
-          <span style="font-size:9pt;color:#555;">(<a href="{{ ss.source_url }}" style="color:#2563eb;">source</a>)</span>
+          {% else %}
+          <span style="font-size:9pt;color:#555;">{{ _('Screenshot file unavailable') }}</span>
+          {% endif %}
+          {% if ss.source_url %}
+          <span style="font-size:9pt;color:#555;">(<a href="{{ ss.source_url }}" style="color:#2563eb;">{{ _('Original source') }}</a>)</span>
           {% endif %}
           {% if ss.notes %}
           <span style="font-size:9pt;color:#555;">{{ ss.notes }}</span>

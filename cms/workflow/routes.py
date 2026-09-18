@@ -2426,12 +2426,22 @@ def pv_view(case_id):
     raw_html = md_lib.markdown(case.pv_body or "") if case.pv_body else ""
     body_html = bleach.clean(raw_html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
 
+    # Never let a stored external URL become an image request in a report.  The
+    # report helper supplies thumbnails only for files confined to the private
+    # screenshot store, while retaining a safe source URL as evidence metadata.
+    from cms.services.report_evidence import report_screenshots
+
+    screenshot_evidence = {
+        finding.id: report_screenshots(finding) for finding in findings
+    }
+
     return render_template(
         "cms/workflow/workflow_pv.html",
         case=case,
         client=client,
         subjects=subjects,
         findings=findings,
+        screenshot_evidence=screenshot_evidence,
         body_html=body_html,
     )
 
