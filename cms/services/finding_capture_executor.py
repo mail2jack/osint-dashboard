@@ -9,12 +9,25 @@ revalidates every browser request through the strict capture SSRF guard.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
+from pathlib import Path
 
 from cms.services.ssrf_guard import install_capture_request_guard, validate_capture_url
 
 CAPTURE_TIMEOUT_MS = 30_000
 MAX_CAPTURE_PNG_BYTES = 8 * 1024 * 1024
 CAPTURE_VIEWPORT = {"width": 1280, "height": 720}
+
+
+def _configured_chromium_path() -> str | None:
+    """Return an explicitly configured, executable browser path if present."""
+    configured = os.environ.get("FINDING_CAPTURE_CHROMIUM_PATH")
+    if not configured:
+        return None
+    chromium = Path(configured)
+    if not chromium.is_file() or not os.access(chromium, os.X_OK):
+        raise CaptureExecutionError("Configured Chromium executable is unavailable")
+    return str(chromium)
 
 
 class CaptureExecutionError(RuntimeError):
@@ -48,12 +61,15 @@ def capture_page_as_png(target_url: str) -> CapturedPage:
 
     try:
         with sync_playwright() as playwright:
-            # Deliberately no args: especially never --no-sandbox or
-            # --disable-setuid-sandbox.  A failed Chromium sandbox is a hard
-            # failure, not a reason to weaken browser isolation.
-            browser = playwright.chromium.launch(
-                headless=True, timeout=CAPTURE_TIMEOUT_MS
-            )
+            # Deliberately no Chromium sandbox-bypass flags: especially never
+            # --no-sandbox or --disable-setuid-sandbox. The optional executable
+            # path is a root-owned, AppArmor-approved browser installed by the
+            # dedicated operator script. A failed sandbox remains a hard error.
+            launch_options = {"headless": True, "timeout": CAPTURE_TIMEOUT_MS}
+            chromium_path = _configured_chromium_path()
+            if chromium_path is not None:
+                launch_options["executable_path"] = chromium_path
+            browser = playwright.chromium.launch(**launch_options)
             try:
                 context = browser.new_context(viewport=CAPTURE_VIEWPORT)
                 try:
