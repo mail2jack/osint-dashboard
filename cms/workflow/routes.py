@@ -1297,6 +1297,10 @@ def investigation_detail(case_id, investigation_id):
         action_types=action_types,
         subjects_cfg=subjects_cfg,
         paid_enabled=paid_channels_enabled(),
+        finding_capture_enabled=(
+            can_write
+            and check_feature("finding_screenshot_capture", current_user.tenant_id)
+        ),
     )
 
 

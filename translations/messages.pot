@@ -4180,3 +4180,27 @@ msgstr ""
 
 msgid "Original source"
 msgstr ""
+
+#: templates/cms/workflow/_finding_item_readonly.html
+msgid "Capture website"
+msgstr ""
+
+#: templates/cms/workflow/_finding_item_readonly.html
+msgid "Website URL to capture"
+msgstr ""
+
+#: templates/cms/workflow/_finding_item_readonly.html
+msgid "I confirm that this website may be captured as evidence for this finding."
+msgstr ""
+
+#: templates/cms/workflow/_finding_item_readonly.html
+msgid "Queue capture"
+msgstr ""
+
+#: templates/cms/workflow/workflow_investigation_detail.html
+msgid "Could not queue capture"
+msgstr ""
+
+#: templates/cms/workflow/workflow_investigation_detail.html
+msgid "Capture queued. It will not run until the capture worker is separately enabled."
+msgstr ""
