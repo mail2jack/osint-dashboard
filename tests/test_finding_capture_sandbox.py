@@ -1,5 +1,3 @@
-import subprocess
-
 from scripts.verify_finding_capture_sandbox import probe_sandbox, verify_sandbox
 
 
@@ -39,23 +37,51 @@ def test_static_verifier_rejects_unsafe_directive(tmp_path):
     assert reasons == ["worker unit permits an unsafe Chromium sandbox bypass"]
 
 
-def test_sandbox_probe_never_uses_unsafe_flags(tmp_path, monkeypatch):
+def test_sandbox_probe_uses_playwright_without_unsafe_flags(tmp_path, monkeypatch):
     chromium = tmp_path / "chromium"
     chromium.write_text("#!/bin/sh\n")
     chromium.chmod(0o755)
-    command = []
+    class Page:
+        url = "about:blank"
 
-    def fake_run(args, **_kwargs):
-        command.extend(args)
-        return subprocess.CompletedProcess(args, 0)
+    class Context:
+        def new_page(self):
+            return Page()
 
-    monkeypatch.setattr("scripts.verify_finding_capture_sandbox.subprocess.run", fake_run)
+        def close(self):
+            pass
+
+    class Browser:
+        def new_context(self):
+            return Context()
+
+        def close(self):
+            pass
+
+    seen = {}
+
+    class Chromium:
+        def launch(self, **kwargs):
+            seen.update(kwargs)
+            return Browser()
+
+    class Runtime:
+        chromium = Chromium()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr("playwright.sync_api.sync_playwright", lambda: Runtime())
     ok, reason = probe_sandbox(chromium)
     assert ok
     assert reason == ""
-    assert "--no-sandbox" not in command
-    assert "--disable-setuid-sandbox" not in command
-    assert command[-1] == "about:blank"
+    assert seen["executable_path"] == str(chromium)
+    assert seen["timeout"] == 15_000
+    assert "--no-sandbox" not in seen["args"]
+    assert "--disable-setuid-sandbox" not in seen["args"]
 
 
 def test_sandbox_probe_fails_closed(tmp_path, monkeypatch):
@@ -63,22 +89,23 @@ def test_sandbox_probe_fails_closed(tmp_path, monkeypatch):
     chromium.write_text("#!/bin/sh\n")
     chromium.chmod(0o755)
     monkeypatch.setattr(
-        "scripts.verify_finding_capture_sandbox.subprocess.run",
-        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1),
+        "playwright.sync_api.sync_playwright",
+        lambda: (_ for _ in ()).throw(OSError("blocked")),
     )
     ok, _reason = probe_sandbox(chromium)
     assert not ok
 
 
-def test_sandbox_probe_tolerates_chromium_profile_cleanup_races():
+def test_sandbox_probe_uses_managed_playwright_lifecycle():
     from pathlib import Path
 
     source = (
         Path(__file__).resolve().parent.parent
         / "scripts/verify_finding_capture_sandbox.py"
     ).read_text()
-    assert "ignore_cleanup_errors=True" in source
-    assert "PrivateTmp systemd sandbox" in source
+    assert "with sync_playwright()" in source
+    assert "context.close()" in source
+    assert "browser.close()" in source
 
 
 def test_worker_unit_reads_only_the_managed_capture_environment_file():
