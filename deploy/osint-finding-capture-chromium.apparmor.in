@@ -1,0 +1,11 @@
+# Dedicated, narrow user-namespace exception for the immutable capture browser.
+# The worker remains systemd-confined; this profile attaches only to the exact
+# root-owned browser path substituted by the installer. Do not grant it to the
+# Playwright cache under /home/osint, which the app user can modify.
+abi <abi/5.0>,
+include <tunables/global>
+
+profile osint-finding-capture-chromium @CHROMIUM_PATH@ flags=(unconfined) {
+  userns,
+  @{exec_path} mr,
+}
