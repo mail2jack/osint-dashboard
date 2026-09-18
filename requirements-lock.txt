@@ -35,7 +35,7 @@ alembic==1.18.4
 alive-progress==3.3.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
-anyio==4.12.1
+anyio==4.14.2
 arabic-reshaper==3.0.0
 asgiref==3.11.1
 asn1crypto==1.5.1
