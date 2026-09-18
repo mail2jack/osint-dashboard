@@ -16,16 +16,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 logger = logging.getLogger(__name__)
 
+from verify_finding_capture_sandbox import verify_sandbox
+
 
 def main() -> int:
     if os.environ.get("FINDING_CAPTURE_WORKER_ENABLED") != "1":
         logger.info("Finding capture worker disabled; no queue job claimed")
         return 0
 
-    # A subsequent PR must provide a dedicated Chromium sandbox verifier and
-    # an executor.  Refuse before importing the app or claiming a job so an
-    # accidental environment toggle can never create a half-processed capture.
-    logger.error("No verified sandboxed finding-capture executor is installed")
+    verified, reasons = verify_sandbox(
+        unit_path=Path(__file__).resolve().parent.parent
+        / "deploy"
+        / "osint-finding-capture-worker.service",
+        chromium_path=(
+            Path(os.environ["FINDING_CAPTURE_CHROMIUM_PATH"])
+            if os.environ.get("FINDING_CAPTURE_CHROMIUM_PATH")
+            else None
+        ),
+    )
+    if not verified:
+        logger.error("Finding-capture sandbox verification failed: %s", "; ".join(reasons))
+        return 78
+
+    # A subsequent PR must provide an executor.  Refuse before importing the
+    # app or claiming a job so an accidental environment toggle can never
+    # create a half-processed capture.
+    logger.error("No sandboxed finding-capture executor is installed")
     return 78
 
 
