@@ -3,6 +3,10 @@ Workflow integration tests — model columns, CRUD routes, access control, auto-
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from cms.models import (
     db,
@@ -13,8 +17,37 @@ from cms.models import (
     ResearchAction,
     ActionFinding,
     FindingScreenshot,
+    FindingCaptureJob,
     ServiceRate,
+    User,
 )
+from cms.services.finding_capture_queue import (
+    CaptureAlreadyActive,
+    CaptureRequestRejected,
+    CaptureStateError,
+    claim_next_capture_job,
+    complete_capture_job,
+    enqueue_finding_capture,
+    fail_capture_job,
+)
+
+
+def test_capture_worker_is_disabled_and_has_no_unsafe_browser_fallback():
+    worker = (
+        Path(__file__).resolve().parent.parent
+        / "scripts"
+        / "run_finding_capture_worker.py"
+    ).read_text()
+    unit = (
+        Path(__file__).resolve().parent.parent
+        / "deploy"
+        / "osint-finding-capture-worker.service"
+    ).read_text()
+    assert 'FINDING_CAPTURE_WORKER_ENABLED") != "1"' in worker
+    assert "--no-sandbox" not in worker
+    assert "FINDING_CAPTURE_WORKER_ENABLED=0" in unit
+    assert "User=osint" in unit
+    assert "RestrictNamespaces=true" in unit
 
 
 class TestModelsExist:
@@ -37,6 +70,11 @@ class TestModelsExist:
     def test_finding_screenshot_evidence_metadata(self, app):
         assert hasattr(FindingScreenshot, "file_size")
         assert hasattr(FindingScreenshot, "capture_provenance")
+
+    def test_finding_capture_job_queue_model(self, app):
+        assert self._has_table(app, "finding_capture_jobs")
+        assert hasattr(FindingCaptureJob, "target_url")
+        assert hasattr(FindingCaptureJob, "request_metadata")
 
     def test_service_rate_table(self, app):
         assert self._has_table(app, "service_rates")
@@ -434,6 +472,115 @@ class TestFindingScreenshot:
         assert finding.finding_screenshots[0].capture_provenance == {
             "kind": "manual_upload"
         }
+
+
+class TestFindingCaptureQueue:
+    def _objects(self):
+        user = User.query.filter_by(username="admin").first()
+        client = Client(name="Capture Queue Client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            case_number="CAPTURE-QUEUE",
+            client_id=client.id,
+            title="Capture Queue",
+            status="open",
+            priority="medium",
+            start_date=datetime.now(timezone.utc).date(),
+        )
+        db.session.add(case)
+        db.session.flush()
+        finding = Finding(
+            case_id=case.id,
+            tenant_id=case.tenant_id,
+            title="Capture target",
+            content="test",
+            source_type="manual",
+            created_by=user.id,
+        )
+        db.session.add(finding)
+        db.session.flush()
+        return user, case, finding
+
+    def test_queue_request_is_tenant_bound(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            job = enqueue_finding_capture(
+                case=case,
+                finding=finding,
+                actor=user,
+                target_url="https://fixture.example/capture",
+            )
+        db.session.commit()
+        assert job.status == "queued"
+        assert job.tenant_id == case.tenant_id
+        assert job.finding_id == finding.id
+
+    def test_active_capture_is_database_limited(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            enqueue_finding_capture(
+                case=case, finding=finding, actor=user, target_url="https://a.example"
+            )
+            db.session.commit()
+            with pytest.raises(CaptureAlreadyActive):
+                enqueue_finding_capture(
+                    case=case, finding=finding, actor=user, target_url="https://b.example"
+                )
+
+    def test_unresolved_or_private_target_is_rejected(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(False, "host could not be resolved"),
+        ):
+            with pytest.raises(CaptureRequestRejected):
+                enqueue_finding_capture(
+                    case=case, finding=finding, actor=user, target_url="https://nope.invalid"
+                )
+
+    def test_worker_claim_and_completion_are_stateful(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            enqueue_finding_capture(
+                case=case, finding=finding, actor=user, target_url="https://fixture.example"
+            )
+        db.session.commit()
+        job = claim_next_capture_job()
+        assert job is not None
+        assert job.status == "running"
+        assert job.started_at is not None
+        complete_capture_job(job, "screenshot-id")
+        db.session.commit()
+        assert job.status == "completed"
+        assert job.screenshot_id == "screenshot-id"
+        assert job.completed_at is not None
+
+    def test_worker_rejects_invalid_state_transition(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            job = enqueue_finding_capture(
+                case=case, finding=finding, actor=user, target_url="https://fixture.example"
+            )
+        with pytest.raises(CaptureStateError):
+            complete_capture_job(job, "screenshot-id")
+        claimed = claim_next_capture_job()
+        assert claimed is job
+        fail_capture_job(claimed, "x" * 400)
+        assert claimed.status == "failed"
+        assert claimed.error == "x" * 300
 
 
 class TestEmailCheckPGP:

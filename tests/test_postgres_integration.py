@@ -61,7 +61,8 @@ class TestPostgreSQLIntegration:
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
         # d5e6f7a8b9c0 increases invoice item description length to 2000.
         # e1f2a3b4c5d7 adds workflow screenshot evidence metadata.
-        assert revision == "e1f2a3b4c5d7"
+        # f2a3b4c5d8e adds the isolated finding-capture worker queue.
+        assert revision == "f2a3b4c5d8e"
 
         protected = db.session.execute(
             text(
@@ -74,14 +75,15 @@ class TestPostgreSQLIntegration:
                     'investigations', 'case_number_counters',
                     'investigation_seq_counters',
                     'invoice_number_counters',
-                    'research_actions', 'action_findings', 'feature_flags'
+                    'research_actions', 'action_findings', 'feature_flags',
+                    'finding_capture_jobs'
                 )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 12
+        assert protected == 13
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
@@ -1224,7 +1226,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "e1f2a3b4c5d7"
+        assert revision == "f2a3b4c5d8e"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "

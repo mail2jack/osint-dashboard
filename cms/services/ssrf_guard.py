@@ -54,6 +54,31 @@ def validate_url(url: str) -> tuple[bool, str]:
     return True, ""
 
 
+def validate_capture_url(url: str) -> tuple[bool, str]:
+    """Strict target validation for browser capture requests.
+
+    Unlike legacy fetch helpers, a capture request must resolve now.  This is
+    fail-closed for DNS failures; the future worker will revalidate every
+    browser request/redirect hop before connecting as a second boundary.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False, "unsupported scheme"
+    if not parsed.hostname or parsed.username or parsed.password:
+        return False, "invalid host"
+    if is_unsafe_address(parsed.hostname):
+        return False, "blocked address"
+    try:
+        addrs = socket.getaddrinfo(parsed.hostname, None)
+    except (socket.gaierror, OSError):
+        return False, "host could not be resolved"
+    if not addrs:
+        return False, "host could not be resolved"
+    if any(is_unsafe_address(sockaddr[0]) for *_prefix, sockaddr in addrs):
+        return False, "resolves to blocked address"
+    return True, ""
+
+
 def _guard_handler(route, request) -> None:
     ok, reason = validate_url(request.url)
     if not ok:

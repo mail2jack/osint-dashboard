@@ -21,7 +21,7 @@ PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 PR3_PREV_REVISION = "bb1c2d3e4f5a7"
 INVOICE_PREV_REVISION = "dd1e2f3a4b5c7"
 INVOICE_PREV_REVISION_DOWNSTREAM = "a6b7c8d9e0f1"
-HEAD_REVISION = "e1f2a3b4c5d7"
+HEAD_REVISION = "f2a3b4c5d8e"
 INVOICE_ITEM_PREV_REVISION = "f8a9b0c1d2e3"
 # The blocked invoice-items downgrade stops one revision below head: the
 # photo-analysis index migration (e0f1a2b3c4d6) above it downgrades cleanly,
