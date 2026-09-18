@@ -78,12 +78,14 @@ def probe_sandbox(chromium_path: Path) -> tuple[bool, str]:
                 executable_path=str(chromium_path),
                 headless=True,
                 timeout=PROBE_TIMEOUT_MS,
+                ignore_default_args=["--no-sandbox"],
                 args=[
                     "--no-first-run",
                     "--disable-background-networking",
                     "--disable-component-update",
                     "--disable-sync",
                     "--disable-extensions",
+                    "--disable-crash-reporter",
                 ],
             )
             try:

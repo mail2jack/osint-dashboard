@@ -12,6 +12,11 @@ WorkingDirectory=/opt/osint-dashboard
 # a successful local about:blank user-namespace sandbox probe before any job
 # can be claimed.
 Environment=FINDING_CAPTURE_WORKER_ENABLED=0
+# Chromium needs a writable, private profile/cache area.  PrivateTmp confines
+# these paths to this worker; no browser state is placed in /home/osint.
+Environment=HOME=/tmp
+Environment=XDG_CONFIG_HOME=/tmp/osint-chromium-config
+Environment=XDG_CACHE_HOME=/tmp/osint-chromium-cache
 # This file is created only by the separately reviewed AppArmor installer. It
 # supplies a root-owned Chromium path; the worker remains disabled by default.
 EnvironmentFile=-/etc/default/osint-finding-capture

@@ -80,6 +80,7 @@ def test_sandbox_probe_uses_playwright_without_unsafe_flags(tmp_path, monkeypatc
     assert reason == ""
     assert seen["executable_path"] == str(chromium)
     assert seen["timeout"] == 15_000
+    assert seen["ignore_default_args"] == ["--no-sandbox"]
     assert "--no-sandbox" not in seen["args"]
     assert "--disable-setuid-sandbox" not in seen["args"]
 
