@@ -189,7 +189,9 @@ def tenant_photo_quota_lock(tenant_id: str):
         finally:
             # Advisory locks are transaction-scoped. Roll back an unfinished
             # quota transaction so early quota returns also release the lock.
-            if db.session.in_transaction():
+            # ``db.session`` is Flask-SQLAlchemy's scoped-session proxy;
+            # transaction state lives on the concrete Session instance.
+            if db.session().in_transaction():
                 db.session.rollback()
         return
 
