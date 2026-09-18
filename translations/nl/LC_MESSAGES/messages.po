@@ -4745,3 +4745,14 @@ msgstr "— Zaakbreed doelwit —"
 msgid "paid channel off"
 msgstr "betaald kanaal uit"
 
+msgid "Open original screenshot"
+msgstr "Originele screenshot openen"
+
+msgid "Screenshot evidence"
+msgstr "Screenshotbewijs"
+
+msgid "Screenshot file unavailable"
+msgstr "Screenshotbestand niet beschikbaar"
+
+msgid "Original source"
+msgstr "Originele bron"

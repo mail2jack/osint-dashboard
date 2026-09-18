@@ -4953,3 +4953,14 @@ msgstr "— Case-wide target —"
 msgid "paid channel off"
 msgstr "paid channel off"
 
+msgid "Open original screenshot"
+msgstr "Open original screenshot"
+
+msgid "Screenshot evidence"
+msgstr "Screenshot evidence"
+
+msgid "Screenshot file unavailable"
+msgstr "Screenshot file unavailable"
+
+msgid "Original source"
+msgstr "Original source"
