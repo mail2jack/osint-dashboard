@@ -144,6 +144,19 @@ def _root(tmp_path, monkeypatch):
     return str(tmp_path / "photo_root")
 
 
+def test_postgres_quota_lock_accepts_flask_scoped_session(app):
+    """The production PostgreSQL lock must inspect the concrete Session.
+
+    Flask-SQLAlchemy exposes ``db.session`` as a scoped-session proxy, which
+    has no ``in_transaction`` attribute.  Exercise the context manager on the
+    real PostgreSQL path so an upload cannot fail only after its file is saved.
+    """
+    with app.app_context():
+        with photo_storage.tenant_photo_quota_lock(uuid.uuid4().hex):
+            db.session.execute(text("SELECT 1"))
+            db.session.commit()
+
+
 class TestCrossTenantFileIsolation:
     """Tenant-scoped resolve/unlink even under a hostile data_value."""
 
