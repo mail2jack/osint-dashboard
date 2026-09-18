@@ -1,11 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from cms.services.finding_capture_worker import process_one_capture_job
+from cms.services.finding_capture_worker import has_queued_capture_job, process_one_capture_job
 
 
 def _session():
-    return SimpleNamespace(commit=Mock(), rollback=Mock(), get=Mock())
+    return SimpleNamespace(commit=Mock(), rollback=Mock(), get=Mock(), query=Mock())
 
 
 def test_worker_returns_idle_without_starting_browser():
@@ -18,6 +18,19 @@ def test_worker_returns_idle_without_starting_browser():
         assert process_one_capture_job() == "idle"
     session.commit.assert_called_once()
     capture.assert_not_called()
+
+
+def test_worker_queue_precheck_is_read_only():
+    session = _session()
+    query = Mock()
+    query.filter.return_value.limit.return_value.first.return_value = None
+    session.query.return_value = query
+    with patch("cms.services.finding_capture_worker.db", SimpleNamespace(session=session)), patch(
+        "cms.services.finding_capture_worker._worker_context"
+    ):
+        assert not has_queued_capture_job()
+    session.rollback.assert_called_once()
+    session.commit.assert_not_called()
 
 
 def test_worker_completes_one_claimed_job():

@@ -23,6 +23,23 @@ def _worker_context() -> None:
     set_tenant_context(db, None, bypass_rls=True)
 
 
+def has_queued_capture_job() -> bool:
+    """Return whether work exists without claiming a job or starting Chromium."""
+    _worker_context()
+    try:
+        return (
+            db.session.query(FindingCaptureJob.id)
+            .filter(FindingCaptureJob.status == "queued")
+            .limit(1)
+            .first()
+            is not None
+        )
+    finally:
+        # This is deliberately a read-only precheck.  Claiming remains after
+        # the sandbox probe so an unsafe runtime can never take ownership.
+        db.session.rollback()
+
+
 def process_one_capture_job() -> str:
     """Claim and process at most one job, returning ``idle``, ``completed`` or ``failed``.
 

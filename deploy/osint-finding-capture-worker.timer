@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll the OSINT finding screenshot capture queue
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+AccuracySec=1s
+Persistent=false
+Unit=osint-finding-capture-worker.service
+
+[Install]
+WantedBy=timers.target
