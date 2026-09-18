@@ -80,6 +80,23 @@ def _enable_paid_channels(tenant_id):
     return flag
 
 
+def _enable_capture_requests(tenant_id, enabled=True):
+    flag = FeatureFlag.query.filter_by(
+        tenant_id=tenant_id, flag_name="finding_screenshot_capture"
+    ).first()
+    if flag:
+        flag.enabled = enabled
+    else:
+        flag = FeatureFlag(
+            tenant_id=tenant_id,
+            flag_name="finding_screenshot_capture",
+            enabled=enabled,
+        )
+        db.session.add(flag)
+    db.session.commit()
+    return flag
+
+
 def _make_user(role, tenant_id=None, username=None):
     token = uuid.uuid4().hex[:8]
     user = User(
@@ -1223,6 +1240,46 @@ class TestWorkspaceXssAndUrlScheme:
 # ---------------------------------------------------------------------------
 # PR4 — "Start Action" modal (button visibility, context, scoped run)
 # ---------------------------------------------------------------------------
+
+
+class TestWorkspaceCaptureRequestUi:
+    def _data(self):
+        tenant_id = _admin_tenant_id()
+        case = _make_case(tenant_id=tenant_id)
+        inv = _make_investigation(case)
+        user = User.query.filter_by(username="admin").one()
+        _scaffold(case, inv, user)
+        db.session.commit()
+        return tenant_id, case, inv
+
+    def test_capture_request_is_hidden_until_tenant_flag_is_enabled(
+        self, app, auth_client
+    ):
+        tenant_id, case, inv = self._data()
+        _enable_workspace(tenant_id)
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-action=\"open-capture-request\"" not in body
+
+        _enable_capture_requests(tenant_id)
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-action=\"open-capture-request\"" in body
+        assert "capture-request-form" in body
+        assert "capture-confirm" in body
+        assert "capture-requests" in body
+        assert "confirm: true" in body
+        assert "--no-sandbox" not in body
+
+    def test_viewer_never_sees_capture_request_controls(self, app):
+        tenant_id, case, inv = self._data()
+        _enable_workspace(tenant_id)
+        _enable_capture_requests(tenant_id)
+        viewer = _make_user("viewer", tenant_id=tenant_id)
+        case.created_by = viewer.id
+        db.session.commit()
+        client = _login_as(app.test_client(), viewer)
+        body = client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "data-action=\"open-capture-request\"" not in body
+        assert "capture-request-form" not in body
 
 
 class TestWorkspaceStartAction:

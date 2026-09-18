@@ -4964,3 +4964,21 @@ msgstr "Screenshot file unavailable"
 
 msgid "Original source"
 msgstr "Original source"
+
+msgid "Capture website"
+msgstr "Capture website"
+
+msgid "Website URL to capture"
+msgstr "Website URL to capture"
+
+msgid "I confirm that this website may be captured as evidence for this finding."
+msgstr "I confirm that this website may be captured as evidence for this finding."
+
+msgid "Queue capture"
+msgstr "Queue capture"
+
+msgid "Could not queue capture"
+msgstr "Could not queue capture"
+
+msgid "Capture queued. It will not run until the capture worker is separately enabled."
+msgstr "Capture queued. It will not run until the capture worker is separately enabled."

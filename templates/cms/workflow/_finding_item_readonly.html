@@ -76,6 +76,9 @@
     <button type="button" data-action="reject-finding" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ {{ _('Reject') }}</button>
     {% endif %}
     <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _('Screenshot') }}</button>
+    {% if finding_capture_enabled %}
+    <button type="button" data-action="open-capture-request" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🌐 {{ _('Capture website') }}</button>
+    {% endif %}
     {% if fd.include_in_report is sameas false %}
     <button type="button" data-action="report-flag" data-finding-id="{{ fd.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Excluded from official reports') }}">🚫 {{ _('Exclude') }}</button>
     {% else %}
@@ -98,5 +101,21 @@
       </div>
     </div>
   </div>
+
+  {% if finding_capture_enabled %}
+  <form class="capture-request-form" data-finding-id="{{ fd.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
+    <label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.3rem;">{{ _('Website URL to capture') }}
+      <input class="capture-target-url" type="url" value="{{ fd.source_url or '' }}" required maxlength="2000" style="display:block;width:100%;box-sizing:border-box;margin-top:0.2rem;border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
+    </label>
+    <label style="display:flex;gap:0.35rem;align-items:flex-start;font-size:0.75rem;color:var(--text-secondary);margin:0.45rem 0;">
+      <input class="capture-confirm" type="checkbox" required>
+      <span>{{ _('I confirm that this website may be captured as evidence for this finding.') }}</span>
+    </label>
+    <div style="display:flex;gap:0.3rem;">
+      <button type="submit" class="capture-request-submit" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _('Queue capture') }}</button>
+      <button type="button" data-action="cancel-capture-request" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _('Cancel') }}</button>
+    </div>
+  </form>
+  {% endif %}
   {% endif %}
 </div>
