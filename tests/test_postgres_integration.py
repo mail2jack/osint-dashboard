@@ -60,8 +60,8 @@ class TestPostgreSQLIntegration:
         # f5a6b7c8d9e0 (ADR-0005 PR-A) adds research_actions investigation_id.
         # f6a7b8c9d0e1 (ADR-0005 closure) adds FORCE RLS for research_actions.
         # d5e6f7a8b9c0 increases invoice item description length to 2000.
-        # e0f1a2b3c4d6 adds the photo-analysis partial unique index.
-        assert revision == "e0f1a2b3c4d6"
+        # e1f2a3b4c5d7 adds workflow screenshot evidence metadata.
+        assert revision == "e1f2a3b4c5d7"
 
         protected = db.session.execute(
             text(
@@ -1224,7 +1224,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "e0f1a2b3c4d6"
+        assert revision == "e1f2a3b4c5d7"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
