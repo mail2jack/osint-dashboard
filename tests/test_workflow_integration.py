@@ -47,7 +47,7 @@ def test_capture_worker_is_disabled_and_has_no_unsafe_browser_fallback():
     assert "--no-sandbox" not in worker
     assert "FINDING_CAPTURE_WORKER_ENABLED=0" in unit
     assert "User=osint" in unit
-    assert "RestrictNamespaces=true" in unit
+    assert "RestrictNamespaces=false" in unit
 
 
 def test_capture_sandbox_verifier_fails_closed_until_a_safe_runtime_exists(tmp_path):
@@ -65,6 +65,22 @@ def test_capture_sandbox_verifier_fails_closed_until_a_safe_runtime_exists(tmp_p
     ok, reasons = verify_sandbox(unit_path=unit, chromium_path=chromium)
     assert not ok
     assert any("no verified Chromium sandbox" in reason for reason in reasons)
+
+
+def test_capture_sandbox_verifier_accepts_user_namespace_candidate(tmp_path):
+    from scripts.verify_finding_capture_sandbox import verify_sandbox
+
+    unit = tmp_path / "worker.service"
+    unit.write_text(
+        "[Service]\nUser=osint\nNoNewPrivileges=true\nRestrictNamespaces=false\n"
+    )
+    chromium = tmp_path / "chromium"
+    chromium.write_text("#!/bin/sh\n")
+    chromium.chmod(0o755)
+
+    ok, reasons = verify_sandbox(unit_path=unit, chromium_path=chromium)
+    assert ok
+    assert reasons == []
 
 
 def test_capture_sandbox_verifier_rejects_unsafe_unit(tmp_path):

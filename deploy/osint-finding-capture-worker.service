@@ -8,7 +8,9 @@ Type=oneshot
 User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
-# A future executor must be separately enabled after sandbox verification.
+# Default remains disabled. Enabling it requires a configured Chromium path and
+# a successful local about:blank user-namespace sandbox probe before any job
+# can be claimed.
 Environment=FINDING_CAPTURE_WORKER_ENABLED=0
 ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/run_finding_capture_worker.py
 TimeoutStartSec=90
@@ -18,6 +20,9 @@ PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/opt/osint-dashboard/instance /tmp
-RestrictNamespaces=true
+# Chromium's user-namespace sandbox requires this dedicated worker (and only
+# this worker) to create namespaces. NoNewPrivileges remains enabled; a
+# setuid/--no-sandbox fallback is intentionally impossible.
+RestrictNamespaces=false
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

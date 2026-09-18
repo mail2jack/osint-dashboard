@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 logger = logging.getLogger(__name__)
 
-from verify_finding_capture_sandbox import verify_sandbox
+from verify_finding_capture_sandbox import probe_sandbox, verify_sandbox
 
 
 def main() -> int:
@@ -24,18 +24,23 @@ def main() -> int:
         logger.info("Finding capture worker disabled; no queue job claimed")
         return 0
 
+    chromium_path = (
+        Path(os.environ["FINDING_CAPTURE_CHROMIUM_PATH"])
+        if os.environ.get("FINDING_CAPTURE_CHROMIUM_PATH")
+        else None
+    )
     verified, reasons = verify_sandbox(
         unit_path=Path(__file__).resolve().parent.parent
         / "deploy"
         / "osint-finding-capture-worker.service",
-        chromium_path=(
-            Path(os.environ["FINDING_CAPTURE_CHROMIUM_PATH"])
-            if os.environ.get("FINDING_CAPTURE_CHROMIUM_PATH")
-            else None
-        ),
+        chromium_path=chromium_path,
     )
-    if not verified:
+    if not verified or chromium_path is None:
         logger.error("Finding-capture sandbox verification failed: %s", "; ".join(reasons))
+        return 78
+    probed, reason = probe_sandbox(chromium_path)
+    if not probed:
+        logger.error("Finding-capture sandbox probe failed: %s", reason)
         return 78
 
     # Import the app only after the sandbox has passed.  This keeps the worker
