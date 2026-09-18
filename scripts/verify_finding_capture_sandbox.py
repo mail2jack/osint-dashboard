@@ -12,12 +12,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
-import tempfile
 from pathlib import Path
 
 
 NO_GO_EXIT = 78
+PROBE_TIMEOUT_MS = 15_000
 DEFAULT_UNIT = Path(__file__).resolve().parent.parent / "deploy" / "osint-finding-capture-worker.service"
 
 
@@ -61,40 +60,44 @@ def verify_sandbox(*, unit_path: Path, chromium_path: Path | None) -> tuple[bool
 
 
 def probe_sandbox(chromium_path: Path) -> tuple[bool, str]:
-    """Launch Chromium only against ``about:blank`` to prove its sandbox works.
+    """Launch and close Chromium on ``about:blank`` to prove its sandbox works.
 
-    This is the final worker preflight, not a capture: it has no target URL,
-    no credentials and disables browser background networking.  It never uses
-    a sandbox-bypass flag.  Chromium exits after dumping the blank document.
+    This is not a capture: it has no target URL, credentials, queue or evidence
+    write. It uses Playwright just like the worker does, so browser shutdown is
+    explicit instead of relying on Chromium's unreliable command-line dump
+    mode. It never uses a sandbox-bypass flag.
     """
-    # Chromium can leave auxiliary profile files behind briefly after it exits.
-    # This probe runs in a PrivateTmp systemd sandbox, so tolerate only that
-    # cleanup race; the service's private /tmp is discarded with the probe.
-    with tempfile.TemporaryDirectory(
-        prefix="finding-capture-sandbox-", ignore_cleanup_errors=True
-    ) as profile:
-        try:
-            completed = subprocess.run(
-                [
-                    str(chromium_path),
-                    "--headless=new",
+    try:
+        from playwright.sync_api import Error, sync_playwright
+    except ImportError:
+        return False, "Chromium sandbox probe could not run"
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(
+                executable_path=str(chromium_path),
+                headless=True,
+                timeout=PROBE_TIMEOUT_MS,
+                args=[
                     "--no-first-run",
                     "--disable-background-networking",
+                    "--disable-component-update",
                     "--disable-sync",
-                    f"--user-data-dir={profile}",
-                    "--dump-dom",
-                    "about:blank",
+                    "--disable-extensions",
                 ],
-                check=False,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
             )
-        except (OSError, subprocess.TimeoutExpired):
-            return False, "Chromium sandbox probe could not run"
-    if completed.returncode != 0:
-        return False, "Chromium sandbox probe failed"
+            try:
+                context = browser.new_context()
+                try:
+                    page = context.new_page()
+                    if page.url != "about:blank":
+                        return False, "Chromium sandbox probe did not open about:blank"
+                finally:
+                    context.close()
+            finally:
+                browser.close()
+    except (OSError, Error):
+        return False, "Chromium sandbox probe could not run"
     return True, ""
 
 
