@@ -26,6 +26,7 @@ from cms.models import (
     Client,
     Document,
     Finding,
+    FindingCaptureJob,
     FeatureFlag,
     OsintSearch,
     ResearchAction,
@@ -310,6 +311,90 @@ class TestMultiTenantRLSMatrix:
         db.session.expire_all()
         assert Finding.query.filter_by(id=finding_a_id).count() == 0
         assert Finding.query.filter_by(id=finding_b_id).count() == 0
+
+    def test_capture_jobs_are_force_rls_and_tenant_isolated(self, app):
+        """A capture worker cannot read queued targets outside its tenant."""
+        from cms.models import Case
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = _new_tenant()
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_a = Client(tenant_id=tenant_a, name="matrix capture A")
+        client_b = Client(tenant_id=tenant_b, name="matrix capture B")
+        db.session.add_all([client_a, client_b])
+        db.session.flush()
+        case_a = Case(
+            tenant_id=tenant_a,
+            case_number=f"MAT-CAP-A-{uuid.uuid4().hex[:8]}",
+            client_id=client_a.id,
+            title="Matrix capture case A",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        case_b = Case(
+            tenant_id=tenant_b,
+            case_number=f"MAT-CAP-B-{uuid.uuid4().hex[:8]}",
+            client_id=client_b.id,
+            title="Matrix capture case B",
+            start_date=datetime.utcnow().date(),
+            created_by=admin.id,
+        )
+        db.session.add_all([case_a, case_b])
+        db.session.flush()
+        finding_a = Finding(
+            tenant_id=tenant_a,
+            case_id=case_a.id,
+            title="Matrix capture finding A",
+            content="evidence A",
+            source_type="osint",
+            created_by=admin.id,
+        )
+        finding_b = Finding(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            title="Matrix capture finding B",
+            content="evidence B",
+            source_type="osint",
+            created_by=admin.id,
+        )
+        db.session.add_all([finding_a, finding_b])
+        db.session.flush()
+        job_a = FindingCaptureJob(
+            tenant_id=tenant_a,
+            case_id=case_a.id,
+            finding_id=finding_a.id,
+            requested_by_id=admin.id,
+            target_url="https://a.example/capture",
+            status="queued",
+        )
+        job_b = FindingCaptureJob(
+            tenant_id=tenant_b,
+            case_id=case_b.id,
+            finding_id=finding_b.id,
+            requested_by_id=admin.id,
+            target_url="https://b.example/capture",
+            status="completed",
+        )
+        db.session.add_all([job_a, job_b])
+        db.session.commit()
+        job_a_id, job_b_id = job_a.id, job_b.id
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert FindingCaptureJob.query.filter_by(id=job_a_id).count() == 1
+        assert FindingCaptureJob.query.filter_by(id=job_b_id).count() == 0
+
+        set_tenant_context(db, tenant_b)
+        db.session.expire_all()
+        assert FindingCaptureJob.query.filter_by(id=job_a_id).count() == 0
+        assert FindingCaptureJob.query.filter_by(id=job_b_id).count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert FindingCaptureJob.query.filter_by(id=job_a_id).count() == 0
+        assert FindingCaptureJob.query.filter_by(id=job_b_id).count() == 0
 
     def test_research_actions_are_force_rls(self):
         """``research_actions`` is added to FORCE RLS in f6a7b8c9d0e1."""
