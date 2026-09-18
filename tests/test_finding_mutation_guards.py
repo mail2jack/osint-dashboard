@@ -30,6 +30,7 @@ from cms.models import (
     Client,
     Finding,
     FindingScreenshot,
+    FindingCaptureJob,
     Subject,
     Tenant,
     User,
@@ -74,6 +75,87 @@ def _login_as(client, user):
         sess["_fresh"] = True
         sess["_remember"] = "set"
     return client
+
+
+class TestFindingCaptureRequest:
+    """The web process queues captures only; it never starts a browser."""
+
+    def _objects(self):
+        tenant_id = _admin_tenant_id()
+        user = _make_user("investigator", tenant_id=tenant_id)
+        case = _make_case(tenant_id=tenant_id, creator=user)
+        subject = _make_subject(case)
+        finding = _make_finding(case, subject)
+        db.session.commit()
+        return user, case, finding
+
+    def _post(self, client, case, finding, body):
+        return client.post(
+            f"/cms/workflow/api/case/{case.id}/findings/{finding.id}/capture-requests",
+            json=body,
+        )
+
+    def test_flag_off_hides_request_endpoint(self, app, client, db_session):
+        user, case, finding = self._objects()
+        _login_as(client, user)
+        response = self._post(client, case, finding, {"confirm": True, "target_url": "https://example.test"})
+        assert response.status_code == 404
+        assert FindingCaptureJob.query.count() == 0
+
+    def test_confirmed_request_is_queued_and_audited(self, app, client, db_session):
+        user, case, finding = self._objects()
+        _login_as(client, user)
+        with patch("cms.workflow.routes.check_feature", return_value=True), patch(
+            "cms.services.finding_capture_queue.validate_capture_url", return_value=(True, "")
+        ):
+            response = self._post(client, case, finding, {"confirm": True, "target_url": " https://example.test/a "})
+        assert response.status_code == 202
+        job = FindingCaptureJob.query.one()
+        assert job.target_url == "https://example.test/a"
+        assert job.status == "queued"
+        assert job.request_metadata == {"requested_via": "finding_capture_request"}
+        audit = AuditLog.query.filter_by(entity_type="finding_capture_job", entity_id=job.id).one()
+        assert audit.action == "create"
+
+    @pytest.mark.parametrize(
+        "body", [{}, {"confirm": False, "target_url": "https://example.test"}, {"confirm": True}, {"confirm": True, "target_url": 1}, []]
+    )
+    def test_request_requires_confirmed_json_url(self, app, client, db_session, body):
+        user, case, finding = self._objects()
+        _login_as(client, user)
+        with patch("cms.workflow.routes.check_feature", return_value=True):
+            response = self._post(client, case, finding, body)
+        assert response.status_code == 400
+        assert FindingCaptureJob.query.count() == 0
+        assert AuditLog.query.filter_by(entity_type="finding_capture_job").count() == 0
+
+    def test_second_active_request_is_conflict_without_extra_audit(self, app, client, db_session):
+        user, case, finding = self._objects()
+        _login_as(client, user)
+        with patch("cms.workflow.routes.check_feature", return_value=True), patch(
+            "cms.services.finding_capture_queue.validate_capture_url", return_value=(True, "")
+        ):
+            assert self._post(client, case, finding, {"confirm": True, "target_url": "https://example.test/a"}).status_code == 202
+            response = self._post(client, case, finding, {"confirm": True, "target_url": "https://example.test/b"})
+        assert response.status_code == 409
+        assert FindingCaptureJob.query.count() == 1
+        assert AuditLog.query.filter_by(entity_type="finding_capture_job").count() == 1
+
+    def test_wrong_case_never_creates_a_capture_request(self, app, client, db_session):
+        user, case, finding = self._objects()
+        other_case = _make_case(tenant_id=case.tenant_id, creator=user)
+        db.session.commit()
+        _login_as(client, user)
+        with patch("cms.workflow.routes.check_feature", return_value=True):
+            response = self._post(
+                client,
+                other_case,
+                finding,
+                {"confirm": True, "target_url": "https://example.test"},
+            )
+        assert response.status_code == 404
+        assert FindingCaptureJob.query.count() == 0
+        assert AuditLog.query.filter_by(entity_type="finding_capture_job").count() == 0
 
 
 def _make_case(tenant_id=None, title="Guard Case", creator=None):

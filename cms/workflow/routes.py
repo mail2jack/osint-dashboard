@@ -47,6 +47,11 @@ from cms.services.investigation_service import (
     validate_update_payload,
 )
 from cms.services.invoice_service import auto_invoice_case_created
+from cms.services.finding_capture_queue import (
+    CaptureAlreadyActive,
+    CaptureRequestRejected,
+    enqueue_finding_capture,
+)
 from cms.services.investigation_workspace import build_inv_workspace
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
@@ -2930,6 +2935,72 @@ def add_screenshot(case_id, finding_id):
         "notes": ss.notes,
     }
     return jsonify({"ok": True, "screenshot": ss_data})
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/capture-requests", methods=["POST"]
+)
+@login_required
+@_investigator_required
+def request_finding_capture(case_id, finding_id):
+    """Queue an explicitly confirmed screenshot-capture request.
+
+    This endpoint deliberately never invokes a browser.  It is hidden behind
+    an OFF-by-default tenant flag and persists a request for the separately
+    reviewed worker only.  A future UI must send ``confirm: true`` after an
+    investigator has seen the target URL.
+    """
+    if not check_feature("finding_screenshot_capture", current_user.tenant_id):
+        return jsonify({"error": "Not found"}), 404
+
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    case = db.session.get(WorkflowCase, case_id)
+    if case is None:
+        return jsonify({"error": "Not found"}), 404
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Payload must be a JSON object"}), 400
+    if body.get("confirm") is not True:
+        return jsonify({"error": "Explicit confirmation is required"}), 400
+    target_url = body.get("target_url")
+    if not isinstance(target_url, str) or not target_url.strip():
+        return jsonify({"error": "target_url must be a non-empty string"}), 400
+
+    try:
+        job = enqueue_finding_capture(
+            case=case,
+            finding=finding,
+            actor=current_user,
+            target_url=target_url.strip(),
+            request_metadata={"requested_via": "finding_capture_request"},
+        )
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="finding_capture_job",
+            entity_id=job.id,
+            tenant_id=finding.tenant_id,
+            case_id=case_id,
+            ip_address=request.remote_addr,
+            new_values={"status": "queued", "target_url": job.target_url},
+            description=f"Queued screenshot capture for finding {finding_id}",
+        )
+        db.session.commit()
+    except CaptureAlreadyActive:
+        db.session.rollback()
+        return jsonify({"error": "A capture is already queued or running"}), 409
+    except CaptureRequestRejected as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception("request_finding_capture failed finding_id=%s", finding_id)
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify({"ok": True, "job": {"id": job.id, "status": job.status}}), 202
 
 
 @workflow_bp.route("/uploads/<finding_id>/<filename>")
