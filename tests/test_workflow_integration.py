@@ -3,6 +3,9 @@ Workflow integration tests — model columns, CRUD routes, access control, auto-
 """
 
 from datetime import datetime, timezone
+from unittest.mock import patch
+
+import pytest
 
 from cms.models import (
     db,
@@ -13,7 +16,14 @@ from cms.models import (
     ResearchAction,
     ActionFinding,
     FindingScreenshot,
+    FindingCaptureJob,
     ServiceRate,
+    User,
+)
+from cms.services.finding_capture_queue import (
+    CaptureAlreadyActive,
+    CaptureRequestRejected,
+    enqueue_finding_capture,
 )
 
 
@@ -37,6 +47,11 @@ class TestModelsExist:
     def test_finding_screenshot_evidence_metadata(self, app):
         assert hasattr(FindingScreenshot, "file_size")
         assert hasattr(FindingScreenshot, "capture_provenance")
+
+    def test_finding_capture_job_queue_model(self, app):
+        assert self._has_table(app, "finding_capture_jobs")
+        assert hasattr(FindingCaptureJob, "target_url")
+        assert hasattr(FindingCaptureJob, "request_metadata")
 
     def test_service_rate_table(self, app):
         assert self._has_table(app, "service_rates")
@@ -434,6 +449,78 @@ class TestFindingScreenshot:
         assert finding.finding_screenshots[0].capture_provenance == {
             "kind": "manual_upload"
         }
+
+
+class TestFindingCaptureQueue:
+    def _objects(self):
+        user = User.query.filter_by(username="admin").first()
+        client = Client(name="Capture Queue Client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            case_number="CAPTURE-QUEUE",
+            client_id=client.id,
+            title="Capture Queue",
+            status="open",
+            priority="medium",
+            start_date=datetime.now(timezone.utc).date(),
+        )
+        db.session.add(case)
+        db.session.flush()
+        finding = Finding(
+            case_id=case.id,
+            tenant_id=case.tenant_id,
+            title="Capture target",
+            content="test",
+            source_type="manual",
+            created_by=user.id,
+        )
+        db.session.add(finding)
+        db.session.flush()
+        return user, case, finding
+
+    def test_queue_request_is_tenant_bound(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            job = enqueue_finding_capture(
+                case=case,
+                finding=finding,
+                actor=user,
+                target_url="https://fixture.example/capture",
+            )
+        db.session.commit()
+        assert job.status == "queued"
+        assert job.tenant_id == case.tenant_id
+        assert job.finding_id == finding.id
+
+    def test_active_capture_is_database_limited(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(True, ""),
+        ):
+            enqueue_finding_capture(
+                case=case, finding=finding, actor=user, target_url="https://a.example"
+            )
+            db.session.commit()
+            with pytest.raises(CaptureAlreadyActive):
+                enqueue_finding_capture(
+                    case=case, finding=finding, actor=user, target_url="https://b.example"
+                )
+
+    def test_unresolved_or_private_target_is_rejected(self, app, db_session):
+        user, case, finding = self._objects()
+        with patch(
+            "cms.services.finding_capture_queue.validate_capture_url",
+            return_value=(False, "host could not be resolved"),
+        ):
+            with pytest.raises(CaptureRequestRejected):
+                enqueue_finding_capture(
+                    case=case, finding=finding, actor=user, target_url="https://nope.invalid"
+                )
 
 
 class TestEmailCheckPGP:
