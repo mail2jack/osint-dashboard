@@ -38,11 +38,16 @@ def main() -> int:
         logger.error("Finding-capture sandbox verification failed: %s", "; ".join(reasons))
         return 78
 
-    # A subsequent PR must provide an executor.  Refuse before importing the
-    # app or claiming a job so an accidental environment toggle can never
-    # create a half-processed capture.
-    logger.error("No sandboxed finding-capture executor is installed")
-    return 78
+    # Import the app only after the sandbox has passed.  This keeps the worker
+    # separate from Gunicorn and ensures an accidental enablement can never
+    # claim a queue job on an unverified runtime.
+    from app import app
+    from cms.services.finding_capture_worker import process_one_capture_job
+
+    with app.app_context():
+        outcome = process_one_capture_job()
+    logger.info("Finding capture worker finished with outcome=%s", outcome)
+    return 0
 
 
 if __name__ == "__main__":
