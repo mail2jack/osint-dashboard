@@ -4756,3 +4756,21 @@ msgstr "Screenshotbestand niet beschikbaar"
 
 msgid "Original source"
 msgstr "Originele bron"
+
+msgid "Capture website"
+msgstr "Website vastleggen"
+
+msgid "Website URL to capture"
+msgstr "Website-URL om vast te leggen"
+
+msgid "I confirm that this website may be captured as evidence for this finding."
+msgstr "Ik bevestig dat deze website als bewijs voor deze bevinding mag worden vastgelegd."
+
+msgid "Queue capture"
+msgstr "Vastlegging in wachtrij zetten"
+
+msgid "Could not queue capture"
+msgstr "Vastlegging kon niet in de wachtrij worden gezet"
+
+msgid "Capture queued. It will not run until the capture worker is separately enabled."
+msgstr "Vastlegging staat in de wachtrij. Deze wordt pas uitgevoerd wanneer de capture-worker afzonderlijk is ingeschakeld."

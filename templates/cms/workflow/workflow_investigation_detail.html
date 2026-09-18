@@ -528,7 +528,55 @@ function pollStatus() {
 {% include "cms/workflow/_finding_action_handlers.html" %}
 document.addEventListener('click', function (e) {
   handleFindingClick(e);
+
+  {% if finding_capture_enabled %}
+  var openCapture = e.target.closest('[data-action="open-capture-request"]');
+  if (openCapture) {
+    var openForm = document.querySelector('.capture-request-form[data-finding-id="' + openCapture.getAttribute('data-finding-id') + '"]');
+    if (openForm) {
+      openForm.style.display = 'block';
+      var urlInput = openForm.querySelector('.capture-target-url');
+      if (urlInput) urlInput.focus();
+    }
+    return;
+  }
+  var cancelCapture = e.target.closest('[data-action="cancel-capture-request"]');
+  if (cancelCapture) {
+    var cancelForm = document.querySelector('.capture-request-form[data-finding-id="' + cancelCapture.getAttribute('data-finding-id') + '"]');
+    if (cancelForm) cancelForm.style.display = 'none';
+  }
+  {% endif %}
 });
+{% if finding_capture_enabled %}
+document.addEventListener('submit', function (e) {
+  var form = e.target.closest('.capture-request-form');
+  if (!form) return;
+  e.preventDefault();
+  if (form.getAttribute('data-submitting') === '1') return;
+  var checkbox = form.querySelector('.capture-confirm');
+  var target = form.querySelector('.capture-target-url');
+  if (!checkbox || !checkbox.checked || !target || !target.value.trim()) return;
+  var submit = form.querySelector('.capture-request-submit');
+  form.setAttribute('data-submitting', '1');
+  if (submit) submit.disabled = true;
+  fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/' + form.getAttribute('data-finding-id') + '/capture-requests', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body: JSON.stringify({confirm: true, target_url: target.value.trim()})
+  })
+  .then(function (response) { return response.json(); })
+  .then(function (data) {
+    if (!data.ok) throw new Error(data.error || '{{ _('Could not queue capture') }}');
+    showToast('{{ _('Capture queued. It will not run until the capture worker is separately enabled.') }}', 'success');
+    form.style.display = 'none';
+  })
+  .catch(function (error) { showToast(error.message || '{{ _('Could not queue capture') }}', 'error'); })
+  .finally(function () {
+    form.setAttribute('data-submitting', '0');
+    if (submit) submit.disabled = false;
+  });
+});
+{% endif %}
 </script>
 {% endif %}
 {% endblock %}
