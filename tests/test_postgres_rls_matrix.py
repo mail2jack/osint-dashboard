@@ -59,6 +59,7 @@ EXPECTED_FORCE_RLS_TABLES = {
     "financial_records",
     "findings",
     "feature_flags",
+    "finding_capture_jobs",
     "investigation_seq_counters",
     "investigations",
     "invoice_items",

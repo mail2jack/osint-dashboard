@@ -62,6 +62,7 @@ from .billing import (
     CreditNoteItem,
 )
 from .background_task import BackgroundTask
+from .finding_capture_job import FindingCaptureJob
 from .platform_setting import PlatformSetting
 from .invitation import Invitation
 from .usage_record import UsageRecord
@@ -79,6 +80,7 @@ __all__ = [
     "InvoiceItem",
     "Payment",
     "BackgroundTask",
+    "FindingCaptureJob",
     "PlatformSetting",
     "Invitation",
     "UsageRecord",
