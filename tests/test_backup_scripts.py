@@ -13,6 +13,8 @@ def test_backup_script_prefers_pghost_service_and_never_compresses_failed_dump()
     source = script.read_text(encoding="utf-8")
     assert "BACKUP_PGSERVICE" in source
     assert "BACKUP_PGPASSFILE" in source
+    assert "BACKUP_PGSERVICEFILE" in source
+    assert 'PGSERVICEFILE="$BACKUP_PGSERVICEFILE"' in source
     assert "--no-owner --no-acl" in source
     assert "DB_DUMP_OK=true" in source
     assert 'rm -f "$BACKUP_PATH/database.sql"' in source

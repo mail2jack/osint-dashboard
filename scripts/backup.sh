@@ -36,6 +36,7 @@ ENCRYPTED_FILE="$ARCHIVE_FILE.gpg"
 KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"
 BACKUP_PGSERVICE="${BACKUP_PGSERVICE:-}"
 BACKUP_PGPASSFILE="${BACKUP_PGPASSFILE:-}"
+BACKUP_PGSERVICEFILE="${BACKUP_PGSERVICEFILE:-}"
 ERRORS=0
 WARNINGS=0
 DB_DUMP_OK=false
@@ -105,6 +106,7 @@ elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACK
 elif command -v pg_dump &>/dev/null && [ -n "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (PGSERVICE: $BACKUP_PGSERVICE)..."
     if PGSERVICE="$BACKUP_PGSERVICE" PGPASSFILE="$BACKUP_PGPASSFILE" \
+        PGSERVICEFILE="$BACKUP_PGSERVICEFILE" \
         pg_dump --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
