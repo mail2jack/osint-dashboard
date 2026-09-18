@@ -38,16 +38,20 @@ def main() -> int:
     if not verified or chromium_path is None:
         logger.error("Finding-capture sandbox verification failed: %s", "; ".join(reasons))
         return 78
+    # A frequent timer may check the queue, but must not launch Chromium when
+    # there is nothing to process.  This read-only query never claims a job.
+    from app import app
+    from cms.services.finding_capture_worker import has_queued_capture_job, process_one_capture_job
+
+    with app.app_context():
+        if not has_queued_capture_job():
+            logger.info("Finding capture worker idle; no queue job claimed")
+            return 0
+
     probed, reason = probe_sandbox(chromium_path)
     if not probed:
         logger.error("Finding-capture sandbox probe failed: %s", reason)
         return 78
-
-    # Import the app only after the sandbox has passed.  This keeps the worker
-    # separate from Gunicorn and ensures an accidental enablement can never
-    # claim a queue job on an unverified runtime.
-    from app import app
-    from cms.services.finding_capture_worker import process_one_capture_job
 
     with app.app_context():
         outcome = process_one_capture_job()
