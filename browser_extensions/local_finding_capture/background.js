@@ -127,14 +127,14 @@ async function uploadViaDashboard(tabId, pending) {
   return results[0]?.result || {ok: false, error: "The dashboard page was unavailable"};
 }
 
-chrome.action.onClicked.addListener(async (tab) => {
-  await captureActiveTab(tab);
-});
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message?.type === "ARM_CAPTURE") return armCapture(message);
     if (message?.type === "GET_PENDING") return {pending: await getPending()};
+    if (message?.type === "CAPTURE_ACTIVE_TAB") {
+      const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+      return captureActiveTab(tab);
+    }
     if (message?.type === "CANCEL_PENDING") {
       await clearPending();
       return {ok: true};

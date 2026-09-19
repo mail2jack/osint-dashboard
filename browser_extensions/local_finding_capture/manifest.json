@@ -7,5 +7,5 @@
   "host_permissions": ["https://joost.iveras.com/*"],
   "background": {"service_worker": "background.js", "type": "module"},
   "content_scripts": [{"matches": ["https://joost.iveras.com/cms/workflow/*"], "js": ["content.js"], "run_at": "document_idle"}],
-  "action": {"default_title": "OSINT Dashboard: capture current tab"}
+  "action": {"default_title": "OSINT Dashboard: capture current tab", "default_popup": "popup.html"}
 }

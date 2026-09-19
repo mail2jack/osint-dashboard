@@ -16,6 +16,7 @@ def test_manifest_is_narrow_and_has_no_broad_web_access():
     assert manifest["manifest_version"] == 3
     assert manifest["permissions"] == ["activeTab", "scripting", "storage", "tabs"]
     assert manifest["host_permissions"] == ["https://joost.iveras.com/*"]
+    assert manifest["action"]["default_popup"] == "popup.html"
     assert "<all_urls>" not in json.dumps(manifest)
 
 
@@ -38,12 +39,19 @@ def test_extension_requires_two_explicit_user_steps_and_keeps_source_url():
     content = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
     assert 'type === "ARM_CAPTURE"' in background
+    assert 'type === "CAPTURE_ACTIVE_TAB"' in background
     assert 'type === "UPLOAD_PENDING"' in background
     assert "sourceUrl: tab.url" in background
     assert 'form.append("source_url", capture.sourceUrl)' in background
     assert 'data-browser-capture' in content
     assert 'Upload screenshot' in content
     assert 'Discard' in content
+
+    popup = (EXTENSION / "popup.js").read_text(encoding="utf-8")
+    assert 'type: "CAPTURE_ACTIVE_TAB"' in popup
+    assert "Capture visible tab" in (EXTENSION / "popup.html").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_dashboard_button_is_flagged_and_writer_only():
