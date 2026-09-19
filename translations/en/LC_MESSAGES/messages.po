@@ -4968,6 +4968,9 @@ msgstr "Original source"
 msgid "Capture website"
 msgstr "Capture website"
 
+msgid "Capture from browser"
+msgstr "Capture from browser"
+
 msgid "Website URL to capture"
 msgstr "Website URL to capture"
 

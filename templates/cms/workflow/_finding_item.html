@@ -165,6 +165,9 @@
     <button type="button" data-action="reject-finding" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ {{ _('Reject') }}</button>
     {% endif %}
     <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _('Screenshot') }}</button>
+    {% if local_browser_capture_enabled %}
+    <button type="button" data-browser-capture data-case-id="{{ f.case_id }}" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🧩 {{ _('Capture from browser') }}</button>
+    {% endif %}
     {% if f.include_in_report is sameas false %}
     <button type="button" data-action="report-flag" data-finding-id="{{ f.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Excluded from official reports') }}">🚫 {{ _('Exclude') }}</button>
     {% else %}

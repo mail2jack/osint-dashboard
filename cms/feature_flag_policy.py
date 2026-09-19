@@ -9,6 +9,7 @@ FEATURE_FLAG_NAMES = {
     "subject_first_investigations": "👤 Subject-First Investigations",
     "investigation_workspace": "🔬 Investigation Workspace",
     "finding_screenshot_capture": "📷 Finding Screenshot Capture",
+    "local_browser_screenshot_capture": "🧩 Local Browser Screenshot Capture",
 }
 
 FEATURE_FLAG_ORDER = tuple(FEATURE_FLAG_NAMES)
@@ -19,6 +20,7 @@ OFF_BY_DEFAULT = frozenset(
         "subject_first_investigations",
         "investigation_workspace",
         "finding_screenshot_capture",
+        "local_browser_screenshot_capture",
     }
 )
 

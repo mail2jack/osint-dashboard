@@ -4185,6 +4185,9 @@ msgstr ""
 msgid "Capture website"
 msgstr ""
 
+msgid "Capture from browser"
+msgstr ""
+
 #: templates/cms/workflow/_finding_item_readonly.html
 msgid "Website URL to capture"
 msgstr ""
