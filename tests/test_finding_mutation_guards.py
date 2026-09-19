@@ -117,6 +117,56 @@ class TestFindingCaptureRequest:
         audit = AuditLog.query.filter_by(entity_type="finding_capture_job", entity_id=job.id).one()
         assert audit.action == "create"
 
+    def test_queue_response_uses_values_captured_before_commit(self, app, client, db_session):
+        """A fast worker must not turn a successful queue into a 500 response.
+
+        ``FindingCaptureJob`` instances expire on commit.  In production the
+        separate worker can complete the row before Flask tries to serialize
+        it, so touching the ORM object afterwards raises ObjectDeletedError
+        under FORCE RLS.  A deliberately expiring stand-in makes that race
+        deterministic without starting a browser in this route test.
+        """
+        user, case, finding = self._objects()
+        _login_as(client, user)
+
+        class ExpiringJob:
+            _expired = False
+
+            @property
+            def id(self):
+                if self._expired:
+                    raise RuntimeError("post-commit ORM access")
+                return "queued-job-id"
+
+            @property
+            def status(self):
+                if self._expired:
+                    raise RuntimeError("post-commit ORM access")
+                return "queued"
+
+        job = ExpiringJob()
+        real_commit = db.session.commit
+
+        def commit_then_expire():
+            real_commit()
+            job._expired = True
+
+        with patch("cms.workflow.routes.check_feature", return_value=True), patch(
+            "cms.workflow.routes.enqueue_finding_capture", return_value=job
+        ), patch.object(db.session, "commit", side_effect=commit_then_expire):
+            response = self._post(
+                client,
+                case,
+                finding,
+                {"confirm": True, "target_url": "https://example.test/"},
+            )
+
+        assert response.status_code == 202
+        assert response.get_json() == {
+            "ok": True,
+            "job": {"id": "queued-job-id", "status": "queued"},
+        }
+
     @pytest.mark.parametrize(
         "body", [{}, {"confirm": False, "target_url": "https://example.test"}, {"confirm": True}, {"confirm": True, "target_url": 1}, []]
     )

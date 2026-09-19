@@ -2981,15 +2981,21 @@ def request_finding_capture(case_id, finding_id):
             target_url=target_url.strip(),
             request_metadata={"requested_via": "finding_capture_request"},
         )
+        # The persistent worker can claim and complete this job immediately
+        # after our commit.  Do not dereference its ORM instance while building
+        # the HTTP response: under FORCE RLS that refresh can see no row and
+        # turn an already-queued request into a misleading 500.
+        job_id = job.id
+        job_status = job.status
         AuditLog.log(
             user_id=current_user.id,
             action="create",
             entity_type="finding_capture_job",
-            entity_id=job.id,
+            entity_id=job_id,
             tenant_id=finding.tenant_id,
             case_id=case_id,
             ip_address=request.remote_addr,
-            new_values={"status": "queued", "target_url": job.target_url},
+            new_values={"status": job_status, "target_url": target_url.strip()},
             description=f"Queued screenshot capture for finding {finding_id}",
         )
         db.session.commit()
@@ -3004,7 +3010,7 @@ def request_finding_capture(case_id, finding_id):
         logger.exception("request_finding_capture failed finding_id=%s", finding_id)
         return jsonify({"error": "Internal error"}), 500
 
-    return jsonify({"ok": True, "job": {"id": job.id, "status": job.status}}), 202
+    return jsonify({"ok": True, "job": {"id": job_id, "status": job_status}}), 202
 
 
 @workflow_bp.route("/uploads/<finding_id>/<filename>")
