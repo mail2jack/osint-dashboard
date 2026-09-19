@@ -359,7 +359,7 @@ function findingHtml(f) {
   if (f.screenshots && f.screenshots.length) {
     ssHtml = '<div class="screenshot" style="margin-top:0.4rem;">';
     f.screenshots.forEach(function(ss) {
-      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;margin-right:0.3rem;">🖼️ View screenshot</a>';
+      if (ss.url) ssHtml += '<button type="button" data-action="view-screenshot" data-screenshot-url="' + esc(ss.url) + '" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);cursor:pointer;margin-right:0.3rem;">🖼️ View screenshot</button>';
       if (ss.source_url && ss.source_url !== ss.url) ssHtml += '<a href="' + esc(ss.source_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;margin-right:0.3rem;">🌐 Open website</a>';
     });
     ssHtml += '</div>';

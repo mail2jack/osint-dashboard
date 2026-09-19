@@ -132,7 +132,7 @@
     <div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);{% if loop.last %}border:none{% endif %}">
       <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
         {% if ss.url %}
-        <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ View screenshot</a>
+        <button type="button" data-action="view-screenshot" data-screenshot-url="{{ ss.url }}" aria-label="View screenshot" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);cursor:pointer;">🖼️ View screenshot</button>
         {% endif %}
         {% if ss.source_url and ss.source_url != ss.url %}
         <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>
@@ -141,9 +141,9 @@
       </div>
       {% if ss.url %}
       <div style="margin-top:0.3rem;">
-        <a href="{{ ss.url }}" target="_blank" rel="noopener">
+        <button type="button" class="screenshot-preview-button" data-action="view-screenshot" data-screenshot-url="{{ ss.url }}" aria-label="View screenshot">
           <img src="{{ ss.url }}" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy">
-        </a>
+        </button>
       </div>
       {% endif %}
       {% if ss.notes %}<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">{{ ss.notes }}</div>{% endif %}

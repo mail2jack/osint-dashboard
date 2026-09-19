@@ -291,11 +291,11 @@ function findingHtml(f) {
     f.screenshots.forEach(function(ss) {
       ssHtml += '<div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);">' +
         '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
-      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ View screenshot</a>';
+      if (ss.url) ssHtml += '<button type="button" data-action="view-screenshot" data-screenshot-url="' + esc(ss.url) + '" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);cursor:pointer;">🖼️ View screenshot</button>';
       if (ss.source_url && ss.source_url !== ss.url) ssHtml += '<a href="' + esc(ss.source_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>';
       ssHtml += '<span style="font-size:0.72rem;color:var(--text-muted);">' + (ss.captured_at ? new Date(ss.captured_at).toLocaleString('en-GB') : '-') + '</span>';
       ssHtml += '</div>';
-      if (ss.url) ssHtml += '<div style="margin-top:0.3rem;"><a href="' + esc(ss.url) + '" target="_blank" rel="noopener"><img src="' + esc(ss.url) + '" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy"></a></div>';
+      if (ss.url) ssHtml += '<div style="margin-top:0.3rem;"><button type="button" class="screenshot-preview-button" data-action="view-screenshot" data-screenshot-url="' + esc(ss.url) + '"><img src="' + esc(ss.url) + '" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy"></button></div>';
       if (ss.notes) ssHtml += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">' + esc(ss.notes) + '</div>';
       ssHtml += '</div>';
     });
