@@ -151,6 +151,15 @@ fi
 echo "=== 7/8 Service herstarten ==="
 sudo systemctl restart osint-dashboard || fail "restart mislukt"
 
+# The capture worker is a separate long-lived Python process.  When it is
+# active, it must be restarted too or it will keep executing the previous
+# release from memory.  Disabled installations remain untouched.
+if systemctl is-active --quiet osint-finding-capture-worker; then
+    echo "=== 7b/8 Capture-worker herstarten ==="
+    sudo systemctl restart osint-finding-capture-worker \
+        || fail "capture-worker restart mislukt"
+fi
+
 # --- 8/8 Health check na restart ---
 echo "=== 8/8 Health check ==="
 for i in 1 2 3 4 5; do
