@@ -16,7 +16,8 @@ store website cookies, passwords or login sessions.
 1. In OSINT Dashboard, select **Capture from browser** on a finding.
 2. Open the already authenticated source page in a separate tab.
 3. Click the pinned extension icon. It captures only the currently visible tab.
-4. Return to the same case in OSINT Dashboard and explicitly select **Upload screenshot**.
+4. In the extension select **Go to upload**. It returns you to the selected case.
+5. Explicitly select **Upload screenshot** in the dashboard prompt.
 
 The capture stays only in the extension's session memory until uploaded,
 discarded, or the browser is restarted. The dashboard receives the JPEG, source
