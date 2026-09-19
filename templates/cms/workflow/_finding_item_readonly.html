@@ -76,6 +76,9 @@
     <button type="button" data-action="reject-finding" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ {{ _('Reject') }}</button>
     {% endif %}
     <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _('Screenshot') }}</button>
+    {% if local_browser_capture_enabled %}
+    <button type="button" data-browser-capture data-case-id="{{ case.id }}" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🧩 {{ _('Capture from browser') }}</button>
+    {% endif %}
     {% if finding_capture_enabled %}
     <button type="button" data-action="open-capture-request" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🌐 {{ _('Capture website') }}</button>
     {% endif %}

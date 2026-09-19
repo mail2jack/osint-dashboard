@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OSINT local capture</title>
+  <style>
+    body { width: 290px; margin: 0; padding: 16px; color: #111827; font: 14px system-ui, sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 16px; }
+    p { line-height: 1.4; margin: 0 0 12px; }
+    button { padding: 8px 10px; border: 1px solid #2563eb; border-radius: 5px; background: #2563eb; color: white; cursor: pointer; font: inherit; }
+    button.secondary { margin-left: 6px; border-color: #9ca3af; background: white; color: #374151; }
+    button:disabled { cursor: wait; opacity: .65; }
+    #status { min-height: 20px; color: #374151; }
+  </style>
+</head>
+<body>
+  <h1>OSINT local capture</h1>
+  <p id="status">Checking selected finding…</p>
+  <button id="capture" hidden>Capture visible tab</button>
+  <button id="discard" class="secondary" hidden>Discard</button>
+  <script src="popup.js"></script>
+</body>
+</html>

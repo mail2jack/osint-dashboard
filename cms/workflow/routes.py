@@ -1194,6 +1194,12 @@ def case_detail(case_id):
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
             investigation_workspace_enabled=check_feature("investigation_workspace"),
+            local_browser_capture_enabled=(
+                _current_user_is_investigator()
+                and check_feature(
+                    "local_browser_screenshot_capture", current_user.tenant_id
+                )
+            ),
         )
 
 
@@ -1301,6 +1307,12 @@ def investigation_detail(case_id, investigation_id):
         finding_capture_enabled=(
             can_write
             and check_feature("finding_screenshot_capture", current_user.tenant_id)
+        ),
+        local_browser_capture_enabled=(
+            can_write
+            and check_feature(
+                "local_browser_screenshot_capture", current_user.tenant_id
+            )
         ),
     )
 
