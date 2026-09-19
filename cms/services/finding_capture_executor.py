@@ -9,6 +9,7 @@ revalidates every browser request through the strict capture SSRF guard.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import BytesIO
 import os
 from pathlib import Path
 
@@ -26,6 +27,31 @@ CAPTURE_POST_RENDER_SETTLE_MS = 3_000
 MAX_LOADING_INDICATORS_FOR_SPARSE_PAGE = 2
 MIN_RENDERED_TEXT_LENGTH_FOR_LOADING_PAGE = 160
 MIN_RENDERED_TEXT_LENGTH = 80
+
+
+def _validate_capture_png_quality(png_bytes: bytes) -> None:
+    """Reject a technically valid but visually empty PNG.
+
+    DOM readiness alone is insufficient for some social-media interstitials:
+    they can expose accessible text and media nodes while Chromium paints a
+    wholly blank viewport.  Sampling a small decoded image makes that failure
+    deterministic without attempting content recognition or storing anything.
+    """
+    try:
+        from PIL import Image
+
+        with Image.open(BytesIO(png_bytes)) as image:
+            # Resizing bounds both memory and CPU use.  A one-colour thumbnail
+            # means the rendered viewport contains no visual evidence at all.
+            sample = image.convert("RGB").resize((64, 36))
+            if len(set(sample.get_flattened_data())) < 2:
+                raise CaptureExecutionError(
+                    "Capture screenshot contained no usable visual content"
+                )
+    except CaptureExecutionError:
+        raise
+    except Exception as exc:
+        raise CaptureExecutionError("Capture produced an invalid PNG") from exc
 
 
 def _configured_chromium_path() -> str | None:
@@ -170,13 +196,19 @@ def capture_page_as_png(target_url: str) -> CapturedPage:
                             f"Capture redirect rejected: {reason}"
                         )
                     _wait_for_rendered_content(page, TimeoutError)
+                    # The first viewport may legitimately contain a hero,
+                    # consent wall, or lazy-loading placeholder while useful
+                    # public evidence is rendered below it.  Capture the page
+                    # rather than only the 1280×720 viewport; the existing
+                    # byte limit remains the fail-closed bound.
                     png_bytes = page.screenshot(
-                        type="png", full_page=False, timeout=CAPTURE_TIMEOUT_MS
+                        type="png", full_page=True, timeout=CAPTURE_TIMEOUT_MS
                     )
                     if not isinstance(png_bytes, bytes) or not png_bytes:
                         raise CaptureExecutionError("Capture produced no PNG data")
                     if len(png_bytes) > MAX_CAPTURE_PNG_BYTES:
                         raise CaptureExecutionError("Capture PNG exceeds size limit")
+                    _validate_capture_png_quality(png_bytes)
                     return CapturedPage(
                         png_bytes=png_bytes,
                         source_url=page.url,
