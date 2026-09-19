@@ -127,6 +127,28 @@ async function uploadViaDashboard(tabId, pending) {
   return results[0]?.result || {ok: false, error: "The dashboard page was unavailable"};
 }
 
+async function focusDashboardForUpload() {
+  const pending = await getPending();
+  if (!pending || pending.state !== "ready") {
+    return {ok: false, error: "No completed local capture is available"};
+  }
+  const tabs = await chrome.tabs.query({
+    url: `${DASHBOARD_ORIGIN}/cms/workflow/case/${pending.caseId}*`,
+  });
+  const dashboardTab = tabs.find((tab) => isDashboardCaseUrl(tab.url, pending.caseId));
+  if (!dashboardTab?.id || !dashboardTab.windowId) {
+    return {ok: false, error: "Return to the selected case in OSINT Dashboard"};
+  }
+  await chrome.windows.update(dashboardTab.windowId, {focused: true});
+  await chrome.tabs.update(dashboardTab.id, {active: true});
+  try {
+    await chrome.tabs.sendMessage(dashboardTab.id, {type: "SHOW_PENDING_UPLOAD"});
+  } catch (_) {
+    // The content script will display the banner on the next completed page load.
+  }
+  return {ok: true};
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message?.type === "ARM_CAPTURE") return armCapture(message);
@@ -134,6 +156,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "CAPTURE_ACTIVE_TAB") {
       const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
       return captureActiveTab(tab);
+    }
+    if (message?.type === "FOCUS_DASHBOARD_UPLOAD") {
+      return focusDashboardForUpload();
     }
     if (message?.type === "CANCEL_PENDING") {
       await clearPending();

@@ -54,4 +54,13 @@ document.addEventListener("click", async (event) => {
   }
 });
 
-send({type: "GET_PENDING"}).then(({pending}) => showPendingUpload(pending));
+function refreshPendingUpload() {
+  send({type: "GET_PENDING"}).then(({pending}) => showPendingUpload(pending));
+}
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "SHOW_PENDING_UPLOAD") refreshPendingUpload();
+});
+
+window.addEventListener("pageshow", refreshPendingUpload);
+refreshPendingUpload();

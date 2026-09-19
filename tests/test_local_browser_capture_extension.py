@@ -40,15 +40,20 @@ def test_extension_requires_two_explicit_user_steps_and_keeps_source_url():
 
     assert 'type === "ARM_CAPTURE"' in background
     assert 'type === "CAPTURE_ACTIVE_TAB"' in background
+    assert 'type === "FOCUS_DASHBOARD_UPLOAD"' in background
     assert 'type === "UPLOAD_PENDING"' in background
     assert "sourceUrl: tab.url" in background
     assert 'form.append("source_url", capture.sourceUrl)' in background
     assert 'data-browser-capture' in content
     assert 'Upload screenshot' in content
     assert 'Discard' in content
+    assert 'SHOW_PENDING_UPLOAD' in content
+    assert 'window.addEventListener("pageshow", refreshPendingUpload)' in content
 
     popup = (EXTENSION / "popup.js").read_text(encoding="utf-8")
     assert 'type: "CAPTURE_ACTIVE_TAB"' in popup
+    assert 'type: "FOCUS_DASHBOARD_UPLOAD"' in popup
+    assert "Go to upload" in (EXTENSION / "popup.html").read_text(encoding="utf-8")
     assert "Capture visible tab" in (EXTENSION / "popup.html").read_text(
         encoding="utf-8"
     )
