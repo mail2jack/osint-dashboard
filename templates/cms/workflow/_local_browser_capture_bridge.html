@@ -12,6 +12,17 @@
     }, result), window.location.origin);
   }
 
+  function jpegDataUrlToBlob(value) {
+    var match = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(value || "");
+    if (!match) throw new Error("invalid capture image");
+    var binary = window.atob(match[1]);
+    var bytes = new Uint8Array(binary.length);
+    for (var index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], {type: "image/jpeg"});
+  }
+
   window.addEventListener("message", async function (event) {
     if (event.source !== window || event.origin !== window.location.origin ||
         !event.data || event.data.type !== "OSINT_LOCAL_CAPTURE_UPLOAD") return;
@@ -31,10 +42,9 @@
       var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content ||
         (typeof CSRF !== "undefined" ? CSRF : "");
       if (!csrf) throw new Error("missing CSRF token");
-      var blob = await fetch(capture.imageDataUrl).then(function (response) {
-        if (!response.ok) throw new Error("invalid capture image");
-        return response.blob();
-      });
+      // Do not fetch a data: URL here: the dashboard CSP deliberately limits
+      // connect-src to real origins.  This conversion is entirely local.
+      var blob = jpegDataUrlToBlob(capture.imageDataUrl);
       var form = new FormData();
       form.append("file", new File([blob], "local-browser-capture.jpg", {type: "image/jpeg"}));
       form.append("source_url", source.href);
