@@ -22,9 +22,10 @@ CAPTURE_VIEWPORT = {"width": 1280, "height": 720}
 # a quality gate for evidence, not an attempt to wait indefinitely for every
 # analytics request on the page.
 CAPTURE_RENDER_TIMEOUT_MS = 6_000
-CAPTURE_POST_RENDER_SETTLE_MS = 750
+CAPTURE_POST_RENDER_SETTLE_MS = 3_000
 MAX_LOADING_INDICATORS_FOR_SPARSE_PAGE = 2
 MIN_RENDERED_TEXT_LENGTH_FOR_LOADING_PAGE = 160
+MIN_RENDERED_TEXT_LENGTH = 80
 
 
 def _configured_chromium_path() -> str | None:
@@ -71,9 +72,17 @@ def _wait_for_rendered_content(page, timeout_error_type: type[BaseException]) ->
         """selector => {
             const body = document.body;
             const text = (body?.innerText || '').replace(/\\s+/g, ' ').trim();
+            const visibleMedia = [...document.querySelectorAll('img, video, canvas')]
+                .filter(node => {
+                    const rect = node.getBoundingClientRect();
+                    const style = window.getComputedStyle(node);
+                    return style.visibility !== 'hidden' && style.display !== 'none'
+                        && rect.width * rect.height >= 10_000;
+                }).length;
             return {
                 loading_indicators: document.querySelectorAll(selector).length,
                 text_length: text.length,
+                visible_media: visibleMedia,
             };
         }""",
         loading_selector,
@@ -82,13 +91,20 @@ def _wait_for_rendered_content(page, timeout_error_type: type[BaseException]) ->
         raise CaptureExecutionError("Could not verify rendered capture content")
     loading_indicators = readiness.get("loading_indicators")
     text_length = readiness.get("text_length")
-    if not isinstance(loading_indicators, int) or not isinstance(text_length, int):
+    visible_media = readiness.get("visible_media")
+    if (
+        not isinstance(loading_indicators, int)
+        or not isinstance(text_length, int)
+        or not isinstance(visible_media, int)
+    ):
         raise CaptureExecutionError("Could not verify rendered capture content")
     if (
         loading_indicators > MAX_LOADING_INDICATORS_FOR_SPARSE_PAGE
         and text_length < MIN_RENDERED_TEXT_LENGTH_FOR_LOADING_PAGE
     ):
         raise CaptureExecutionError("Capture page remained in a loading state")
+    if text_length < MIN_RENDERED_TEXT_LENGTH and visible_media == 0:
+        raise CaptureExecutionError("Capture page did not render usable content")
 
 
 @dataclass(frozen=True)
