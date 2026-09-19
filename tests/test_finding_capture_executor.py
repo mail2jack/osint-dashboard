@@ -56,6 +56,15 @@ def test_capture_uses_configured_executable_path(tmp_path, monkeypatch):
         def screenshot(self, **_kwargs):
             return b"png"
 
+        def wait_for_function(self, *_args, **_kwargs):
+            pass
+
+        def wait_for_timeout(self, *_args, **_kwargs):
+            pass
+
+        def evaluate(self, *_args, **_kwargs):
+            return {"loading_indicators": 0, "text_length": 200}
+
         def title(self):
             return "Example"
 
@@ -129,6 +138,15 @@ def test_capture_rejects_oversized_png_without_persisting():
             def screenshot(self, **_kwargs):
                 return b"xx"
 
+            def wait_for_function(self, *_args, **_kwargs):
+                pass
+
+            def wait_for_timeout(self, *_args, **_kwargs):
+                pass
+
+            def evaluate(self, *_args, **_kwargs):
+                return {"loading_indicators": 0, "text_length": 200}
+
             def title(self):
                 return "Example"
 
@@ -164,3 +182,70 @@ def test_capture_rejects_oversized_png_without_persisting():
                 capture_page_as_png("https://example.test/")
 
     assert MAX_CAPTURE_PNG_BYTES == 8 * 1024 * 1024
+
+
+def test_capture_rejects_persistent_loading_skeleton_without_saving_png():
+    class Page:
+        url = "https://example.test/"
+        screenshot_called = False
+
+        def goto(self, *_args, **_kwargs):
+            return object()
+
+        def wait_for_function(self, *_args, **_kwargs):
+            # Simulate a bounded Playwright wait that did not see the page
+            # become ready; the executor must inspect the DOM afterwards.
+            from playwright.sync_api import TimeoutError
+
+            raise TimeoutError("still loading")
+
+        def wait_for_timeout(self, *_args, **_kwargs):
+            pass
+
+        def evaluate(self, *_args, **_kwargs):
+            return {"loading_indicators": 5, "text_length": 12}
+
+        def screenshot(self, **_kwargs):
+            self.screenshot_called = True
+            return b"png"
+
+        def title(self):
+            return "Loading"
+
+    page = Page()
+
+    class Context:
+        def new_page(self):
+            return page
+
+        def close(self):
+            pass
+
+    class Browser:
+        def new_context(self, **_kwargs):
+            return Context()
+
+        def close(self):
+            pass
+
+    class Runtime:
+        chromium = type(
+            "Chromium", (), {"launch": lambda *_args, **_kwargs: Browser()}
+        )()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    with patch(
+        "cms.services.finding_capture_executor.validate_capture_url",
+        return_value=(True, ""),
+    ), patch("playwright.sync_api.sync_playwright", return_value=Runtime()), patch(
+        "cms.services.finding_capture_executor.install_capture_request_guard"
+    ):
+        with pytest.raises(CaptureExecutionError, match="loading state"):
+            capture_page_as_png("https://example.test/")
+
+    assert page.screenshot_called is False
