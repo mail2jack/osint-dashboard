@@ -85,7 +85,7 @@ def _wait_for_rendered_content(page, timeout_error_type: type[BaseException]) ->
     try:
         page.wait_for_function(
             "selector => document.querySelectorAll(selector).length === 0",
-            loading_selector,
+            arg=loading_selector,
             timeout=CAPTURE_RENDER_TIMEOUT_MS,
         )
     except timeout_error_type:

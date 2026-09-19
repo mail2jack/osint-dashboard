@@ -68,8 +68,12 @@ def test_capture_uses_configured_executable_path(tmp_path, monkeypatch):
             seen["screenshot"] = _kwargs
             return _png_bytes("white", "black")
 
-        def wait_for_function(self, *_args, **_kwargs):
-            pass
+        def wait_for_function(self, expression, *, arg, timeout):
+            seen["wait_for_function"] = {
+                "expression": expression,
+                "arg": arg,
+                "timeout": timeout,
+            }
 
         def wait_for_timeout(self, *_args, **_kwargs):
             pass
@@ -120,6 +124,12 @@ def test_capture_uses_configured_executable_path(tmp_path, monkeypatch):
     assert seen["executable_path"] == str(chromium)
     assert seen["ignore_default_args"] == ["--no-sandbox"]
     assert "--disable-crash-reporter" in seen["args"]
+    assert seen["wait_for_function"] == {
+        "expression": "selector => document.querySelectorAll(selector).length === 0",
+        "arg": '[aria-busy="true"], [class*="skeleton" i], '
+        '[class*="placeholder" i]',
+        "timeout": 6_000,
+    }
     assert seen["screenshot"] == {
         "type": "png",
         "full_page": True,
