@@ -11,6 +11,57 @@
 //   handleFindingClick(e)      — called from a delegated click handler;
 //                                returns true if the event was consumed.
 
+function openScreenshotLightbox(rawUrl, opener) {
+  var url;
+  try {
+    url = new URL(rawUrl, window.location.origin);
+  } catch (_) {
+    return;
+  }
+  if (url.origin !== window.location.origin ||
+      !url.pathname.startsWith('/cms/workflow/uploads/')) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'screenshot-lightbox';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', '{{ _('View screenshot') }}');
+  var image = document.createElement('img');
+  image.src = url.href;
+  image.alt = '{{ _('Screenshot') }}';
+  var close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'screenshot-lightbox-close';
+  close.setAttribute('aria-label', '{{ _('Close') }}');
+  close.textContent = '×';
+  function dismiss() {
+    document.removeEventListener('keydown', onKeydown);
+    overlay.remove();
+    if (opener) opener.focus();
+  }
+  function onKeydown(event) {
+    if (event.key === 'Escape') dismiss();
+  }
+  close.addEventListener('click', dismiss);
+  overlay.addEventListener('click', function (event) {
+    if (event.target === overlay) dismiss();
+  });
+  document.addEventListener('keydown', onKeydown);
+  overlay.append(image, close);
+  document.body.append(overlay);
+  close.focus();
+}
+
+(function () {
+  if (document._screenshotLightboxBound) return;
+  document._screenshotLightboxBound = true;
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-action="view-screenshot"]');
+    if (!trigger) return;
+    event.preventDefault();
+    openScreenshotLightbox(trigger.getAttribute('data-screenshot-url'), trigger);
+  });
+})();
+
 // ── Case-id resolution (works on single-case and multi-case screens) ──
 function findingCaseId(el) {
   var item = el && el.closest ? el.closest('.finding-item') : null;

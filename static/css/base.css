@@ -641,3 +641,43 @@ option { background: var(--bg-card); color: var(--text-primary); }
 .card-center     { background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center; }
 .rounded         { border-radius: 8px; }
 .badge-green     { background: #059669; display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; }
+
+/* Screenshot viewer: stays within the dashboard rather than opening a raw tab. */
+.screenshot-preview-button {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+}
+.screenshot-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, .88);
+}
+.screenshot-lightbox img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    background: #111;
+}
+.screenshot-lightbox-close {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #111;
+    cursor: pointer;
+    font-size: 2rem;
+    line-height: 1;
+}
