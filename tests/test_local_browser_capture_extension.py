@@ -14,24 +14,36 @@ def test_manifest_is_narrow_and_has_no_broad_web_access():
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
 
     assert manifest["manifest_version"] == 3
-    assert manifest["permissions"] == ["activeTab", "scripting", "storage", "tabs"]
+    assert manifest["permissions"] == ["activeTab", "storage", "tabs"]
     assert manifest["host_permissions"] == ["https://joost.iveras.com/*"]
     assert manifest["action"]["default_popup"] == "popup.html"
     assert "<all_urls>" not in json.dumps(manifest)
 
 
-def test_extension_keeps_capture_in_session_and_uses_dashboard_page_upload():
+def test_extension_keeps_capture_in_session_and_uses_dashboard_page_upload_bridge():
     background = (EXTENSION / "background.js").read_text(encoding="utf-8")
+    content = (EXTENSION / "content.js").read_text(encoding="utf-8")
+    bridge = (
+        ROOT
+        / "templates"
+        / "cms"
+        / "workflow"
+        / "_local_browser_capture_bridge.html"
+    ).read_text(encoding="utf-8")
 
     assert "chrome.storage.session" in background
     assert "chrome.storage.local" not in background
-    assert 'credentials: "same-origin"' in background
-    assert 'world: "MAIN"' in background
     assert "captureVisibleTab" in background
     assert "MAX_AGE_MS = 10 * 60 * 1000" in background
-    assert "local-browser-capture.jpg" in background
     assert "document.cookie" not in background
     assert "chrome.cookies" not in background
+    assert 'type: "REQUEST_DASHBOARD_UPLOAD"' in background
+    assert "OSINT_LOCAL_CAPTURE_UPLOAD" in content
+    assert "OSINT_LOCAL_CAPTURE_UPLOAD_RESULT" in content
+    assert "window.postMessage" in content
+    assert 'credentials: "same-origin"' in bridge
+    assert "local-browser-capture.jpg" in bridge
+    assert "X-CSRFToken" in bridge
 
 
 def test_extension_requires_two_explicit_user_steps_and_keeps_source_url():
@@ -43,7 +55,9 @@ def test_extension_requires_two_explicit_user_steps_and_keeps_source_url():
     assert 'type === "FOCUS_DASHBOARD_UPLOAD"' in background
     assert 'type === "UPLOAD_PENDING"' in background
     assert "sourceUrl: tab.url" in background
-    assert 'form.append("source_url", capture.sourceUrl)' in background
+    assert "source.href" in (
+        ROOT / "templates" / "cms" / "workflow" / "_local_browser_capture_bridge.html"
+    ).read_text(encoding="utf-8")
     assert 'data-browser-capture' in content
     assert 'Upload screenshot' in content
     assert 'Discard' in content
@@ -112,6 +126,7 @@ def test_case_detail_shows_browser_capture_only_when_enabled(app, auth_client):
     off = auth_client.get(url).get_data(as_text=True)
     assert f'data-finding-id="{finding.id}"' in off
     assert "data-browser-capture" not in off
+    assert "OSINT_LOCAL_CAPTURE_UPLOAD" not in off
 
     db.session.add(
         FeatureFlag(
@@ -125,3 +140,13 @@ def test_case_detail_shows_browser_capture_only_when_enabled(app, auth_client):
     assert "data-browser-capture" in on
     assert f'data-case-id="{case.id}"' in on
     assert f'data-finding-id="{finding.id}"' in on
+    assert "OSINT_LOCAL_CAPTURE_UPLOAD" in on
+
+
+def test_dashboard_templates_include_authenticated_upload_bridge():
+    bridge_include = '{% include "cms/workflow/_local_browser_capture_bridge.html" %}'
+    for name in ("workflow_case_detail.html", "workflow_investigation_detail.html"):
+        template = (ROOT / "templates" / "cms" / "workflow" / name).read_text(
+            encoding="utf-8"
+        )
+        assert bridge_include in template

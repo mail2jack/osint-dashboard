@@ -58,8 +58,44 @@ function refreshPendingUpload() {
   send({type: "GET_PENDING"}).then(({pending}) => showPendingUpload(pending));
 }
 
+function requestDashboardUpload(pending) {
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      window.removeEventListener("message", onResult);
+      resolve(result);
+    };
+    const onResult = (event) => {
+      const result = event.data;
+      if (event.source === window && event.origin === location.origin &&
+          result && result.type === "OSINT_LOCAL_CAPTURE_UPLOAD_RESULT" &&
+          result.requestId === requestId) finish(result);
+    };
+    const timeout = setTimeout(() => finish({
+      ok: false,
+      error: "The dashboard upload took too long — please try again",
+    }), 30000);
+    window.addEventListener("message", onResult);
+    window.postMessage({
+      type: "OSINT_LOCAL_CAPTURE_UPLOAD",
+      requestId,
+      capture: pending,
+    }, location.origin);
+  });
+}
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "SHOW_PENDING_UPLOAD") refreshPendingUpload();
+});
+
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+  if (message?.type !== "REQUEST_DASHBOARD_UPLOAD") return;
+  requestDashboardUpload(message.pending).then(sendResponse);
+  return true;
 });
 
 window.addEventListener("pageshow", refreshPendingUpload);

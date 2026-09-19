@@ -526,6 +526,9 @@ function pollStatus() {
   setTimeout(function () { window.location.reload(); }, 400);
 }
 {% include "cms/workflow/_finding_action_handlers.html" %}
+{% if local_browser_capture_enabled %}
+{% include "cms/workflow/_local_browser_capture_bridge.html" %}
+{% endif %}
 document.addEventListener('click', function (e) {
   handleFindingClick(e);
 
