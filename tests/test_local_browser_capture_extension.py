@@ -44,6 +44,9 @@ def test_extension_keeps_capture_in_session_and_uses_dashboard_page_upload_bridg
     assert 'credentials: "same-origin"' in bridge
     assert "local-browser-capture.jpg" in bridge
     assert "X-CSRFToken" in bridge
+    assert "jpegDataUrlToBlob" in bridge
+    assert "window.atob" in bridge
+    assert "fetch(capture.imageDataUrl)" not in bridge
 
 
 def test_extension_requires_two_explicit_user_steps_and_keeps_source_url():
