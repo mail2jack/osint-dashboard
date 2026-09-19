@@ -19,6 +19,10 @@ store website cookies, passwords or login sessions.
 4. In the extension select **Go to upload**. It returns you to the selected case.
 5. Explicitly select **Upload screenshot** in the dashboard prompt.
 
+The final upload is performed by the selected dashboard page itself, using its
+normal signed-in session and CSRF protection. If the dashboard was reloaded
+while you were capturing, reload the extension once and try the upload again.
+
 The capture stays only in the extension's session memory until uploaded,
 discarded, or the browser is restarted. The dashboard receives the JPEG, source
 URL, a local-browser evidence note and the normal audit entry.

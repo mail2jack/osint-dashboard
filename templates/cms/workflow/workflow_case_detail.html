@@ -727,6 +727,9 @@ input:-webkit-autofill:focus {
 {% include "cms/workflow/_workflow_picker.html" %}
 {% include "cms/workflow/_workflow_polling.html" %}
 {% include "cms/workflow/_workflow_events.html" %}
+{% if local_browser_capture_enabled %}
+{% include "cms/workflow/_local_browser_capture_bridge.html" %}
+{% endif %}
 </script>
 
 

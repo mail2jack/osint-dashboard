@@ -96,35 +96,17 @@ async function captureActiveTab(tab) {
 }
 
 async function uploadViaDashboard(tabId, pending) {
-  const results = await chrome.scripting.executeScript({
-    target: {tabId},
-    world: "MAIN",
-    args: [pending],
-    func: async (capture) => {
-      const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-      if (!csrf) return {ok: false, error: "Dashboard session is unavailable"};
-      const blob = await fetch(capture.imageDataUrl).then((response) => response.blob());
-      const form = new FormData();
-      form.append("file", new File([blob], "local-browser-capture.jpg", {type: "image/jpeg"}));
-      form.append("source_url", capture.sourceUrl);
-      form.append("notes", "Captured from the investigator's local browser");
-      form.append("csrf_token", csrf);
-      const response = await fetch(
-        `/cms/workflow/api/case/${encodeURIComponent(capture.caseId)}/findings/${encodeURIComponent(capture.findingId)}/screenshots`,
-        {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {"X-CSRFToken": csrf, "Accept": "application/json"},
-          body: form,
-        },
-      );
-      const body = await response.json().catch(() => ({}));
-      return response.ok && body.ok
-        ? {ok: true}
-        : {ok: false, error: body.error || "The dashboard rejected the screenshot"};
-    },
-  });
-  return results[0]?.result || {ok: false, error: "The dashboard page was unavailable"};
+  try {
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: "REQUEST_DASHBOARD_UPLOAD",
+      pending,
+    });
+    return result && typeof result.ok === "boolean"
+      ? result
+      : {ok: false, error: "The dashboard upload bridge is unavailable"};
+  } catch (_) {
+    return {ok: false, error: "The dashboard page is unavailable — reload it and try again"};
+  }
 }
 
 async function focusDashboardForUpload() {

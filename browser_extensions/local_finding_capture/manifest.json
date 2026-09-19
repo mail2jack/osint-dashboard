@@ -3,7 +3,7 @@
   "name": "OSINT Dashboard Local Capture",
   "version": "1.0.0",
   "description": "Capture the visible active browser tab as evidence for an OSINT Dashboard finding.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": ["https://joost.iveras.com/*"],
   "background": {"service_worker": "background.js", "type": "module"},
   "content_scripts": [{"matches": ["https://joost.iveras.com/cms/workflow/*"], "js": ["content.js"], "run_at": "document_idle"}],

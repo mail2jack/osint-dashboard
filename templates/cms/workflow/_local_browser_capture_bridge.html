@@ -1,0 +1,61 @@
+// The extension only dispatches a local capture to this page.  The upload itself
+// stays in the dashboard's authenticated browser session, using its normal CSRF
+// protection and existing finding-screenshot endpoint.
+(function () {
+  if (document._localBrowserCaptureBridgeBound) return;
+  document._localBrowserCaptureBridgeBound = true;
+
+  function respond(requestId, result) {
+    window.postMessage(Object.assign({
+      type: "OSINT_LOCAL_CAPTURE_UPLOAD_RESULT",
+      requestId: requestId,
+    }, result), window.location.origin);
+  }
+
+  window.addEventListener("message", async function (event) {
+    if (event.source !== window || event.origin !== window.location.origin ||
+        !event.data || event.data.type !== "OSINT_LOCAL_CAPTURE_UPLOAD") return;
+    var detail = event.data;
+    var capture = detail.capture || {};
+    var requestId = detail.requestId;
+    if (!requestId || String(capture.caseId) !== String(CASE_ID) ||
+        !capture.findingId || typeof capture.imageDataUrl !== "string") {
+      respond(requestId, {ok: false, error: "The selected finding is no longer available"});
+      return;
+    }
+    try {
+      var source = new URL(capture.sourceUrl);
+      if (source.protocol !== "https:" && source.protocol !== "http:") {
+        throw new Error("invalid source URL");
+      }
+      var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content ||
+        (typeof CSRF !== "undefined" ? CSRF : "");
+      if (!csrf) throw new Error("missing CSRF token");
+      var blob = await fetch(capture.imageDataUrl).then(function (response) {
+        if (!response.ok) throw new Error("invalid capture image");
+        return response.blob();
+      });
+      var form = new FormData();
+      form.append("file", new File([blob], "local-browser-capture.jpg", {type: "image/jpeg"}));
+      form.append("source_url", source.href);
+      form.append("notes", "Captured from the investigator's local browser");
+      form.append("csrf_token", csrf);
+      var response = await fetch(
+        "/cms/workflow/api/case/" + encodeURIComponent(CASE_ID) +
+        "/findings/" + encodeURIComponent(capture.findingId) + "/screenshots",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {"X-CSRFToken": csrf, "Accept": "application/json"},
+          body: form,
+        },
+      );
+      var body = await response.json().catch(function () { return {}; });
+      respond(requestId, response.ok && body.ok
+        ? {ok: true}
+        : {ok: false, error: body.error || "The dashboard rejected the screenshot"});
+    } catch (_) {
+      respond(requestId, {ok: false, error: "The screenshot could not be uploaded"});
+    }
+  });
+})();
