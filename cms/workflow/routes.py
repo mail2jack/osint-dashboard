@@ -23,6 +23,7 @@ from flask_login import current_user, login_required
 from cms.auth import ensure_case_access, ensure_tenant_access
 from cms.models import (
     AuditLog,
+    FindingCaptureJob,
     Investigation,
     InvestigationStatus,
     Subject,
@@ -3011,6 +3012,46 @@ def request_finding_capture(case_id, finding_id):
         return jsonify({"error": "Internal error"}), 500
 
     return jsonify({"ok": True, "job": {"id": job_id, "status": job_status}}), 202
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/capture-requests/<job_id>",
+    methods=["GET"],
+)
+@login_required
+@_investigator_required
+def finding_capture_request_status(case_id, finding_id, job_id):
+    """Return the non-sensitive state of the caller's capture request.
+
+    This narrow status endpoint lets the workspace refresh only after the
+    dedicated worker has persisted evidence.  It deliberately never returns a
+    target URL, worker exception, or filesystem path.
+    """
+    if not check_feature("finding_screenshot_capture", current_user.tenant_id):
+        return jsonify({"error": "Not found"}), 404
+
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    job = FindingCaptureJob.query.filter_by(
+        id=job_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case_id,
+        finding_id=finding.id,
+    ).first()
+    if job is None:
+        return jsonify({"error": "Not found"}), 404
+
+    return jsonify(
+        {
+            "ok": True,
+            "job": {
+                "id": job.id,
+                "status": job.status,
+                "screenshot_id": job.screenshot_id if job.status == "completed" else None,
+            },
+        }
+    )
 
 
 @workflow_bp.route("/uploads/<finding_id>/<filename>")

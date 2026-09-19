@@ -4980,5 +4980,17 @@ msgstr "Queue capture"
 msgid "Could not queue capture"
 msgstr "Could not queue capture"
 
-msgid "Capture queued. It will not run until the capture worker is separately enabled."
-msgstr "Capture queued. It will not run until the capture worker is separately enabled."
+msgid "Capture queued. This page will refresh when it is ready."
+msgstr "Capture queued. This page will refresh when it is ready."
+
+msgid "Capture is still processing. You can refresh this page later."
+msgstr "Capture is still processing. You can refresh this page later."
+
+msgid "Could not check capture status"
+msgstr "Could not check capture status"
+
+msgid "Capture complete. Refreshing this page…"
+msgstr "Capture complete. Refreshing this page…"
+
+msgid "Capture could not be completed."
+msgstr "Capture could not be completed."

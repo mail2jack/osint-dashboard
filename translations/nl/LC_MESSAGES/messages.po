@@ -4772,5 +4772,17 @@ msgstr "Vastlegging in wachtrij zetten"
 msgid "Could not queue capture"
 msgstr "Vastlegging kon niet in de wachtrij worden gezet"
 
-msgid "Capture queued. It will not run until the capture worker is separately enabled."
-msgstr "Vastlegging staat in de wachtrij. Deze wordt pas uitgevoerd wanneer de capture-worker afzonderlijk is ingeschakeld."
+msgid "Capture queued. This page will refresh when it is ready."
+msgstr "Vastlegging staat in de wachtrij. Deze pagina ververst automatisch zodra deze klaar is."
+
+msgid "Capture is still processing. You can refresh this page later."
+msgstr "De vastlegging wordt nog verwerkt. Je kunt deze pagina later opnieuw laden."
+
+msgid "Could not check capture status"
+msgstr "De status van de vastlegging kon niet worden gecontroleerd"
+
+msgid "Capture complete. Refreshing this page…"
+msgstr "Vastlegging voltooid. Deze pagina wordt vernieuwd…"
+
+msgid "Capture could not be completed."
+msgstr "De vastlegging kon niet worden voltooid."

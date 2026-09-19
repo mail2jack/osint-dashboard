@@ -95,6 +95,11 @@ class TestFindingCaptureRequest:
             json=body,
         )
 
+    def _status(self, client, case, finding, job_id):
+        return client.get(
+            f"/cms/workflow/api/case/{case.id}/findings/{finding.id}/capture-requests/{job_id}"
+        )
+
     def test_flag_off_hides_request_endpoint(self, app, client, db_session):
         user, case, finding = self._objects()
         _login_as(client, user)
@@ -166,6 +171,36 @@ class TestFindingCaptureRequest:
             "ok": True,
             "job": {"id": "queued-job-id", "status": "queued"},
         }
+
+    def test_status_is_case_tenant_scoped_and_exposes_no_sensitive_target(
+        self, app, client, db_session
+    ):
+        user, case, finding = self._objects()
+        _login_as(client, user)
+        job = FindingCaptureJob(
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            finding_id=finding.id,
+            requested_by_id=user.id,
+            target_url="https://sensitive.example/private-path",
+            status="completed",
+            screenshot_id="evidence-id",
+        )
+        db.session.add(job)
+        db.session.commit()
+        with patch("cms.workflow.routes.check_feature", return_value=True):
+            response = self._status(client, case, finding, job.id)
+
+        assert response.status_code == 200
+        assert response.get_json() == {
+            "ok": True,
+            "job": {
+                "id": job.id,
+                "status": "completed",
+                "screenshot_id": "evidence-id",
+            },
+        }
+        assert "target_url" not in response.get_data(as_text=True)
 
     @pytest.mark.parametrize(
         "body", [{}, {"confirm": False, "target_url": "https://example.test"}, {"confirm": True}, {"confirm": True, "target_url": 1}, []]

@@ -567,8 +567,39 @@ document.addEventListener('submit', function (e) {
   .then(function (response) { return response.json(); })
   .then(function (data) {
     if (!data.ok) throw new Error(data.error || '{{ _('Could not queue capture') }}');
-    showToast('{{ _('Capture queued. It will not run until the capture worker is separately enabled.') }}', 'success');
+    showToast('{{ _('Capture queued. This page will refresh when it is ready.') }}', 'success');
     form.style.display = 'none';
+    var statusUrl = '/cms/workflow/api/case/' + CASE_ID + '/findings/' + form.getAttribute('data-finding-id') + '/capture-requests/' + data.job.id;
+    var pollsRemaining = 45;
+    var pollCapture = function () {
+      if (pollsRemaining-- <= 0) {
+        showToast('{{ _('Capture is still processing. You can refresh this page later.') }}', 'error');
+        return;
+      }
+      window.setTimeout(function () {
+        fetch(statusUrl, {headers: {'Accept': 'application/json'}})
+          .then(function (response) { return response.json(); })
+          .then(function (state) {
+            if (!state.ok) throw new Error(state.error || '{{ _('Could not check capture status') }}');
+            if (state.job.status === 'completed') {
+              showToast('{{ _('Capture complete. Refreshing this page…') }}', 'success');
+              window.setTimeout(function () { window.location.reload(); }, 250);
+              return;
+            }
+            if (state.job.status === 'failed' || state.job.status === 'cancelled') {
+              showToast('{{ _('Capture could not be completed.') }}', 'error');
+              return;
+            }
+            pollCapture();
+          })
+          .catch(function () {
+            // A transient polling failure must not retry forever or disrupt
+            // the finding editor.  The user can safely refresh manually.
+            showToast('{{ _('Could not check capture status') }}', 'error');
+          });
+      }, 2000);
+    };
+    pollCapture();
   })
   .catch(function (error) { showToast(error.message || '{{ _('Could not queue capture') }}', 'error'); })
   .finally(function () {
