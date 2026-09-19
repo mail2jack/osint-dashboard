@@ -10,8 +10,9 @@ enabled nor capable of falling back to an unsafe browser configuration.
 import argparse
 import logging
 import os
+import signal
 import sys
-import time
+from threading import Event
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -49,12 +50,23 @@ def main(argv: list[str] | None = None) -> int:
     from app import app
     from cms.services.finding_capture_worker import has_queued_capture_job, process_one_capture_job
 
+    # Importing the Flask app installs its own process-level signal hooks.
+    # Reclaim SIGTERM here so a systemd restart can stop an idle polling worker
+    # promptly instead of waiting for TimeoutStopSec and requiring SIGKILL.
+    shutdown_requested = Event()
+
+    def request_shutdown(_signum, _frame) -> None:
+        shutdown_requested.set()
+
+    signal.signal(signal.SIGTERM, request_shutdown)
+    signal.signal(signal.SIGINT, request_shutdown)
+
     poll_seconds = int(os.environ.get("FINDING_CAPTURE_WORKER_POLL_SECONDS", "15"))
     if poll_seconds < 1:
         logger.error("Finding capture worker poll interval must be positive")
         return 78
 
-    while True:
+    while not shutdown_requested.is_set():
         with app.app_context():
             queued = has_queued_capture_job()
         if queued:
@@ -71,7 +83,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if not args.loop:
             return 0
-        time.sleep(poll_seconds)
+        shutdown_requested.wait(poll_seconds)
+
+    logger.info("Finding capture worker stopped cleanly")
+    return 0
 
 
 if __name__ == "__main__":
