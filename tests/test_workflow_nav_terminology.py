@@ -58,6 +58,17 @@ def _case_with_subject(auth_client, title="Nav Terminology Case"):
 
 
 class TestMainNav:
+    def test_owner_sees_workflow_cases_and_findings_navigation(self, auth_client):
+        owner = _admin()
+        owner.role = "owner"
+        db.session.commit()
+
+        resp = auth_client.get("/cms/workflow/")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert 'href="/cms/workflow/"' in html
+        assert 'href="/cms/workflow/findings"' in html
+
     def test_nl_dashboard_no_case_level_investigations(self, auth_client):
         _set_lang(auth_client, "nl")
         resp = auth_client.get("/cms/workflow/")
