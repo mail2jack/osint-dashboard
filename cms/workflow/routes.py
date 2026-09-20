@@ -32,7 +32,6 @@ from cms.models import (
     db,
     report_include_filter,
 )
-from cms.routes.dashboard import _get_cached_health
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
 from cms.services.action_scope import (
     action_scope_label,
@@ -1159,7 +1158,6 @@ def case_detail(case_id):
                     "contacts": decrypted_contacts,
                 }
             )
-        brave_health = _get_cached_health().get("brave", "no key configured")
         action_credits = {}
         for key in ACTION_REGISTRY:
             action_credits[key] = get_remaining_credits(key)
@@ -1189,7 +1187,6 @@ def case_detail(case_id):
             action_types=ACTION_REGISTRY,
             action_credits=action_credits,
             subject_presets=SUBJECT_TYPE_PRESETS,
-            brave_health=brave_health,
             show_archived=show_archived,
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
