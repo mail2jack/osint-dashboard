@@ -4724,6 +4724,18 @@ msgstr ""
 msgid "Excluded from official reports"
 msgstr ""
 
+msgid "Include in report"
+msgstr ""
+
+msgid "Exclude from report"
+msgstr ""
+
+msgid "Include in official reports"
+msgstr ""
+
+msgid "Exclude from official reports"
+msgstr ""
+
 msgid "All cases"
 msgstr ""
 

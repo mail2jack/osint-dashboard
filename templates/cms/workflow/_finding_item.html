@@ -169,9 +169,9 @@
     <button type="button" data-browser-capture data-case-id="{{ f.case_id }}" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🧩 {{ _('Capture from browser') }}</button>
     {% endif %}
     {% if f.include_in_report is sameas false %}
-    <button type="button" data-action="report-flag" data-finding-id="{{ f.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Excluded from official reports') }}">🚫 {{ _('Exclude') }}</button>
+    <button type="button" data-action="report-flag" data-finding-id="{{ f.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Include in official reports') }}">📄 {{ _('Include in report') }}</button>
     {% else %}
-    <button type="button" data-action="report-flag" data-finding-id="{{ f.id }}" data-report-flag="true" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);" title="{{ _('Included in official reports') }}">📄 {{ _('In report') }}</button>
+    <button type="button" data-action="report-flag" data-finding-id="{{ f.id }}" data-report-flag="true" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);" title="{{ _('Exclude from official reports') }}">🚫 {{ _('Exclude from report') }}</button>
     {% endif %}
     {% if f.archived_at %}
     <form method="POST" action="{{ url_for('workflow.restore_finding', finding_id=f.id) }}" style="display:inline;">

@@ -4516,6 +4516,18 @@ msgstr "Opgenomen in officiële rapporten"
 msgid "Excluded from official reports"
 msgstr "Uitgesloten van officiële rapporten"
 
+msgid "Include in report"
+msgstr "Opnemen in rapport"
+
+msgid "Exclude from report"
+msgstr "Uitsluiten van rapport"
+
+msgid "Include in official reports"
+msgstr "Opnemen in officiële rapporten"
+
+msgid "Exclude from official reports"
+msgstr "Uitsluiten van officiële rapporten"
+
 msgid "All cases"
 msgstr "Alle zaken"
 

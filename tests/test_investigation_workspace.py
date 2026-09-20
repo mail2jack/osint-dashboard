@@ -13,6 +13,7 @@ Run on SQLite (default ``tests/`` suite). PostgreSQL/RLS isolation lives in
 
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -1708,6 +1709,41 @@ class TestWorkspaceFindingActions:
 
         body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert 'data-report-flag="false"' in body
+        assert "Include in report" in body
+        assert "Exclude from official reports" not in body
+
+    def test_report_flag_labels_describe_the_next_action(self, auth_client):
+        """A report toggle must say what clicking it will do, not its status."""
+        case, inv, _ = self._setup_case()
+        fid = Finding.query.filter_by(case_id=case.id).first().id
+        url = f"/cms/workflow/api/case/{case.id}/findings/{fid}/report-flag"
+
+        included = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'data-report-flag="true"' in included
+        assert "Exclude from report" in included
+        assert "Include in report" not in included
+
+        assert auth_client.post(url, json={"include_in_report": False}).status_code == 200
+        excluded = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert 'data-report-flag="false"' in excluded
+        assert "Include in report" in excluded
+        assert "Exclude from report" not in excluded
+
+    def test_report_flag_action_labels_are_consistent_in_all_ui_variants(self):
+        """Static and live-updated controls must never describe the old state."""
+        template_dir = Path(__file__).parents[1] / "templates/cms/workflow"
+        for name in (
+            "_finding_item.html",
+            "_finding_item_readonly.html",
+            "_workflow_polling.html",
+            "workflow_findings.html",
+            "_workflow_events.html",
+        ):
+            source = (template_dir / name).read_text(encoding="utf-8")
+            assert "Include in report" in source
+            assert "Exclude from report" in source
+            assert "Include in official reports" in source
+            assert "Exclude from official reports" in source
 
     def test_screenshot_source_url_persists_after_reload(self, auth_client):
         case, inv, _ = self._setup_case()
