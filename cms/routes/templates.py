@@ -299,6 +299,7 @@ def _build_report_context(case: Case) -> dict:
                 {
                     "title": finding.title,
                     "description": finding.content,  # Finding uses 'content' not 'description'
+                    "comment": finding.comment,
                     "finding_type": finding.finding_type,
                     # Map confidence_level to severity
                     "severity": finding.confidence_level or "medium",

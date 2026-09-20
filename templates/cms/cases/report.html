@@ -74,6 +74,11 @@
                         </div>
                     </div>
                     <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.9rem;white-space:pre-wrap;">{{ entry.content }}</div>
+                    {% if entry.type == 'finding' and entry.comment %}
+                    <div style="margin-top:0.5rem;padding:0.6rem 0.75rem;border-left:3px solid var(--accent-primary);background:var(--bg-secondary);font-size:0.9rem;white-space:pre-wrap;">
+                        <strong>{{ _('Comment') }}:</strong> {{ entry.comment }}
+                    </div>
+                    {% endif %}
                     {% if entry.source_url %}
                     <div style="margin-top:0.25rem;"><a href="{{ entry.source_url }}" target="_blank" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ entry.source_url }}</a></div>
                     {% endif %}
