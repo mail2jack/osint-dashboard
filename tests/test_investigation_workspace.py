@@ -1162,7 +1162,7 @@ class TestWorkspaceXssAndUrlScheme:
         assert dto.image_url == f"/cms/workflow/uploads/{f.id}/shot.png"
         assert dto.image_url_is_same_origin is True
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
-        assert f'href="/cms/workflow/uploads/{f.id}/shot.png"' in body
+        assert f'data-screenshot-url="/cms/workflow/uploads/{f.id}/shot.png"' in body
         assert f'src="/cms/workflow/uploads/{f.id}/shot.png"' in body
 
     def test_screenshot_internal_wrong_finding_id_not_rendered(self, auth_client):
