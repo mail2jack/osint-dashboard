@@ -176,15 +176,15 @@
         </div>
         <div class="form-group">
           <label>Surname / Family name</label>
-          <input type="text" name="achternaam" value="{{ profile.subject.achternaam or '' }}">
+          <input type="text" name="achternaam" value="{{ profile.subject.achternaam or '' }}" data-person-name-role="surname">
         </div>
         <div class="form-group">
           <label>First names</label>
-          <input type="text" name="voornamen" value="{{ profile.subject.voornamen or '' }}">
+          <input type="text" name="voornamen" value="{{ profile.subject.voornamen or '' }}" data-person-name-role="given-names">
         </div>
         <div class="form-group">
           <label>Initials</label>
-          <input type="text" name="voorletters" value="{{ profile.subject.voorletters or '' }}">
+          <input type="text" name="voorletters" value="{{ profile.subject.voorletters or '' }}" data-person-name-role="initials">
         </div>
         <div class="form-group">
           <label>Particle (tussenvoegsels)</label>

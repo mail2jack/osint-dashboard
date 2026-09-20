@@ -97,17 +97,17 @@
     <div id="general-fields" style="display: none;">
         <div class="form-group">
             <label>{{ _('Achternaam') }} *</label>
-            <input type="text" name="achternaam" id="achternaam" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate">
+            <input type="text" name="achternaam" id="achternaam" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate" data-person-name-role="surname">
             <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 0.7fr; gap: 1rem;">
             <div class="form-group">
                 <label>{{ _('Voornamen') }}</label>
-                <input type="text" name="voornamen" id="voornamen" value="{{ submitted_voornamen or '' }}" placeholder="{{ _('Jan Peter') }}">
+                <input type="text" name="voornamen" id="voornamen" value="{{ submitted_voornamen or '' }}" placeholder="{{ _('Jan Peter') }}" data-person-name-role="given-names">
             </div>
             <div class="form-group">
                 <label>{{ _('Voorletters') }}</label>
-                <input type="text" name="voorletters" id="voorletters" value="{{ submitted_voorletters or '' }}" placeholder="{{ _('J.P.') }}">
+                <input type="text" name="voorletters" id="voorletters" value="{{ submitted_voorletters or '' }}" placeholder="{{ _('J.P.') }}" data-person-name-role="initials">
             </div>
             <div class="form-group">
                 <label>{{ _('Tussenvoegsels') }}</label>

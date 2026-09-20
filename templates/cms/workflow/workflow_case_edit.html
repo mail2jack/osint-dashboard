@@ -201,17 +201,17 @@ input:-webkit-autofill:focus {
           <div class="sf-all">
             <div class="form-group">
               <label>{{ _('Achternaam') }} *</label>
-              <input type="text" name="subj_{{ sid }}_name" value="{{ subject.achternaam or subject.name or '' }}">
+              <input type="text" name="subj_{{ sid }}_name" value="{{ subject.achternaam or subject.name or '' }}" data-person-name-role="surname">
               <div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Voornamen') }}</label>
-                <input type="text" name="subj_{{ sid }}_voornamen" value="{{ subject.voornamen or '' }}" placeholder="{{ _('Jan Peter') }}">
+                <input type="text" name="subj_{{ sid }}_voornamen" value="{{ subject.voornamen or '' }}" placeholder="{{ _('Jan Peter') }}" data-person-name-role="given-names">
               </div>
               <div class="form-group">
                 <label>{{ _('Voorletters') }}</label>
-                <input type="text" name="subj_{{ sid }}_voorletters" value="{{ subject.voorletters or '' }}" placeholder="{{ _('J.P.') }}">
+                <input type="text" name="subj_{{ sid }}_voorletters" value="{{ subject.voorletters or '' }}" placeholder="{{ _('J.P.') }}" data-person-name-role="initials">
               </div>
               <div class="form-group">
                 <label>{{ _('Tussenvoegsels') }}</label>
@@ -798,11 +798,11 @@ document.addEventListener('DOMContentLoaded', function() {
       '<div class="subject-fields" style="display:none">' +
         '<div class="sf-all">' +
           '<div class="form-group"><label>{{ _("Achternaam") }} *</label>' +
-            '<input type="text" name="subj_new_' + i + '_name">' +
+            '<input type="text" name="subj_new_' + i + '_name" data-person-name-role="surname">' +
             '<div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">' +
-            '<div class="form-group"><label>{{ _("Voornamen") }}</label><input type="text" name="subj_new_' + i + '_voornamen"></div>' +
-            '<div class="form-group"><label>{{ _("Voorletters") }}</label><input type="text" name="subj_new_' + i + '_voorletters" placeholder="J.P."></div>' +
+            '<div class="form-group"><label>{{ _("Voornamen") }}</label><input type="text" name="subj_new_' + i + '_voornamen" data-person-name-role="given-names"></div>' +
+            '<div class="form-group"><label>{{ _("Voorletters") }}</label><input type="text" name="subj_new_' + i + '_voorletters" placeholder="J.P." data-person-name-role="initials"></div>' +
             '<div class="form-group"><label>{{ _("Tussenvoegsels") }}</label><input type="text" name="subj_new_' + i + '_tussenvoegsels" placeholder="van de"></div>' +
           '</div>' +
           '<input type="hidden" name="subj_new_' + i + '_name_computed">' +
