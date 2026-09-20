@@ -188,17 +188,17 @@ input:-webkit-autofill:focus {
           <div class="sf-all">
             <div class="form-group">
               <label>{{ _('Achternaam') }} *</label>
-              <input type="text" name="subject_0_name" data-input="checkDuplicate" data-idx="0" placeholder="">
+              <input type="text" name="subject_0_name" data-input="checkDuplicate" data-idx="0" placeholder="" data-person-name-role="surname">
               <div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Voornamen') }}</label>
-                <input type="text" name="subject_0_voornamen" data-idx="0" placeholder="{{ _('Jan Peter') }}">
+                <input type="text" name="subject_0_voornamen" data-idx="0" placeholder="{{ _('Jan Peter') }}" data-person-name-role="given-names">
               </div>
               <div class="form-group">
                 <label>{{ _('Voorletters') }}</label>
-                <input type="text" name="subject_0_voorletters" data-idx="0" placeholder="{{ _('J.P.') }}">
+                <input type="text" name="subject_0_voorletters" data-idx="0" placeholder="{{ _('J.P.') }}" data-person-name-role="initials">
               </div>
               <div class="form-group">
                 <label>{{ _('Tussenvoegsels') }}</label>
@@ -825,11 +825,11 @@ document.addEventListener('DOMContentLoaded', function() {
       '<div class="subject-fields" style="display:none">' +
         '<div class="sf-all">' +
           '<div class="form-group"><label>' + T.achternaam + ' *</label>' +
-            '<input type="text" name="subject_' + i + '_name" data-input="checkDuplicate" data-idx="' + i + '">' +
+            '<input type="text" name="subject_' + i + '_name" data-input="checkDuplicate" data-idx="' + i + '" data-person-name-role="surname">' +
             '<div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">' +
-            '<div class="form-group"><label>' + T.voornamen + '</label><input type="text" name="subject_' + i + '_voornamen" data-idx="' + i + '"></div>' +
-            '<div class="form-group"><label>' + T.voorletters + '</label><input type="text" name="subject_' + i + '_voorletters" data-idx="' + i + '" placeholder="' + T.jp + '"></div>' +
+            '<div class="form-group"><label>' + T.voornamen + '</label><input type="text" name="subject_' + i + '_voornamen" data-idx="' + i + '" data-person-name-role="given-names"></div>' +
+            '<div class="form-group"><label>' + T.voorletters + '</label><input type="text" name="subject_' + i + '_voorletters" data-idx="' + i + '" placeholder="' + T.jp + '" data-person-name-role="initials"></div>' +
             '<div class="form-group"><label>' + T.tussenvoegsels + '</label><input type="text" name="subject_' + i + '_tussenvoegsels" data-idx="' + i + '" placeholder="' + T.vanDe + '"></div>' +
           '</div>' +
           '<input type="hidden" name="subject_' + i + '_name_computed" data-idx="' + i + '">' +

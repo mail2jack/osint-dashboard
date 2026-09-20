@@ -40,6 +40,7 @@ from urllib.parse import urlparse
 import sqlalchemy as sa
 
 from cms.models import AuditLog, Investigation, Subject, User, db
+from cms.services.subject_service import subject_display_name
 from cms.workflow.actions.registry import ACTION_REGISTRY
 from cms.workflow.models import (
     WorkflowActionFinding,
@@ -569,11 +570,7 @@ def _subject_dtos(subjects: list[Subject]) -> list[SubjectDTO]:
                     id=s.id,
                     name=s.name,
                     subject_type=s.subject_type,
-                    display_name=(
-                        s.compute_name()
-                        if callable(getattr(s, "compute_name", None))
-                        else (s.name or "")
-                    ),
+                    display_name=subject_display_name(s),
                     decrypted=_subject_plain_fields(s),
                 )
             )

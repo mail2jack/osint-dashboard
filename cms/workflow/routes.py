@@ -56,7 +56,7 @@ from cms.services.investigation_workspace import build_inv_workspace
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
-from cms.services.subject_service import subject_service
+from cms.services.subject_service import subject_display_name, subject_service
 from cms.tier_limits import check_feature
 from cms.workflow.actions.registry import action_category
 
@@ -1117,12 +1117,11 @@ def case_detail(case_id):
                         "is_primary": c.is_primary,
                     }
                 )
+            social_accounts = s.workflow_social_accounts or []
             subjects_data.append(
                 {
                     "id": s.id,
-                    "display_name": s.compute_name()
-                    if callable(getattr(s, "compute_name", None))
-                    else (s.name or ""),
+                    "display_name": subject_display_name(s, social_accounts),
                     "name": s.name,
                     "subject_type": s.subject_type,
                     "geslacht": s.geslacht,
@@ -1142,7 +1141,7 @@ def case_detail(case_id):
                     "house_number_addition": s.house_number_addition,
                     "postal_code": s.postal_code,
                     "city": s.city,
-                    "workflow_social_accounts": s.workflow_social_accounts,
+                    "workflow_social_accounts": social_accounts,
                     "registration_number": s.registration_number,
                     "legal_form": s.legal_form,
                     "license_plate": s.license_plate,
@@ -1278,11 +1277,7 @@ def investigation_detail(case_id, investigation_id):
     )
     _candidates = []
     for s in subject_rows:
-        _display_name = (
-            s.compute_name()
-            if callable(getattr(s, "compute_name", None))
-            else (s.name or "")
-        )
+        _display_name = subject_display_name(s)
         _candidates.append((_display_name, s))
     _candidates.sort(key=lambda item: (item[0].lower(), item[1].id))
     subjects_cfg = [

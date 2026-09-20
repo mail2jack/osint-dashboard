@@ -215,6 +215,84 @@ def compute_display_name(data, current=None) -> str:
     return ""
 
 
+def _capitalize_initial(value: str) -> str:
+    """Uppercase the first letter without destroying intentional casing."""
+    value = " ".join(value.split())
+    return value[:1].upper() + value[1:] if value else ""
+
+
+def _capitalize_given_names(value: str) -> str:
+    """Uppercase every supplied given-name initial, preserving the remainder."""
+    return " ".join(_capitalize_initial(part) for part in value.split())
+
+
+def _initials_from_given_names(value: str) -> str:
+    """Return conventional initials (``Jan Peter`` -> ``J.P.``)."""
+    return "".join(f"{part[0].upper()}." for part in value.split() if part)
+
+
+def normalize_person_name_fields(data: dict, *, subject_type: str) -> dict:
+    """Normalize person-name input and supply initials when they are omitted.
+
+    This is deliberately server-side as well as a browser convenience: all
+    create/edit routes and non-browser clients receive the same predictable
+    spelling and initials. Explicitly supplied initials are never overwritten.
+    """
+    normalized = dict(data)
+    if subject_type != "person":
+        return normalized
+
+    surname = normalized.get("achternaam")
+    if isinstance(surname, str):
+        normalized["achternaam"] = _capitalize_initial(surname)
+
+    given_names = normalized.get("voornamen")
+    if isinstance(given_names, str):
+        normalized["voornamen"] = _capitalize_given_names(given_names)
+        supplied_initials = normalized.get("voorletters")
+        if not isinstance(supplied_initials, str) or not supplied_initials.strip():
+            normalized["voorletters"] = _initials_from_given_names(
+                normalized["voornamen"]
+            )
+    return normalized
+
+
+def subject_display_name(subject: Subject, social_accounts=None) -> str:
+    """Return a useful label for a subject without mutating stored data.
+
+    Older online subjects may have been created with the placeholder name
+    ``Onbekend`` while their social handle was correctly stored separately.
+    Prefer that handle for display only; the underlying record remains intact.
+    """
+    display_name = (
+        subject.compute_name()
+        if callable(getattr(subject, "compute_name", None))
+        else (subject.name or "")
+    )
+    if subject.subject_type != "online" or display_name.strip().casefold() not in {
+        "",
+        "onbekend",
+        "unknown",
+    }:
+        return display_name
+
+    accounts = (
+        getattr(subject, "workflow_social_accounts", None)
+        if social_accounts is None
+        else social_accounts
+    )
+    if isinstance(accounts, (list, tuple)):
+        for account in accounts:
+            if isinstance(account, str) and account.strip():
+                return account.strip()
+            if isinstance(account, dict):
+                for key in ("username", "handle", "name", "url"):
+                    candidate = account.get(key)
+                    if isinstance(candidate, str) and candidate.strip():
+                        return candidate.strip()
+    return display_name or "Online profile"
+
+
 def _auto_prefix_name(subject_type: str, name: str) -> str:
     """Auto-prepend ``@`` for online/account entities."""
     if subject_type == "online" and name and not name.startswith("@"):
@@ -470,6 +548,7 @@ class SubjectService:
     def _build_subject_from_data(self, data, created_by, tenant_id):
         """Construct a Subject from validated form data (create)."""
         subject_type = data.get("subject_type", "person")
+        data = normalize_person_name_fields(data, subject_type=subject_type)
         name = compute_display_name(data)
         name = _auto_prefix_name(subject_type, name)
         return Subject(
@@ -559,6 +638,10 @@ class SubjectService:
 
     def edit(self, subject, data, *, actor_id):
         """Apply an edit with full round-trip coverage. Returns *changes* dict."""
+        data = normalize_person_name_fields(
+            data,
+            subject_type=data.get("subject_type") or subject.subject_type,
+        )
         changes = {}
 
         # Name is recomputed server-side from split fields (never trusted
