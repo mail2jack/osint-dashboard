@@ -346,14 +346,14 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.setAttribute('data-finding-id', rfid);
         if (data.include_in_report) {
           btn.setAttribute('data-report-flag', 'true');
-          btn.title = '{{ _("Included in official reports") }}';
+          btn.title = '{{ _("Exclude from official reports") }}';
           btn.style.cssText = 'background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);';
-          btn.textContent = '\uD83D\uDCC4 {{ _("In report") }}';
+          btn.textContent = '\uD83D\uDEAB {{ _("Exclude from report") }}';
         } else {
           btn.setAttribute('data-report-flag', 'false');
-          btn.title = '{{ _("Excluded from official reports") }}';
+          btn.title = '{{ _("Include in official reports") }}';
           btn.style.cssText = 'background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;';
-          btn.textContent = '\uD83D\uDEAB {{ _("Exclude") }}';
+          btn.textContent = '\uD83D\uDCC4 {{ _("Include in report") }}';
         }
         rfl.parentNode.replaceChild(btn, rfl);
       })

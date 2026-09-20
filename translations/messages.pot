@@ -17,6 +17,38 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+#: templates/cms/workflow/_finding_item.html
+#: templates/cms/workflow/_finding_item_readonly.html
+#: templates/cms/workflow/_workflow_events.html
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/workflow_findings.html
+msgid "Include in report"
+msgstr ""
+
+#: templates/cms/workflow/_finding_item.html
+#: templates/cms/workflow/_finding_item_readonly.html
+#: templates/cms/workflow/_workflow_events.html
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/workflow_findings.html
+msgid "Exclude from report"
+msgstr ""
+
+#: templates/cms/workflow/_finding_item.html
+#: templates/cms/workflow/_finding_item_readonly.html
+#: templates/cms/workflow/_workflow_events.html
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/workflow_findings.html
+msgid "Include in official reports"
+msgstr ""
+
+#: templates/cms/workflow/_finding_item.html
+#: templates/cms/workflow/_finding_item_readonly.html
+#: templates/cms/workflow/_workflow_events.html
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/workflow_findings.html
+msgid "Exclude from official reports"
+msgstr ""
+
 #: cms/routes/exports.py:40
 msgid "Case Report"
 msgstr ""
