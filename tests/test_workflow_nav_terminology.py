@@ -155,6 +155,16 @@ class TestCaseCreate:
 
 
 class TestCaseDetail:
+    def test_detail_hides_brave_health_configuration_banner(self, auth_client):
+        case = _case_with_subject(auth_client, title="No Brave Health Banner")
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        assert "Brave Search not configured" not in html
+        assert "Brave Search quota exceeded" not in html
+        assert "OSINT Deep Search uses DuckDuckGo as fallback" not in html
+
     def test_nl_detail_breadcrumb_steps_child_label(self, auth_client):
         _set_lang(auth_client, "nl")
         case = _case_with_subject(auth_client, title="Detail NL")
