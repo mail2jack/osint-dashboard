@@ -97,6 +97,8 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
       <td>{{ loop.index }}.</td>
       <td>
         {{ f.title }}{% if f.detail %}<br><span style="font-size:10pt;color:#555;">{{ f.detail }}</span>{% endif %}
+        {% if f.content %}<br><span style="font-size:10pt;color:#555;white-space:pre-wrap;">{{ f.content }}</span>{% endif %}
+        {% if f.comment %}<br><span style="font-size:10pt;color:#555;white-space:pre-wrap;"><strong>{{ _('Comment') }}:</strong> {{ f.comment }}</span>{% endif %}
         {% if screenshot_evidence.get(f.id) %}
         <br>
         {% for ss in screenshot_evidence.get(f.id, []) %}

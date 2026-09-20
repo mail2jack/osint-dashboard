@@ -10,6 +10,8 @@ Covers:
 """
 
 from datetime import datetime, timezone
+import sys
+import types
 
 from PIL import Image
 
@@ -176,6 +178,79 @@ class TestReportFlagEndpoint:
 
 
 class TestReportRoutesRespectFlag:
+    def test_reports_include_finding_comment_when_flagged_in(
+        self, app, auth_client, db_session
+    ):
+        case = _orm_case("Finding Comment")
+        finding = _orm_finding(case, _admin_user(), "commented finding")
+        finding.comment = "Report-ready investigator comment"
+        db.session.commit()
+
+        html_report = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert html_report.status_code == 200
+        assert "Report-ready investigator comment" in html_report.get_data(as_text=True)
+
+        pv_report = auth_client.get(f"/cms/workflow/case/{case.id}/pv")
+        assert pv_report.status_code == 200
+        assert "Report-ready investigator comment" in pv_report.get_data(as_text=True)
+
+        context = _build_report_context(case)
+        assert context["findings"] == [
+            {
+                "title": "commented finding",
+                "description": "content commented finding",
+                "comment": "Report-ready investigator comment",
+                "finding_type": None,
+                "severity": "medium",
+                "status": "active",
+            }
+        ]
+
+    def test_pdf_report_includes_finding_comment(
+        self, auth_client, db_session, monkeypatch
+    ):
+        case = _orm_case("PDF Finding Comment")
+        finding = _orm_finding(case, _admin_user(), "pdf commented finding")
+        finding.comment = "PDF-visible investigator comment"
+        db.session.commit()
+
+        rendered = {}
+
+        class _FakeHtml:
+            def __init__(self, *, string):
+                rendered["html"] = string
+
+            def write_pdf(self):
+                return b"%PDF-test"
+
+        monkeypatch.setitem(sys.modules, "weasyprint", types.SimpleNamespace(HTML=_FakeHtml))
+        response = auth_client.get(f"/cms/cases/{case.id}/report-pdf")
+
+        assert response.status_code == 200
+        assert rendered["html"].count("PDF-visible investigator comment") == 1
+
+    def test_reports_exclude_comment_when_finding_is_excluded(
+        self, auth_client, db_session
+    ):
+        case = _orm_case("Excluded Finding Comment")
+        finding = _orm_finding(
+            case, _admin_user(), "excluded commented finding", include_in_report=False
+        )
+        finding.comment = "This comment must not leak into a report"
+        db.session.commit()
+
+        html_report = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert html_report.status_code == 200
+        assert "This comment must not leak into a report" not in html_report.get_data(
+            as_text=True
+        )
+
+        pv_report = auth_client.get(f"/cms/workflow/case/{case.id}/pv")
+        assert pv_report.status_code == 200
+        assert "This comment must not leak into a report" not in pv_report.get_data(
+            as_text=True
+        )
+
     def test_case_report_html_excludes_flag_false(self, auth_client, db_session):
         case = _orm_case()
         _orm_finding(case, _admin_user(), "report-keep", include_in_report=None)

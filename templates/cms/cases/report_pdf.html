@@ -276,6 +276,9 @@ table tr:nth-child(even) td {
         {% if entry.content %}
         <div class="content">{{ entry.content }}</div>
         {% endif %}
+        {% if entry.type == 'finding' and entry.comment %}
+        <div class="content" style="margin-top:0.15cm;border-left:2px solid #2563eb;padding-left:0.2cm;"><strong>{{ _('Comment') }}:</strong> {{ entry.comment }}</div>
+        {% endif %}
         {% if entry.source_url %}
         <div style="font-size:8pt;margin-top:0.1cm;"><a href="{{ entry.source_url }}">{{ entry.source_url }}</a></div>
         {% endif %}
