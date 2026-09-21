@@ -21,6 +21,7 @@ class _FakeSession:
         self.no_autoflush = contextlib.nullcontext()
 
     def get(self, model, action_id):
+        self._events.append(("get", model.__name__, action_id))
         if model is WorkflowCase:
             return None
         return self._action
@@ -109,6 +110,13 @@ def test_run_action_reasserts_tenant_context_after_running_commit(
         e for e in events[first_commit_idx + 1 :] if e[0] == "ctx" and e[1] == tenant_id
     ]
     assert post_commit_ctx, f"no tenant re-assert after running commit: {events}"
+
+    # The action is explicitly reloaded after that commit. This protects
+    # handler code from dereferencing an expired ORM action/Case under RLS.
+    assert any(
+        event == ("get", "ResearchAction", "action-1")
+        for event in events[first_commit_idx + 1 :]
+    ), f"no post-commit action reload: {events}"
 
     assert len(commits) >= 2, f"expected running + completion commits: {events}"
     # And the run completed cleanly (no rollback surfaced).

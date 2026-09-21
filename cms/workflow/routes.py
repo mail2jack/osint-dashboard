@@ -2788,7 +2788,9 @@ def set_report_flag(case_id, finding_id):
         description=f"Workflow set include_in_report={include} on finding: {finding.title}",
     )
     db.session.commit()
-    return jsonify({"ok": True, "include_in_report": finding.include_in_report})
+    # Do not dereference ``finding`` after commit: it is expired and an RLS
+    # reload may no longer see the row on a rebound connection.
+    return jsonify({"ok": True, "include_in_report": include})
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/cancel", methods=["POST"])
