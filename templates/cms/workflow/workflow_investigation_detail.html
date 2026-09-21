@@ -20,6 +20,12 @@
   flex-shrink: 0;
 }
 .workflow-step-body { padding: 1rem; }
+.workflow-activity summary { list-style: none; cursor: pointer; }
+.workflow-activity summary::-webkit-details-marker { display: none; }
+.workflow-activity .workflow-step-header::after {
+  content: '\25b8'; margin-left: auto; color: var(--text-muted); font-size: 0.85rem;
+}
+.workflow-activity[open] .workflow-step-header::after { content: '\25be'; }
 .inv-meta {
   display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;
   color: var(--text-muted); flex-wrap: wrap;
@@ -274,9 +280,9 @@
   </div>
 </div>
 
-{# ── Activity timeline ── #}
-<div class="workflow-step">
-  <div class="workflow-step-header">
+{# ── Activity timeline: collapsed by default to keep the workspace focused. ── #}
+<details class="workflow-step workflow-activity" data-activity-timeline>
+  <summary class="workflow-step-header">
     <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">A</span>
     <span>{{ _('Activity') }}</span>
     {% if ws.timeline.events %}
@@ -286,7 +292,7 @@
       <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Most recent %(count)s activities; older scope changes may exist', count=ws.timeline.events|length) }}</span>
       {% endif %}
     {% endif %}
-  </div>
+  </summary>
   <div class="workflow-step-body">
     {% if ws.timeline.events %}
     <div style="display:flex;flex-direction:column;">
@@ -326,7 +332,7 @@
     <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No activity recorded yet.') }}</div>
     {% endif %}
   </div>
-</div>
+</details>
 {% endif %}
 
 {% if can_start_actions %}
