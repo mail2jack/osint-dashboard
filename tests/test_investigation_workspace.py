@@ -1745,6 +1745,15 @@ class TestWorkspaceFindingActions:
             assert "Include in official reports" in source
             assert "Exclude from official reports" in source
 
+    def test_activity_timeline_is_collapsed_by_default(self):
+        source = (
+            Path(__file__).parents[1]
+            / "templates/cms/workflow/workflow_investigation_detail.html"
+        ).read_text(encoding="utf-8")
+        assert '<details class="workflow-step workflow-activity" data-activity-timeline>' in source
+        assert '<summary class="workflow-step-header">' in source
+        assert "<details class=\"workflow-step workflow-activity\" open" not in source
+
     def test_screenshot_source_url_persists_after_reload(self, auth_client):
         case, inv, _ = self._setup_case()
         fid = Finding.query.filter_by(case_id=case.id).first().id
