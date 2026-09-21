@@ -629,7 +629,7 @@ class TestFindingCaptureQueue:
 
 
 class TestEmailCheckPGP:
-    """_email_check adds PGP + Brave context findings."""
+    """_email_check adds leads; verification remains investigator-owned."""
 
     def _make_action(self, db_session, email="test@example.com"):
         from cms.models import Client, Case, Subject, ResearchAction
@@ -697,7 +697,41 @@ class TestEmailCheckPGP:
         pgp_findings = [f for f in findings if f.get("source_type") == "pgp"]
         assert len(pgp_findings) == 1
         assert "PGP key found" in pgp_findings[0]["title"]
-        assert pgp_findings[0]["verified"] is True
+        assert pgp_findings[0]["verified"] is False
+        assert "requires verification" in pgp_findings[0]["detail"]
+
+    def test_confirmed_site_hit_is_not_auto_verified(self, app, db_session, monkeypatch):
+        """A matching page is a lead, not proof of subject ownership."""
+        email = "site-hit@example.com"
+        action = self._make_action(db_session, email)
+        monkeypatch.setattr(
+            "cms.email_search.lookup_email",
+            lambda e: {
+                "account_checks": [
+                    {
+                        "name": "Example site",
+                        "exists": True,
+                        "status": "confirmed",
+                        "verified": True,
+                        "url": "https://example.test/profile",
+                    }
+                ]
+            },
+        )
+        monkeypatch.setattr(
+            "cms.workflow.actions.email_action._get_api_key", lambda _key: None
+        )
+        monkeypatch.setattr(
+            "cms.workflow.actions.email_action.jittered_get",
+            lambda *_args, **_kwargs: type("Response", (), {"status_code": 404})(),
+        )
+
+        from cms.workflow.research import _email_check
+
+        findings = _email_check(action)
+        site_findings = [f for f in findings if f.get("source_type") == "email"]
+        assert len(site_findings) == 1
+        assert site_findings[0]["verified"] is False
 
     def test_pgp_404_no_finding(self, app, db_session, monkeypatch):
         email = "no-pgp@example.com"
