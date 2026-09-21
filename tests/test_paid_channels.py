@@ -204,13 +204,13 @@ class TestCostLabel:
         assert ACTION_REGISTRY["browser_search"]["category"] == "open"
         assert ACTION_REGISTRY["browser_search"]["cost_label"] == ""
 
-    def test_case_detail_shows_locked_paid_cards(self, auth_client):
+    def test_case_detail_hides_paid_cards_when_disabled(self, auth_client):
         case = _create_case_with_subject(auth_client)
         resp = auth_client.get(f"/cms/workflow/case/{case.id}")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert 'data-paid-locked="1"' in html
-        assert "~€" in html  # cost label rendered
+        for key in ("facebook", "instagram", "tiktok", "linkedin", "twitter"):
+            assert f'data-action-key="{key}"' not in html
 
 
 class TestBrowserSearch:

@@ -1356,19 +1356,17 @@ class TestWorkspaceStartAction:
         assert 'value="photo_analysis"' not in body
         assert 'value="manual_entry"' not in body
 
-    def test_paid_options_disabled_when_paid_channels_off(self, auth_client):
+    def test_paid_options_hidden_when_paid_channels_off(self, auth_client):
         case, inv = self._admin_case_inv()
         body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
-        assert 'value="facebook" disabled' in body
-        assert "paid channel off" in body
+        assert 'value="facebook"' not in body
+        assert "paid channel off" not in body
 
     def test_paid_options_enabled_when_paid_channels_on(self, auth_client):
         case, inv = self._admin_case_inv()
         _enable_paid_channels(case.tenant_id)
         body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert 'value="facebook"' in body
-        assert 'value="facebook" disabled' not in body
-        assert "paid channel off" not in body
 
     def test_run_action_from_workspace_modal_scoped_and_audited(
         self, app, auth_client

@@ -348,8 +348,11 @@
           <label class="lbl" for="wsActionType">{{ _('Action type') }}</label>
           <select id="wsActionType" name="action_type" required>
             {% for at in action_types %}
-            {# paid channels need the explicit per-tenant paid_channels flag (ADR-0001 D1.6); server enforces too #}
-            <option value="{{ at.key }}"{% if at.category == 'paid' and not paid_enabled %} disabled{% endif %}{% if at.icon %} data-icon="{{ at.icon }}"{% endif %}>{{ at.icon or '🔍' }} {{ at.label }} ({{ at.key }}){% if at.category == 'paid' and not paid_enabled %} — {{ _('paid channel off') }}{% endif %}</option>
+            {# Paid channels are omitted until the tenant explicitly enables them.
+               The server independently enforces this gate on every POST. #}
+            {% if at.category != 'paid' or paid_enabled %}
+            <option value="{{ at.key }}"{% if at.icon %} data-icon="{{ at.icon }}"{% endif %}>{{ at.icon or '🔍' }} {{ at.label }} ({{ at.key }})</option>
+            {% endif %}
             {% endfor %}
           </select>
         </div>
