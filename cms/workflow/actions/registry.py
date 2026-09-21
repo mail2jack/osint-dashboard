@@ -223,6 +223,14 @@ def run_action(action_id):
         # inside the RLS policy (else: InsufficientPrivilege on findings).
         set_tenant_context(db, tenant_id)
 
+        # ``commit()`` expires ORM instances. Under FORCE RLS, dereferencing
+        # the pre-commit action later can reload it (or its Case relationship)
+        # on a connection where it is not visible, surfacing as
+        # ObjectDeletedError. Reload only after the tenant context is set.
+        action = db.session.get(WorkflowResearchAction, action_id)
+        if not action:
+            return
+
         entry = ACTION_REGISTRY.get(action.action_type)
         if not entry:
             action.status = "error"
