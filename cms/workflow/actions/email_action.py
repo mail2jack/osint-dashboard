@@ -36,7 +36,12 @@ def _email_check(action):
                         "source_url": acct.get("url"),
                         "source_type": "email",
                         "icon": "📧",
-                        "verified": acct.get("verified", False),
+                        # A site response can show that an email-shaped value
+                        # appeared in a page, but it does not establish that
+                        # the account belongs to this investigation's subject.
+                        # Verification is therefore always an explicit
+                        # investigator decision.
+                        "verified": False,
                         "subject_id": subject_id,
                         "screenshots": [{"url": None, "source_url": acct.get("url")}],
                     }
@@ -121,13 +126,13 @@ def _email_check(action):
                     "title": "PGP key found",
                     "detail": (
                         f"A PGP public key was found for {email} on "
-                        f"keys.openpgp.org. This confirms that the owner "
-                        f"uses PGP encryption for email communication."
+                        f"keys.openpgp.org. This is an investigative lead; "
+                        f"the association still requires verification."
                     ),
                     "source_url": f"https://keys.openpgp.org/search?q={quote(email)}",
                     "source_type": "pgp",
                     "icon": "🔐",
-                    "verified": True,
+                    "verified": False,
                     "subject_id": subject_id,
                     "screenshots": [
                         {
