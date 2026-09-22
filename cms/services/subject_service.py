@@ -14,6 +14,7 @@ save() -> reopen edit -> view shows value.
 import json
 import logging
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from cms.encryption_utils import EncryptionError, encryptor
 from cms.models import (
@@ -305,11 +306,19 @@ def _coerce_amount(value):
     if value in (None, ""):
         return None
     try:
-        from decimal import Decimal
-
         return Decimal(str(value))
     except Exception:
         return value
+
+
+def _audit_value(value):
+    """Return a JSON-safe representation for a value stored in an audit log.
+
+    Monetary model fields use :class:`~decimal.Decimal` for exact database
+    storage.  AuditLog JSON columns cannot encode Decimal directly, so retain
+    the exact human-readable amount as text in the audit event instead.
+    """
+    return str(value) if isinstance(value, Decimal) else value
 
 
 def _coerce_risk_factors(value):
@@ -529,8 +538,8 @@ def update_plain_fields(subject, data, fields, changes=None, coerce=None):
             if changes is not None:
                 if value != getattr(subject, field):
                     changes[field] = {
-                        "old": getattr(subject, field) or "[empty]",
-                        "new": value or "[empty]",
+                        "old": _audit_value(getattr(subject, field)) or "[empty]",
+                        "new": _audit_value(value) or "[empty]",
                     }
                     setattr(subject, field, value)
             else:

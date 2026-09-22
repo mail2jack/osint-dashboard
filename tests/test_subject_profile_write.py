@@ -153,6 +153,34 @@ class TestBaseFields:
         assert subject.voornamen == "Jane"
         assert "Jane" in subject.name and "Doe" in subject.name
 
+    def test_patch_organization_amount_is_audited_as_json_safe_text(self, auth_client):
+        """A Decimal amount must not make the subject update audit fail."""
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Write Organization Amount")
+        subject = case.subjects[0]
+
+        resp = auth_client.patch(
+            _api(subject.id, ""),
+            json={
+                "subject_type": "organization",
+                "estimated_value": "1234.56",
+                "currency": "EUR",
+            },
+        )
+
+        assert resp.status_code == 200, resp.get_data(as_text=True)
+        db.session.refresh(subject)
+        assert str(subject.estimated_value) == "1234.56"
+
+        audit = AuditLog.query.filter_by(
+            entity_type="subject", entity_id=str(subject.id), action="update"
+        ).one()
+        assert audit.changes_made["estimated_value"] == {
+            "old": "[empty]",
+            "new": "1234.56",
+        }
+
 
 class TestIdentifierCrud:
     def test_create_update_delete(self, auth_client):
