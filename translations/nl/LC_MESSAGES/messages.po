@@ -4852,3 +4852,97 @@ msgstr "Documentsjabloon maken"
 
 msgid "Open subject profile"
 msgstr "Subjectprofiel openen"
+
+#: templates/cms/workflow/workflow_investigation_detail.html
+msgid "Deep source research"
+msgstr "Verdiept brononderzoek"
+
+msgid "This starts passive source research in the background. It can take a little while; you can continue working meanwhile."
+msgstr "Dit start passief brononderzoek op de achtergrond. Dit kan even duren; u kunt ondertussen verder werken."
+
+msgid "Target type"
+msgstr "Type doelwit"
+
+msgid "Person or name"
+msgstr "Persoon of naam"
+
+msgid "Email address"
+msgstr "E-mailadres"
+
+msgid "Phone number"
+msgstr "Telefoonnummer"
+
+msgid "Subdomain"
+msgstr "Subdomein"
+
+msgid "Website URL"
+msgstr "Website-URL"
+
+msgid "IP address"
+msgstr "IP-adres"
+
+msgid "IPv6 address"
+msgstr "IPv6-adres"
+
+msgid "Organisation"
+msgstr "Organisatie"
+
+msgid "License plate"
+msgstr "Kenteken"
+
+msgid "Search value"
+msgstr "Zoekwaarde"
+
+msgid "— Investigation-wide target —"
+msgstr "— Onderzoeksbreed doelwit —"
+
+msgid "Start passive research"
+msgstr "Start passief onderzoek"
+
+msgid "No reviewable results were returned."
+msgstr "Er zijn geen beoordeelbare resultaten teruggekomen."
+
+msgid "Select the results you want to add as findings."
+msgstr "Selecteer de resultaten die u als bevinding wilt toevoegen."
+
+msgid "Add selected findings"
+msgstr "Geselecteerde bevindingen toevoegen"
+
+msgid "Select at least one result."
+msgstr "Selecteer ten minste één resultaat."
+
+msgid "Could not add findings."
+msgstr "De bevindingen konden niet worden toegevoegd."
+
+msgid "Selected findings added. Refreshing this page…"
+msgstr "Geselecteerde bevindingen toegevoegd. Deze pagina wordt vernieuwd…"
+
+msgid "Research is still running. You can refresh this page later."
+msgstr "Het onderzoek loopt nog. U kunt deze pagina later vernieuwen."
+
+msgid "Could not check research status."
+msgstr "De onderzoeksstatus kon niet worden gecontroleerd."
+
+msgid "Research complete. Review the results below."
+msgstr "Onderzoek voltooid. Beoordeel de resultaten hieronder."
+
+msgid "Research could not be completed."
+msgstr "Het onderzoek kon niet worden voltooid."
+
+msgid "Research is running…"
+msgstr "Onderzoek loopt…"
+
+msgid "Checking research status…"
+msgstr "Onderzoeksstatus wordt gecontroleerd…"
+
+msgid "Could not start research."
+msgstr "Het onderzoek kon niet worden gestart."
+
+msgid "Enter a search value."
+msgstr "Voer een zoekwaarde in."
+
+msgid "Review results"
+msgstr "Resultaten beoordelen"
+
+msgid "View progress"
+msgstr "Voortgang bekijken"

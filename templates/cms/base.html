@@ -175,7 +175,7 @@
                 <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
                 <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
                 <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
-                {% if current_user.has_role('admin', 'senior_investigator') %}
+                {% if current_user.is_super_admin %}
                 <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
                 {% endif %}
                 {% if not investigator_primary_navigation %}

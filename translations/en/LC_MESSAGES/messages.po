@@ -5060,3 +5060,97 @@ msgstr "Create a document template"
 
 msgid "Open subject profile"
 msgstr "Open subject profile"
+
+#: templates/cms/workflow/workflow_investigation_detail.html
+msgid "Deep source research"
+msgstr "Deep source research"
+
+msgid "This starts passive source research in the background. It can take a little while; you can continue working meanwhile."
+msgstr "This starts passive source research in the background. It can take a little while; you can continue working meanwhile."
+
+msgid "Target type"
+msgstr "Target type"
+
+msgid "Person or name"
+msgstr "Person or name"
+
+msgid "Email address"
+msgstr "Email address"
+
+msgid "Phone number"
+msgstr "Phone number"
+
+msgid "Subdomain"
+msgstr "Subdomain"
+
+msgid "Website URL"
+msgstr "Website URL"
+
+msgid "IP address"
+msgstr "IP address"
+
+msgid "IPv6 address"
+msgstr "IPv6 address"
+
+msgid "Organisation"
+msgstr "Organisation"
+
+msgid "License plate"
+msgstr "License plate"
+
+msgid "Search value"
+msgstr "Search value"
+
+msgid "— Investigation-wide target —"
+msgstr "— Investigation-wide target —"
+
+msgid "Start passive research"
+msgstr "Start passive research"
+
+msgid "No reviewable results were returned."
+msgstr "No reviewable results were returned."
+
+msgid "Select the results you want to add as findings."
+msgstr "Select the results you want to add as findings."
+
+msgid "Add selected findings"
+msgstr "Add selected findings"
+
+msgid "Select at least one result."
+msgstr "Select at least one result."
+
+msgid "Could not add findings."
+msgstr "Could not add findings."
+
+msgid "Selected findings added. Refreshing this page…"
+msgstr "Selected findings added. Refreshing this page…"
+
+msgid "Research is still running. You can refresh this page later."
+msgstr "Research is still running. You can refresh this page later."
+
+msgid "Could not check research status."
+msgstr "Could not check research status."
+
+msgid "Research complete. Review the results below."
+msgstr "Research complete. Review the results below."
+
+msgid "Research could not be completed."
+msgstr "Research could not be completed."
+
+msgid "Research is running…"
+msgstr "Research is running…"
+
+msgid "Checking research status…"
+msgstr "Checking research status…"
+
+msgid "Could not start research."
+msgstr "Could not start research."
+
+msgid "Enter a search value."
+msgstr "Enter a search value."
+
+msgid "Review results"
+msgstr "Review results"
+
+msgid "View progress"
+msgstr "View progress"

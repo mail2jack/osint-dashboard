@@ -54,6 +54,10 @@ from cms.services.finding_capture_queue import (
     enqueue_finding_capture,
 )
 from cms.services.investigation_workspace import build_inv_workspace
+from cms.services.workflow_source_research import (
+    SourceResearchRejected,
+    queue_passive_source_research,
+)
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
@@ -94,6 +98,19 @@ _INVESTIGATOR_ROLES = (
 def _current_user_is_investigator() -> bool:
     """Writer check for the investigations section (role-based, matches scope)."""
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def _workflow_source_research_enabled() -> bool:
+    """Return whether this tenant may use native passive source research.
+
+    ``workflow_spiderfoot`` is the explicit OFF-by-default rollout gate.  The
+    existing ``spiderfoot`` entitlement remains an independent plan gate, so a
+    tenant cannot gain access merely by enabling the new UI flag.
+    """
+    return (
+        check_feature("workflow_spiderfoot", current_user.tenant_id)
+        and check_feature("spiderfoot", current_user.tenant_id)
+    )
 
 
 def ensure_investigation_access(case_id: str, investigation_id: str):
@@ -1329,6 +1346,9 @@ def investigation_detail(case_id, investigation_id):
         action_types=action_types,
         subjects_cfg=subjects_cfg,
         paid_enabled=paid_channels_enabled(),
+        source_research_enabled=(
+            can_start_actions and _workflow_source_research_enabled()
+        ),
         finding_capture_enabled=(
             can_write
             and check_feature("finding_screenshot_capture", current_user.tenant_id)
@@ -1340,6 +1360,324 @@ def investigation_detail(case_id, investigation_id):
             )
         ),
     )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def request_passive_source_research(case_id, investigation_id):
+    """Queue one explicitly requested passive source-research action.
+
+    This endpoint is deliberately a durable request boundary: it records the
+    action, scan and audit entries in one transaction but never opens a
+    SpiderFoot connection in Gunicorn.  The dedicated worker claims the scan
+    after commit, and later updates its public progress state.
+    """
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    try:
+        require_open(investigation)
+    except OperationalConflict:
+        return jsonify({"error": "Investigation is not open"}), 409
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Payload must be a JSON object"}), 400
+    allowed = {"target_type", "target_value", "subject_id"}
+    unknown = sorted(set(body) - allowed)
+    if unknown:
+        return jsonify({"error": f"Unknown fields: {', '.join(unknown)}"}), 400
+
+    subject = None
+    subject_id = body.get("subject_id")
+    if subject_id is not None:
+        if not isinstance(subject_id, str) or not subject_id:
+            return jsonify({"error": "subject_id must be a non-empty string"}), 400
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if subject is None:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject.id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
+    # Use the existing tenant limit before writing.  The worker re-checks the
+    # feature gates before starting external work, so a later kill-switch is
+    # honored even for already queued actions.
+    from cms.tier_limits import check_concurrent_spiderfoot_scans
+
+    permitted, running, maximum = check_concurrent_spiderfoot_scans(
+        current_user.tenant_id
+    )
+    if not permitted:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Maximum concurrent source-research scans reached "
+                        f"({running}/{maximum})"
+                    )
+                }
+            ),
+            429,
+        )
+
+    try:
+        action, scan = queue_passive_source_research(
+            case=case,
+            investigation=investigation,
+            actor=current_user,
+            target_type=body.get("target_type"),
+            target_value=body.get("target_value"),
+            subject=subject,
+        )
+        # Capture scalar ids before commit: under FORCE RLS a post-commit ORM
+        # refresh may use a different pooled connection and turn a successful
+        # queued request into a misleading ObjectDeletedError response.
+        action_id = action.id
+        scan_id = scan.id
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case.id,
+            description="Queued passive source research (linked to investigation)",
+            new_investigation_id=investigation.id,
+        )
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="spiderfoot_scan",
+            entity_id=scan_id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={
+                "use_case": "passive",
+                "target_type": scan.target_type,
+                "profile": scan.profile,
+                "status": "pending",
+            },
+            description="Queued workflow source-research scan",
+        )
+        db.session.commit()
+    except SourceResearchRejected as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception(
+            "request_passive_source_research failed case_id=%s investigation_id=%s",
+            case_id,
+            investigation_id,
+        )
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "action": {"id": action_id, "status": "pending"},
+            "scan": {"id": scan_id, "status": "pending", "use_case": "passive"},
+        }
+    ), 202
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>",
+    methods=["GET"],
+)
+@login_required
+@_investigator_required
+def passive_source_research_status(case_id, investigation_id, action_id):
+    """Return bounded workflow-visible state for one source-research action."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    action = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        action_type="source_research",
+    ).first()
+    if action is None:
+        return jsonify({"error": "Not found"}), 404
+
+    from cms.models import SpiderFootScan
+
+    scan = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        research_action_id=action.id,
+        is_deleted=False,
+    ).first()
+    if scan is None:
+        return jsonify({"error": "Not found"}), 404
+    result = scan.result_summary if isinstance(scan.result_summary, dict) else {}
+    proposals = result.get("proposals", []) if scan.status == "completed" else []
+    # Stored proposal snapshots are bounded by the worker.  Defend again at
+    # this boundary so a historic or manually malformed row cannot make a
+    # status response unexpectedly large.
+    if not isinstance(proposals, list):
+        proposals = []
+    return jsonify(
+        {
+            "ok": True,
+            "action": {
+                "id": action.id,
+                "status": action.status,
+                "result_summary": action.result_summary,
+            },
+            "scan": {
+                "id": scan.id,
+                "status": scan.status,
+                "progress": scan.progress,
+                "result_count": scan.result_count,
+                "proposals": proposals[:250],
+            },
+        }
+    )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>/import",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def import_passive_source_research(case_id, investigation_id, action_id):
+    """Import selected, cached source-research proposals as workflow findings."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"proposal_indexes"}:
+        return jsonify({"error": "proposal_indexes is required"}), 400
+    indexes = body.get("proposal_indexes")
+    if (
+        not isinstance(indexes, list)
+        or not indexes
+        or len(indexes) > 50
+        or any(not isinstance(index, int) or isinstance(index, bool) for index in indexes)
+    ):
+        return jsonify({"error": "proposal_indexes must contain 1 to 50 indexes"}), 400
+    if len(set(indexes)) != len(indexes):
+        return jsonify({"error": "proposal_indexes must be unique"}), 400
+
+    from cms.models import SpiderFootScan
+
+    scan_query = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        research_action_id=action_id,
+        is_deleted=False,
+        status="completed",
+    )
+    if db.session.bind and db.session.bind.dialect.name == "postgresql":
+        scan_query = scan_query.with_for_update()
+    scan = scan_query.first()
+    if scan is None:
+        return jsonify({"error": "Completed source research not found"}), 404
+    action = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        action_type="source_research",
+    ).first()
+    if action is None:
+        return jsonify({"error": "Source-research action not found"}), 404
+
+    state = dict(scan.result_summary) if isinstance(scan.result_summary, dict) else {}
+    proposals = state.get("proposals")
+    if not isinstance(proposals, list):
+        return jsonify({"error": "Source-research proposals are unavailable"}), 409
+    if any(index < 0 or index >= len(proposals) for index in indexes):
+        return jsonify({"error": "Proposal index is out of range"}), 400
+    imported_indexes = {
+        index
+        for index in state.get("imported_indexes", [])
+        if isinstance(index, int) and not isinstance(index, bool)
+    }
+    selected_indexes = [index for index in indexes if index not in imported_indexes]
+    if not selected_indexes:
+        return jsonify({"ok": True, "imported": 0, "finding_ids": []})
+
+    # The action's optional subject remains the only subject context used by
+    # its findings; proposals never submit client-controlled subject ids.
+    finding_ids = []
+    try:
+        for index in selected_indexes:
+            proposal = proposals[index]
+            if not isinstance(proposal, dict):
+                raise ValueError("Stored source-research proposal is invalid")
+            event_type = str(proposal.get("type") or "UNKNOWN")[:100]
+            data = str(proposal.get("data") or "")[:2000]
+            module = str(proposal.get("source_module") or "")[:200]
+            source_url = str(proposal.get("source_url") or "")[:2000] or None
+            if not data:
+                raise ValueError("Stored source-research proposal has no data")
+            finding = WorkflowFinding(
+                id=str(uuid.uuid4()),
+                tenant_id=case.tenant_id,
+                case_id=case.id,
+                subject_id=action.subject_id,
+                title=f"[SpiderFoot] {event_type}: {data[:100]}",
+                content=(
+                    f"Source: SpiderFoot\nType: {event_type}\nData: {data}"
+                    + (f"\nModule: {module}" if module else "")
+                ),
+                detail=data,
+                source_url=source_url,
+                source_type="spiderfoot",
+                icon="🕷️",
+                verified=False,
+                status="candidate",
+                raw_data={
+                    "source_research_action_id": action.id,
+                    "proposal_index": index,
+                    "event_type": event_type,
+                    "source_module": module,
+                },
+                created_by=current_user.id,
+                created_at=datetime.now(UTC),
+            )
+            db.session.add(finding)
+            db.session.flush()
+            db.session.add(
+                WorkflowActionFinding(action_id=action.id, finding_id=finding.id)
+            )
+            finding_ids.append(finding.id)
+
+        state["imported_indexes"] = sorted(imported_indexes | set(selected_indexes))
+        scan.result_summary = state
+        AuditLog.log(
+            user_id=current_user.id,
+            action="import",
+            entity_type="spiderfoot_scan",
+            entity_id=scan.id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={"imported_count": len(finding_ids)},
+            description="Imported selected workflow source-research findings",
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 409
+    except Exception:
+        db.session.rollback()
+        logger.exception("import_passive_source_research failed action_id=%s", action_id)
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify({"ok": True, "imported": len(finding_ids), "finding_ids": finding_ids})
 
 
 @workflow_bp.route(

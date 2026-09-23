@@ -121,6 +121,9 @@
       {% if can_start_actions %}
       <button type="button" class="btn-cms small" data-open-start-action style="font-size:0.8rem;padding:0.2rem 0.6rem;">🚀 {{ _('Start Action') }}</button>
       {% endif %}
+      {% if source_research_enabled %}
+      <button type="button" class="btn-cms small" data-open-source-research style="font-size:0.8rem;padding:0.2rem 0.6rem;">🕷️ {{ _('Deep source research') }}</button>
+      {% endif %}
       <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" data-confirm-archive="{{ _('Archive this investigation?') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
@@ -172,6 +175,13 @@
         {% endif %}
         {% if a.finding_count %}
         <div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-muted);">{{ _('Linked findings') }}: {{ a.finding_count }}</div>
+        {% endif %}
+        {% if source_research_enabled and a.action_type == 'source_research' %}
+        <div style="margin-top:0.45rem;">
+          <button type="button" class="btn-cms small" data-review-source-research data-source-action-id="{{ a.id }}" style="font-size:0.78rem;padding:0.2rem 0.6rem;">
+            {% if a.status == 'completed' %}{{ _('Review results') }}{% else %}{{ _('View progress') }}{% endif %}
+          </button>
+        </div>
         {% endif %}
       </div>
       {% endfor %}
@@ -502,6 +512,208 @@
       form._submitting = false;
       if (submitBtn) { submitBtn.disabled = false; }
     });
+  });
+})();
+</script>
+{% endif %}
+
+{% if source_research_enabled %}
+<div class="ws-action-overlay" id="wsSourceResearchModal" role="dialog" aria-modal="true" aria-labelledby="wsSourceResearchTitle" hidden>
+  <div class="ws-action-modal">
+    <div class="ws-action-header">
+      <span id="wsSourceResearchTitle">🕷️ {{ _('Deep source research') }}</span>
+      <button type="button" class="ws-action-close" data-close-source-research aria-label="{{ _('Close') }}">&times;</button>
+    </div>
+    <div class="ws-action-body">
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin-top:0;">{{ _('This starts passive source research in the background. It can take a little while; you can continue working meanwhile.') }}</p>
+      <form id="wsSourceResearchForm">
+        <div class="ws-field">
+          <label class="lbl" for="wsSourceTargetType">{{ _('Target type') }}</label>
+          <select id="wsSourceTargetType" name="target_type" required>
+            <option value="person">{{ _('Person or name') }}</option>
+            <option value="username">{{ _('Username') }}</option>
+            <option value="email">{{ _('Email address') }}</option>
+            <option value="phone_number">{{ _('Phone number') }}</option>
+            <option value="domain">{{ _('Domain') }}</option>
+            <option value="subdomain">{{ _('Subdomain') }}</option>
+            <option value="url">{{ _('Website URL') }}</option>
+            <option value="ip">{{ _('IP address') }}</option>
+            <option value="ipv6">{{ _('IPv6 address') }}</option>
+            <option value="company">{{ _('Company') }}</option>
+            <option value="organization">{{ _('Organisation') }}</option>
+            <option value="vessel">{{ _('Vessel') }}</option>
+            <option value="license_plate">{{ _('License plate') }}</option>
+            <option value="vin">{{ _('VIN') }}</option>
+          </select>
+        </div>
+        <div class="ws-field">
+          <label class="lbl" for="wsSourceTargetValue">{{ _('Search value') }}</label>
+          <input type="text" id="wsSourceTargetValue" name="target_value" required maxlength="500" autocomplete="off">
+        </div>
+        <div class="ws-field">
+          <label class="lbl" for="wsSourceSubject">{{ _('Subject (optional)') }}</label>
+          <select id="wsSourceSubject" name="subject_id">
+            <option value="">{{ _('— Investigation-wide target —') }}</option>
+            {% for sd in subjects_cfg %}
+            <option value="{{ sd.id }}">{{ sd.display_name }}{% if sd.subject_type %} ({{ sd.subject_type }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+          <button type="button" class="btn-cms small" data-close-source-research style="background:none;border:1px solid var(--border-color);padding:0.35rem 0.8rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Cancel') }}</button>
+          <button type="submit" class="btn-cms small" style="font-size:0.8rem;padding:0.35rem 0.8rem;">{{ _('Start passive research') }}</button>
+        </div>
+      </form>
+      <div id="wsSourceResearchStatus" aria-live="polite" style="display:none;margin-top:1rem;font-size:0.82rem;color:var(--text-secondary);"></div>
+      <div id="wsSourceResearchProposals" style="display:none;margin-top:0.75rem;"></div>
+    </div>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var modal = document.getElementById('wsSourceResearchModal');
+  var form = document.getElementById('wsSourceResearchForm');
+  var statusEl = document.getElementById('wsSourceResearchStatus');
+  var proposalsEl = document.getElementById('wsSourceResearchProposals');
+  if (!modal || !form) return;
+  var opener = null;
+  var FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function setStatus(message) {
+    statusEl.textContent = message;
+    statusEl.style.display = 'block';
+  }
+  function focusableNodes() {
+    return Array.prototype.filter.call(modal.querySelectorAll(FOCUSABLE), function (el) {
+      return !el.disabled && el.offsetParent !== null;
+    });
+  }
+  function closeModal() {
+    modal.hidden = true;
+    if (opener && typeof opener.focus === 'function') opener.focus();
+    opener = null;
+  }
+  function openModal(button) {
+    opener = button;
+    modal.hidden = false;
+    var first = focusableNodes()[0];
+    if (first) first.focus();
+  }
+  function prepareNewResearch() {
+    form.reset();
+    form.style.display = 'block';
+    proposalsEl.replaceChildren();
+    proposalsEl.style.display = 'none';
+    statusEl.textContent = '';
+    statusEl.style.display = 'none';
+  }
+  function renderProposals(actionId, proposals) {
+    proposalsEl.replaceChildren();
+    if (!proposals.length) {
+      proposalsEl.textContent = '{{ _('No reviewable results were returned.') }}';
+      proposalsEl.style.display = 'block';
+      return;
+    }
+    var intro = document.createElement('p');
+    intro.textContent = '{{ _('Select the results you want to add as findings.') }}';
+    proposalsEl.appendChild(intro);
+    var list = document.createElement('div');
+    proposals.forEach(function (proposal, index) {
+      var label = document.createElement('label');
+      label.style.cssText = 'display:flex;gap:0.45rem;align-items:flex-start;padding:0.35rem 0;border-bottom:1px solid var(--border-color);font-size:0.8rem;';
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.value = String(index);
+      var text = document.createElement('span');
+      text.textContent = (proposal.type || '{{ _('Unknown') }}') + ': ' + (proposal.data || '');
+      label.appendChild(checkbox); label.appendChild(text); list.appendChild(label);
+    });
+    proposalsEl.appendChild(list);
+    var importButton = document.createElement('button');
+    importButton.type = 'button'; importButton.className = 'btn-cms small';
+    importButton.style.marginTop = '0.75rem';
+    importButton.textContent = '{{ _('Add selected findings') }}';
+    importButton.addEventListener('click', function () {
+      var selected = Array.prototype.map.call(list.querySelectorAll('input:checked'), function (input) { return Number(input.value); });
+      if (!selected.length) { window.showToast('{{ _('Select at least one result.') }}', 'error'); return; }
+      importButton.disabled = true;
+      window.apiFetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/source-research/' + actionId + '/import', {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({proposal_indexes: selected})
+      }).then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || '{{ _('Could not add findings.') }}');
+          window.showToast('{{ _('Selected findings added. Refreshing this page…') }}', 'success');
+          window.setTimeout(function () { window.location.reload(); }, 300);
+        }).catch(function (error) {
+          window.showToast(error.message || '{{ _('Could not add findings.') }}', 'error');
+          importButton.disabled = false;
+        });
+    });
+    proposalsEl.appendChild(importButton);
+    proposalsEl.style.display = 'block';
+  }
+  function poll(actionId, remaining) {
+    if (remaining <= 0) { setStatus('{{ _('Research is still running. You can refresh this page later.') }}'); return; }
+    window.setTimeout(function () {
+      window.apiFetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/source-research/' + actionId, {headers: {'Accept': 'application/json'}})
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || '{{ _('Could not check research status.') }}');
+          var scan = data.scan || {};
+          if (scan.status === 'completed') {
+            setStatus('{{ _('Research complete. Review the results below.') }}');
+            renderProposals(actionId, scan.proposals || []);
+          } else if (scan.status === 'failed' || scan.status === 'cancelled') {
+            setStatus('{{ _('Research could not be completed.') }}');
+          } else {
+            setStatus('{{ _('Research is running…') }}' + (typeof scan.progress === 'number' ? ' ' + scan.progress + '%' : ''));
+            poll(actionId, remaining - 1);
+          }
+        }).catch(function () { setStatus('{{ _('Could not check research status.') }}'); });
+    }, 2000);
+  }
+  document.addEventListener('click', function (event) {
+    var open = event.target.closest('[data-open-source-research]');
+    if (open) { prepareNewResearch(); openModal(open); return; }
+    var review = event.target.closest('[data-review-source-research]');
+    if (review) {
+      form.style.display = 'none';
+      proposalsEl.replaceChildren();
+      proposalsEl.style.display = 'none';
+      setStatus('{{ _('Checking research status…') }}');
+      openModal(review);
+      poll(review.getAttribute('data-source-action-id'), 150);
+      return;
+    }
+    if (event.target.closest('[data-close-source-research]') || event.target === modal) closeModal();
+  });
+  document.addEventListener('keydown', function (event) {
+    if (modal.hidden) return;
+    if (event.key === 'Escape') { closeModal(); return; }
+    if (event.key !== 'Tab') return;
+    var nodes = focusableNodes();
+    if (!nodes.length) { event.preventDefault(); return; }
+    if (event.shiftKey && document.activeElement === nodes[0]) { event.preventDefault(); nodes[nodes.length - 1].focus(); }
+    else if (!event.shiftKey && document.activeElement === nodes[nodes.length - 1]) { event.preventDefault(); nodes[0].focus(); }
+  });
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (form.dataset.submitting === '1') return;
+    var target = form.target_value.value.trim();
+    if (!target) { window.showToast('{{ _('Enter a search value.') }}', 'error'); return; }
+    form.dataset.submitting = '1';
+    var submit = form.querySelector('button[type="submit"]'); if (submit) submit.disabled = true;
+    window.apiFetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/source-research', {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify({target_type: form.target_type.value, target_value: target, subject_id: form.subject_id.value || null})
+    }).then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.error || '{{ _('Could not start research.') }}');
+        setStatus('{{ _('Research queued. Waiting for the background worker…') }}');
+        form.style.display = 'none';
+        poll(data.action.id, 150);
+      }).catch(function (error) { window.showToast(error.message || '{{ _('Could not start research.') }}', 'error'); })
+      .finally(function () { form.dataset.submitting = '0'; if (submit) submit.disabled = false; });
   });
 })();
 </script>
