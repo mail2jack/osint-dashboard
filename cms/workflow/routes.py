@@ -54,6 +54,10 @@ from cms.services.finding_capture_queue import (
     enqueue_finding_capture,
 )
 from cms.services.investigation_workspace import build_inv_workspace
+from cms.services.workflow_source_research import (
+    SourceResearchRejected,
+    queue_passive_source_research,
+)
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
@@ -94,6 +98,19 @@ _INVESTIGATOR_ROLES = (
 def _current_user_is_investigator() -> bool:
     """Writer check for the investigations section (role-based, matches scope)."""
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def _workflow_source_research_enabled() -> bool:
+    """Return whether this tenant may use native passive source research.
+
+    ``workflow_spiderfoot`` is the explicit OFF-by-default rollout gate.  The
+    existing ``spiderfoot`` entitlement remains an independent plan gate, so a
+    tenant cannot gain access merely by enabling the new UI flag.
+    """
+    return (
+        check_feature("workflow_spiderfoot", current_user.tenant_id)
+        and check_feature("spiderfoot", current_user.tenant_id)
+    )
 
 
 def ensure_investigation_access(case_id: str, investigation_id: str):
@@ -1340,6 +1357,130 @@ def investigation_detail(case_id, investigation_id):
             )
         ),
     )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def request_passive_source_research(case_id, investigation_id):
+    """Queue one explicitly requested passive source-research action.
+
+    This endpoint is deliberately a durable request boundary: it records the
+    action, scan and audit entries in one transaction but never opens a
+    SpiderFoot connection in Gunicorn.  The dedicated worker claims the scan
+    after commit, and later updates its public progress state.
+    """
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    try:
+        require_open(investigation)
+    except OperationalConflict:
+        return jsonify({"error": "Investigation is not open"}), 409
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Payload must be a JSON object"}), 400
+    allowed = {"target_type", "target_value", "subject_id"}
+    unknown = sorted(set(body) - allowed)
+    if unknown:
+        return jsonify({"error": f"Unknown fields: {', '.join(unknown)}"}), 400
+
+    subject = None
+    subject_id = body.get("subject_id")
+    if subject_id is not None:
+        if not isinstance(subject_id, str) or not subject_id:
+            return jsonify({"error": "subject_id must be a non-empty string"}), 400
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if subject is None:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject.id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
+    # Use the existing tenant limit before writing.  The worker re-checks the
+    # feature gates before starting external work, so a later kill-switch is
+    # honored even for already queued actions.
+    from cms.tier_limits import check_concurrent_spiderfoot_scans
+
+    permitted, running, maximum = check_concurrent_spiderfoot_scans(
+        current_user.tenant_id
+    )
+    if not permitted:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Maximum concurrent source-research scans reached "
+                        f"({running}/{maximum})"
+                    )
+                }
+            ),
+            429,
+        )
+
+    try:
+        action, scan = queue_passive_source_research(
+            case=case,
+            investigation=investigation,
+            actor=current_user,
+            target_type=body.get("target_type"),
+            target_value=body.get("target_value"),
+            subject=subject,
+        )
+        # Capture scalar ids before commit: under FORCE RLS a post-commit ORM
+        # refresh may use a different pooled connection and turn a successful
+        # queued request into a misleading ObjectDeletedError response.
+        action_id = action.id
+        scan_id = scan.id
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case.id,
+            description="Queued passive source research (linked to investigation)",
+            new_investigation_id=investigation.id,
+        )
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="spiderfoot_scan",
+            entity_id=scan_id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={
+                "use_case": "passive",
+                "target_type": scan.target_type,
+                "profile": scan.profile,
+                "status": "pending",
+            },
+            description="Queued workflow source-research scan",
+        )
+        db.session.commit()
+    except SourceResearchRejected as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception(
+            "request_passive_source_research failed case_id=%s investigation_id=%s",
+            case_id,
+            investigation_id,
+        )
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "action": {"id": action_id, "status": "pending"},
+            "scan": {"id": scan_id, "status": "pending", "use_case": "passive"},
+        }
+    ), 202
 
 
 @workflow_bp.route(

@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from cms.models import Case, Investigation, SpiderFootScan, User, db
+from cms.models import AuditLog, Case, FeatureFlag, Investigation, SpiderFootScan, User, db
 from cms.services.workflow_source_research import (
     SourceResearchRejected,
     TARGET_TYPES,
@@ -44,6 +44,28 @@ def _case_with_open_investigation(auth_client):
     db.session.add(investigation)
     db.session.commit()
     return case, investigation, case.subjects.first()
+
+
+def _enable_workflow_source_research():
+    tenant_id = _admin().tenant_id
+    flag = FeatureFlag.query.filter_by(
+        tenant_id=tenant_id, flag_name="workflow_spiderfoot"
+    ).first()
+    if flag is None:
+        flag = FeatureFlag(
+            tenant_id=tenant_id, flag_name="workflow_spiderfoot", enabled=True
+        )
+        db.session.add(flag)
+    else:
+        flag.enabled = True
+    db.session.commit()
+
+
+def _request_url(case_id, investigation_id):
+    return (
+        f"/cms/workflow/api/case/{case_id}/investigations/"
+        f"{investigation_id}/source-research"
+    )
 
 
 def test_target_contract_accepts_supported_target_types_and_passive_profiles():
@@ -124,3 +146,76 @@ def test_queue_rejects_cross_case_investigation_without_writes(auth_client):
     assert WorkflowResearchAction.query.count() == before_actions
     assert SpiderFootScan.query.count() == before_scans
     assert case_a.id != case_b.id
+
+
+def test_route_is_hidden_until_explicit_feature_enablement(auth_client):
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    response = auth_client.post(
+        _request_url(case.id, investigation.id),
+        json={"target_type": "domain", "target_value": "example.test"},
+    )
+    assert response.status_code == 404
+
+
+def test_route_queues_scoped_passive_research_with_audit(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, subject = _case_with_open_investigation(auth_client)
+
+    response = auth_client.post(
+        _request_url(case.id, investigation.id),
+        json={
+            "target_type": "email",
+            "target_value": "analyst@example.test",
+            "subject_id": subject.id,
+        },
+    )
+    assert response.status_code == 202
+    body = response.get_json()
+    action = db.session.get(WorkflowResearchAction, body["action"]["id"])
+    scan = db.session.get(SpiderFootScan, body["scan"]["id"])
+    assert action is not None and scan is not None
+    assert action.investigation_id == investigation.id
+    assert scan.research_action_id == action.id
+    assert scan.use_case == "passive"
+    assert scan.status == action.status == "pending"
+    audits = AuditLog.query.filter(
+        AuditLog.entity_id.in_([action.id, scan.id])
+    ).all()
+    assert {entry.entity_type for entry in audits} == {
+        "research_action",
+        "spiderfoot_scan",
+    }
+
+
+def test_route_rejects_unknown_field_without_partial_records(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    before_actions = WorkflowResearchAction.query.count()
+    before_scans = SpiderFootScan.query.count()
+    response = auth_client.post(
+        _request_url(case.id, investigation.id),
+        json={
+            "target_type": "domain",
+            "target_value": "example.test",
+            "use_case": "all",
+        },
+    )
+    assert response.status_code == 400
+    assert WorkflowResearchAction.query.count() == before_actions
+    assert SpiderFootScan.query.count() == before_scans
+
+
+def test_route_rejects_archived_investigation_without_partial_records(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    investigation.status = "archived"
+    db.session.commit()
+    before_actions = WorkflowResearchAction.query.count()
+    before_scans = SpiderFootScan.query.count()
+    response = auth_client.post(
+        _request_url(case.id, investigation.id),
+        json={"target_type": "domain", "target_value": "example.test"},
+    )
+    assert response.status_code == 409
+    assert WorkflowResearchAction.query.count() == before_actions
+    assert SpiderFootScan.query.count() == before_scans
