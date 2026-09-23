@@ -38,3 +38,15 @@ def test_backup_script_handles_force_rls_without_disabling_row_security():
     # pg_dump normally tries SET row_security=off, which FORCE RLS rejects.
     assert source.count("pg_dump --enable-row-security") == 2
     assert source.count("-c app.bypass_rls=true") == 2
+
+
+def test_backup_script_notifies_completion_without_affecting_backup_exit_status():
+    source = (ROOT / "scripts/backup.sh").read_text(encoding="utf-8")
+    notifier = (ROOT / "scripts/backup_completion_email.py").read_text(encoding="utf-8")
+
+    assert 'trap _on_exit EXIT' in source
+    assert 'backup_completion_email.py' in source
+    assert '--status "$status"' in source
+    assert '|| echo "  ⚠️  Backup-notificatie kon niet worden verzonden"' in source
+    assert 'User.query.filter_by(is_super_admin=True)' in notifier
+    assert 'This is deliberately best-effort' in notifier
