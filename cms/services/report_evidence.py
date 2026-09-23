@@ -25,9 +25,9 @@ PDF_THUMBNAIL_SIZE = (480, 320)
 
 
 def safe_source_url(value: str | None) -> str | None:
-    """Return whether *value* is a safe-to-link external reference."""
+    """Return a safe external reference, or ``None`` if it is not linkable."""
     if not isinstance(value, str):
-        return False
+        return None
     parsed = urlparse(value)
     return value if parsed.scheme in {"http", "https"} and bool(parsed.netloc) else None
 

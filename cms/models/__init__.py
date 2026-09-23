@@ -1879,6 +1879,21 @@ def report_include_filter():
     )
 
 
+def report_visible_finding_filter():
+    """One visibility rule for findings in every official report format.
+
+    Raw exports and operational finding lists deliberately do not use this
+    predicate. Verification status is independent of report inclusion.
+    """
+    from sqlalchemy import and_
+
+    return and_(
+        Finding.is_deleted.is_(False),
+        Finding.archived_at.is_(None),
+        report_include_filter(),
+    )
+
+
 # =============================================================================
 # Screenshot Model
 # =============================================================================

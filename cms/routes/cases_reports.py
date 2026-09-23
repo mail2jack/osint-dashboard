@@ -16,7 +16,7 @@ from ..models import (
     Reminder,
     Subject,
     db,
-    report_include_filter,
+    report_visible_finding_filter,
 )
 from ..services.report_evidence import report_screenshots, safe_source_url
 from . import cms_bp
@@ -329,8 +329,8 @@ def case_report(case_id: str) -> str:
     to_date = request.args.get("to")
     subject_filter = request.args.get("subject_id")
 
-    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False).filter(
-        report_include_filter()
+    findings_q = Finding.query.filter_by(case_id=case_id).filter(
+        report_visible_finding_filter()
     )
     comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
 
@@ -456,8 +456,8 @@ def case_report_pdf(case_id: str) -> flask.Response:
 
     case = db.session.get(Case, case_id) or abort(404)
 
-    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False).filter(
-        report_include_filter()
+    findings_q = Finding.query.filter_by(case_id=case_id).filter(
+        report_visible_finding_filter()
     )
     comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
 

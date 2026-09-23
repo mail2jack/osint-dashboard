@@ -200,6 +200,8 @@ class TestReportRoutesRespectFlag:
                 "title": "commented finding",
                 "description": "content commented finding",
                 "comment": "Report-ready investigator comment",
+                "source_url": None,
+                "screenshots": [],
                 "finding_type": None,
                 "severity": "medium",
                 "status": "active",
@@ -285,8 +287,76 @@ class TestReportRoutesRespectFlag:
         assert "tpl-keep" in titles
         assert "tpl-drop" not in titles
 
+    def test_archived_finding_excluded_from_every_official_report(
+        self, auth_client, db_session, monkeypatch
+    ):
+        case = _orm_case("Archived Report Finding")
+        archived = _orm_finding(case, _admin_user(), "archived report finding")
+        archived.comment = "archived private report comment"
+        archived.archived_at = datetime.now(timezone.utc)
+        keep = _orm_finding(case, _admin_user(), "visible report finding")
+        db.session.commit()
+
+        rendered = {}
+
+        class _FakeHtml:
+            def __init__(self, *, string):
+                rendered["html"] = string
+
+            def write_pdf(self):
+                return b"%PDF-test"
+
+        monkeypatch.setitem(sys.modules, "weasyprint", types.SimpleNamespace(HTML=_FakeHtml))
+        report_urls = (
+            f"/cms/cases/{case.id}/report",
+            f"/cms/workflow/case/{case.id}/pv",
+            f"/cms/cases/{case.id}/report-pdf",
+        )
+        for url in report_urls:
+            response = auth_client.get(url)
+            assert response.status_code == 200
+            body = rendered["html"] if url.endswith("report-pdf") else response.get_data(as_text=True)
+            assert keep.title in body
+            assert archived.title not in body
+            assert archived.comment not in body
+
+        titles = {row["title"] for row in _build_report_context(case)["findings"]}
+        assert keep.title in titles
+        assert archived.title not in titles
+
 
 class TestReportScreenshotEvidence:
+    def test_template_context_has_private_screenshot_and_safe_source(
+        self, app, db_session, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(app, "instance_path", str(tmp_path))
+        case = _orm_case("Template Screenshot Evidence")
+        finding = _orm_finding(case, _admin_user(), "template evidence")
+        finding.comment = "Template comment"
+        finding.source_url = "https://example.org/source"
+        evidence_dir = tmp_path / "finding_screenshots" / finding.id
+        evidence_dir.mkdir(parents=True)
+        evidence_file = evidence_dir / "evidence.png"
+        Image.new("RGB", (8, 8), "navy").save(evidence_file)
+        db.session.add(
+            FindingScreenshot(
+                tenant_id=case.tenant_id,
+                finding_id=finding.id,
+                source_url="https://example.org/captured",
+                file_path=str(evidence_file),
+            )
+        )
+        db.session.commit()
+
+        with app.test_request_context("/"):
+            row = _build_report_context(case)["findings"][0]
+        assert row["comment"] == "Template comment"
+        assert row["source_url"] == "https://example.org/source"
+        assert row["screenshots"][0]["original_url"] == (
+            f"/cms/workflow/uploads/{finding.id}/evidence.png"
+        )
+        assert row["screenshots"][0]["source_url"] == "https://example.org/captured"
+
     def test_html_report_uses_private_evidence_not_external_image(
         self, app, auth_client, db_session, monkeypatch, tmp_path
     ):

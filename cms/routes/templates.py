@@ -20,8 +20,9 @@ from ..models import (
     DocumentTemplate,
     Document,
     AuditLog,
-    report_include_filter,
+    report_visible_finding_filter,
 )
+from ..services.report_evidence import report_screenshots, safe_source_url
 from ..auth import (
     roles_required,
     case_access_required,
@@ -291,8 +292,7 @@ def _build_report_context(case: Case) -> dict:
 
         context["findings"] = []
         for finding in (
-            case.findings.filter_by(is_deleted=False)
-            .filter(report_include_filter())
+            case.findings.filter(report_visible_finding_filter())
             .all()
         ):
             context["findings"].append(
@@ -300,6 +300,8 @@ def _build_report_context(case: Case) -> dict:
                     "title": finding.title,
                     "description": finding.content,  # Finding uses 'content' not 'description'
                     "comment": finding.comment,
+                    "source_url": safe_source_url(finding.source_url),
+                    "screenshots": report_screenshots(finding),
                     "finding_type": finding.finding_type,
                     # Map confidence_level to severity
                     "severity": finding.confidence_level or "medium",
