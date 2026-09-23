@@ -22,6 +22,127 @@ function readScopeSelect(overlay) {
   return sel && sel.value ? sel.value : null;
 }
 
+// Source research is a durable, passive worker job rather than an immediate
+// ACTION_REGISTRY handler.  It deliberately uses the same case-wide action
+// picker as the other actions, including the optional investigation scope.
+function showSourceResearchPicker(reviewActionId) {
+  var overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  var subjectOptions = '<option value="">{{ _('— Case-wide target —') }}</option>';
+  SUBJECTS.forEach(function(s) {
+    subjectOptions += '<option value="' + esc(s.id) + '">' + esc(s.name || '{{ _('Unknown') }}') + '</option>';
+  });
+  overlay.innerHTML =
+    '<div class="picker-modal">' +
+      '<div class="picker-header"><h3>🕷️ {{ _('Deep source research') }}</h3><button class="picker-close" data-action="close-source-research">&times;</button></div>' +
+      '<div class="picker-body">' +
+        '<div class="source-research-form">' +
+        '<p style="margin-top:0;color:var(--text-muted);font-size:0.85rem;">{{ _('This starts passive source research in the background. It can take a little while; you can continue working meanwhile.') }}</p>' +
+        '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;">{{ _('Target type') }}</label>' +
+        '<select class="source-target-type" style="width:100%;margin-bottom:0.65rem;padding:0.45rem;"><option value="person">{{ _('Person or name') }}</option><option value="username">{{ _('Username') }}</option><option value="email">{{ _('Email address') }}</option><option value="phone_number">{{ _('Phone number') }}</option><option value="domain">{{ _('Domain') }}</option><option value="subdomain">{{ _('Subdomain') }}</option><option value="url">URL</option><option value="ip">IP</option><option value="ipv6">IPv6</option><option value="company">{{ _('Company') }}</option><option value="organization">{{ _('Organization') }}</option><option value="vessel">{{ _('Vessel') }}</option><option value="license_plate">{{ _('License plate') }}</option><option value="vin">VIN</option></select>' +
+        '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;">{{ _('Search target') }}</label>' +
+        '<input class="source-target-value" type="text" style="width:100%;box-sizing:border-box;margin-bottom:0.65rem;padding:0.45rem;" autofocus>' +
+        '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;">{{ _('Subject (optional)') }}</label>' +
+        '<select class="source-subject" style="width:100%;margin-bottom:0.65rem;padding:0.45rem;">' + subjectOptions + '</select>' +
+        '<div style="display:flex;gap:0.5rem;justify-content:flex-end;"><button class="action-btn" data-action="close-source-research" style="background:var(--border-color);color:var(--text-primary);">{{ _('Cancel') }}</button><button class="action-btn source-start" style="background:#1877f2;color:#fff;font-weight:600;">{{ _('Start') }}</button></div>' +
+        '</div>' +
+        '<div class="source-research-status" aria-live="polite" style="font-size:0.82rem;margin:0.5rem 0;"></div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  var targetInput = overlay.querySelector('.source-target-value');
+  var status = overlay.querySelector('.source-research-status');
+  var start = overlay.querySelector('.source-start');
+  var formBox = overlay.querySelector('.source-research-form');
+  if (!reviewActionId) targetInput.focus();
+
+  function close() { overlay.remove(); }
+  function poll(actionId, remaining) {
+    if (remaining <= 0) { status.textContent = '{{ _('Research is still running. You can refresh this page later.') }}'; return; }
+    window.setTimeout(function() {
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/source-research/' + encodeURIComponent(actionId), {headers: {'Accept': 'application/json'}})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.ok) throw new Error(data.error || '{{ _('Could not check research status.') }}');
+          if (data.scan.status === 'completed') {
+            renderProposals(actionId, data.scan.proposals || []);
+          } else if (data.scan.status === 'failed' || data.scan.status === 'cancelled') {
+            status.textContent = '{{ _('Research could not be completed.') }}';
+          } else {
+            status.textContent = '{{ _('Research is running…') }}' + (typeof data.scan.progress === 'number' ? ' ' + data.scan.progress + '%' : '');
+            poll(actionId, remaining - 1);
+          }
+        }).catch(function(error) { status.textContent = error.message || '{{ _('Could not check research status.') }}'; });
+    }, 2000);
+  }
+  function renderProposals(actionId, proposals) {
+    status.replaceChildren();
+    if (!proposals.length) {
+      status.textContent = '{{ _('No reviewable results were returned.') }}';
+      return;
+    }
+    var intro = document.createElement('p');
+    intro.textContent = '{{ _('Select the results you want to add as findings.') }}';
+    status.appendChild(intro);
+    var list = document.createElement('div');
+    proposals.forEach(function(proposal, index) {
+      var label = document.createElement('label');
+      label.style.cssText = 'display:flex;gap:0.45rem;align-items:flex-start;padding:0.35rem 0;border-bottom:1px solid var(--border-color);';
+      var checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = String(index);
+      var text = document.createElement('span'); text.textContent = (proposal.type || '{{ _('Unknown') }}') + ': ' + (proposal.data || '');
+      label.appendChild(checkbox); label.appendChild(text); list.appendChild(label);
+    });
+    status.appendChild(list);
+    var importButton = document.createElement('button');
+    importButton.type = 'button'; importButton.className = 'btn-cms small'; importButton.style.marginTop = '0.75rem';
+    importButton.textContent = '{{ _('Add selected findings') }}';
+    importButton.addEventListener('click', function() {
+      var selected = Array.prototype.map.call(list.querySelectorAll('input:checked'), function(input) { return Number(input.value); });
+      if (!selected.length) { window.showToast('{{ _('Select at least one result.') }}', 'error'); return; }
+      importButton.disabled = true;
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/source-research/' + encodeURIComponent(actionId) + '/import', {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({proposal_indexes: selected}),
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.ok) throw new Error(data.error || '{{ _('Could not add findings.') }}');
+        window.location.reload();
+      }).catch(function(error) { window.showToast(error.message || '{{ _('Could not add findings.') }}', 'error'); importButton.disabled = false; });
+    });
+    status.appendChild(importButton);
+  }
+  start.addEventListener('click', function() {
+    var target = targetInput.value.trim();
+    if (!target) { targetInput.focus(); return; }
+    start.disabled = true;
+    fetch('/cms/workflow/api/case/' + CASE_ID + '/source-research', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+      body: JSON.stringify({
+        target_type: overlay.querySelector('.source-target-type').value,
+        target_value: target,
+        subject_id: overlay.querySelector('.source-subject').value || null,
+        investigation_id: null,
+      }),
+    }).then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok) throw new Error(data.error || '{{ _('Could not start research.') }}');
+        start.style.display = 'none';
+        status.textContent = '{{ _('Research queued. Waiting for the background worker…') }}';
+        poll(data.action.id, 150);
+      }).catch(function(error) {
+        status.textContent = error.message || '{{ _('Could not start research.') }}';
+        start.disabled = false;
+      });
+  });
+  overlay.querySelectorAll('[data-action="close-source-research"]').forEach(function(el) { el.addEventListener('click', close); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+  if (reviewActionId) {
+    formBox.hidden = true;
+    status.textContent = '{{ _('Checking research status…') }}';
+    poll(reviewActionId, 1);
+  }
+}
+
 function showActionPicker(actionType, mode) {
   mode = mode || 'run';
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
@@ -34,6 +155,10 @@ function showActionPicker(actionType, mode) {
   if (actionType === 'photo_analysis') {
     if (mode === 'proposal') { showToast('Photo analysis cannot be proposed.', 'warning'); return; }
     showPhotoAnalysisPicker();
+    return;
+  }
+  if (actionType === 'source_research') {
+    showSourceResearchPicker();
     return;
   }
 

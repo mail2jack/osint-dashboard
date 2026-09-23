@@ -121,9 +121,6 @@
       {% if can_start_actions %}
       <button type="button" class="btn-cms small" data-open-start-action style="font-size:0.8rem;padding:0.2rem 0.6rem;">🚀 {{ _('Start Action') }}</button>
       {% endif %}
-      {% if source_research_enabled %}
-      <button type="button" class="btn-cms small" data-open-source-research style="font-size:0.8rem;padding:0.2rem 0.6rem;">🕷️ {{ _('Deep source research') }}</button>
-      {% endif %}
       <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" data-confirm-archive="{{ _('Archive this investigation?') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);padding:0.2rem 0.6rem;cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
@@ -388,7 +385,26 @@
           <label class="lbl" for="wsActionDataValue">{{ _('Data value') }}</label>
           <input type="text" id="wsActionDataValue" name="data_value" placeholder="">
         </div>
-        <div class="ws-mode">
+        <div class="ws-field" id="wsSourceTargetTypeWrap" hidden>
+          <label class="lbl" for="wsSourceTargetType">{{ _('Target type') }}</label>
+          <select id="wsSourceTargetType" name="source_target_type">
+            <option value="person">{{ _('Person or name') }}</option>
+            <option value="username">{{ _('Username') }}</option>
+            <option value="email">{{ _('Email address') }}</option>
+            <option value="phone_number">{{ _('Phone number') }}</option>
+            <option value="domain">{{ _('Domain') }}</option>
+            <option value="subdomain">{{ _('Subdomain') }}</option>
+            <option value="url">URL</option>
+            <option value="ip">IP</option>
+            <option value="ipv6">IPv6</option>
+            <option value="company">{{ _('Company') }}</option>
+            <option value="organization">{{ _('Organization') }}</option>
+            <option value="vessel">{{ _('Vessel') }}</option>
+            <option value="license_plate">{{ _('License plate') }}</option>
+            <option value="vin">VIN</option>
+          </select>
+        </div>
+        <div class="ws-mode" id="wsActionMode">
           <label><input type="radio" name="mode" value="run" checked> ▶ {{ _('Run now') }}</label>
           <label><input type="radio" name="mode" value="proposal"> 📌 {{ _('Save as proposal') }}</label>
         </div>
@@ -454,14 +470,21 @@
   var typeSel = document.getElementById('wsActionType');
   var valueInput = document.getElementById('wsActionDataValue');
   var valueLabel = document.querySelector('label[for="wsActionDataValue"]');
+  var sourceTypeWrap = document.getElementById('wsSourceTargetTypeWrap');
+  var modeWrap = document.getElementById('wsActionMode');
   var HINTS = {
     google_dork: { lbl: '{{ _('Dork query') }}', ph: 'site:domein.nl' },
     browser_search: { lbl: '{{ _('Search query') }}', ph: '' },
   };
   function refreshDataValueHint() {
     var hints = HINTS[typeSel ? typeSel.value : ''];
-    if (hints && valueLabel) valueLabel.textContent = hints.lbl;
-    if (hints && valueInput) valueInput.placeholder = hints.ph || '';
+    var isSourceResearch = typeSel && typeSel.value === 'source_research';
+    if (sourceTypeWrap) sourceTypeWrap.hidden = !isSourceResearch;
+    if (modeWrap) modeWrap.hidden = isSourceResearch;
+    if (isSourceResearch && valueLabel) valueLabel.textContent = '{{ _('Search target') }}';
+    else if (hints && valueLabel) valueLabel.textContent = hints.lbl;
+    else if (valueLabel) valueLabel.textContent = '{{ _('Data value') }}';
+    if (valueInput) valueInput.placeholder = isSourceResearch ? '{{ _('Enter the target to research') }}' : (hints ? hints.ph || '' : '');
   }
   if (typeSel) {
     typeSel.addEventListener('change', refreshDataValueHint);
@@ -484,21 +507,35 @@
     form._submitting = true;
     if (submitBtn) { submitBtn.disabled = true; }
 
-    window.apiFetch('/cms/workflow/api/case/{{ case.id }}/run-action', {
+    var isSourceResearch = actionType === 'source_research';
+    var endpoint = isSourceResearch
+      ? '/cms/workflow/api/case/{{ case.id }}/source-research'
+      : '/cms/workflow/api/case/{{ case.id }}/run-action';
+    var payload = isSourceResearch
+      ? {
+          target_type: document.getElementById('wsSourceTargetType').value,
+          target_value: dataValue,
+          subject_id: subjectId,
+          investigation_id: investigationId,
+        }
+      : {
+          action_type: actionType,
+          data_value: dataValue,
+          subject_id: subjectId,
+          investigation_id: investigationId,
+          mode: mode,
+        };
+    window.apiFetch(endpoint, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-      body: JSON.stringify({
-        action_type: actionType,
-        data_value: dataValue,
-        subject_id: subjectId,
-        investigation_id: investigationId,
-        mode: mode,
-      }),
+      body: JSON.stringify(payload),
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (data.error) { window.showToast(data.error, 'error'); return; }
-      var msg = mode === 'proposal'
+      var msg = isSourceResearch
+        ? '{{ _('Research queued. Refreshing this page…') }}'
+        : mode === 'proposal'
         ? '{{ _('Proposal saved.') }}'
         : '{{ _('Action started.') }}';
       window.showToast(msg, 'success');

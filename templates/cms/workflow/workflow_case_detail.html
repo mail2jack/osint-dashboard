@@ -561,6 +561,14 @@ input:-webkit-autofill:focus {
       </div>
       {% endif %}
       {% endfor %}
+      {% if source_research_enabled %}
+      <div class="action-btn" data-action="run-action" data-action-key="source_research" data-icon="🕷️" data-label="{{ _('Deep source research') }}" data-category="open" title="{{ _('Run passive background research through the configured source-research service.') }}">
+        <div class="icon">🕷️</div>
+        <div class="label">{{ _('Deep source research') }}</div>
+        <span class="cat-badge cat-open">🌐</span>
+        <div class="desc">{{ _('Passive background research') }}</div>
+      </div>
+      {% endif %}
     </div>
     <div id="proposalsSection" class="proposals-section" style="display:none;">
       <div class="proposals-header">📌 Proposals <span id="proposalsCount"></span></div>
@@ -628,7 +636,7 @@ input:-webkit-autofill:focus {
 
       <div id="findings-list">
         {% for aid, group in action_groups|dictsort %}
-          {% if group.findings %}
+          {% if group.findings or group.action.action_type == 'source_research' %}
           {% set act = group.action %}
           {% set type_info = action_types.get(act.action_type, {}) %}
            <div class="finding-group">
@@ -653,6 +661,9 @@ input:-webkit-autofill:focus {
                 {% endif %}
                 {% endif %}
                 <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
+               {% if act.action_type == 'source_research' %}
+               <button type="button" class="btn-cms small" data-review-case-source-research="{{ act.id }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ _('Review results') }}</button>
+               {% endif %}
                <span class="fg-count">{{ group.findings|length }}</span>
                {% if act.completed_at %}
                <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>

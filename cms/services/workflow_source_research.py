@@ -102,7 +102,7 @@ def spiderfoot_seed_for(target_type: str, target: str) -> tuple[str, str]:
 
 
 def queue_passive_source_research(
-    *, case, investigation, actor, target_type: object, target_value: object, subject=None
+    *, case, investigation=None, actor, target_type: object, target_value: object, subject=None
 ) -> tuple[WorkflowResearchAction, SpiderFootScan]:
     """Add one native passive-research action and its pending scan atomically.
 
@@ -114,13 +114,15 @@ def queue_passive_source_research(
     target_type, target = validate_target(target_type, target_value)
     spiderfoot_target, spiderfoot_target_type = spiderfoot_seed_for(target_type, target)
 
-    if not case or not investigation or not actor:
-        raise SourceResearchRejected("Case, investigation and actor are required")
-    if case.tenant_id != investigation.tenant_id or case.id != investigation.case_id:
+    if not case or not actor:
+        raise SourceResearchRejected("Case and actor are required")
+    if investigation is not None and (
+        case.tenant_id != investigation.tenant_id or case.id != investigation.case_id
+    ):
         raise SourceResearchRejected("Investigation does not belong to this case")
     if actor.tenant_id != case.tenant_id:
         raise SourceResearchRejected("Actor does not belong to this tenant")
-    if (
+    if investigation is not None and (
         investigation.status != InvestigationStatus.OPEN.value
         or investigation.archived_at is not None
     ):
@@ -136,8 +138,8 @@ def queue_passive_source_research(
         tenant_id=case.tenant_id,
         case_id=case.id,
         subject_id=subject.id if subject is not None else None,
-        investigation_id=investigation.id,
-        target_kind="subject" if subject is not None else "investigation",
+        investigation_id=investigation.id if investigation is not None else None,
+        target_kind="subject" if subject is not None else "case",
         target_snapshot=json.dumps(
             {
                 "subject_id": subject.id if subject is not None else None,
@@ -166,7 +168,7 @@ def queue_passive_source_research(
         target_type=spiderfoot_target_type,
         case_id=case.id,
         subject_id=subject.id if subject is not None else None,
-        investigation_id=investigation.id,
+        investigation_id=investigation.id if investigation is not None else None,
         research_action_id=action.id,
         use_case="passive",
         profile=passive_profile_for(target_type),
