@@ -132,7 +132,7 @@
         <input type="text" name="q" placeholder="{{ _('Search by case number, name, email, phone, address...') }}" autofocus data-immediate-search>
     </form>
     <div class="quick-links">
-        <a href="{{ url_for('cms.cases') }}">📁 {{ _('All Cases') }}</a>
+        <a href="{{ url_for('workflow.dashboard') if investigator_primary_navigation and current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') else url_for('cms.cases') }}">📁 {{ _('All Cases') }}</a>
         <a href="{{ url_for('cms.create_case') }}">➕ {{ _('New Case') }}</a>
         <a href="{{ url_for('cms.subjects') }}">👤 {{ _('All Subjects') }}</a>
         <a href="{{ url_for('cms.create_subject') }}">➕ {{ _('New Subject') }}</a>
@@ -195,7 +195,7 @@
         <tbody>
             {% for case in my_cases %}
             <tr>
-                <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:40] }}{% if case.title|length > 40 %}...{% endif %}</td>
+                <td><a href="{{ url_for('workflow.case_detail', case_id=case.id) if investigator_primary_navigation and current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') else url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:40] }}{% if case.title|length > 40 %}...{% endif %}</td>
                 <td><span class="badge badge-{{ case.status }}">{{ case.status }}</span></td>
                 <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
                 <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else '-' }}</td>

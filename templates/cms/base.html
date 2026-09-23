@@ -169,6 +169,8 @@
               <div class="nav-dropdown-menu" id="entity-nav-menu">
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') %}
                 <a href="{{ url_for('workflow.dashboard') }}">{{ _('Cases') }}</a>
+                {% elif investigator_primary_navigation %}
+                <a href="{{ url_for('cms.cases') }}">{{ _('Cases') }}</a>
                 {% endif %}
                 <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
                 <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
@@ -176,8 +178,10 @@
                 {% if current_user.has_role('admin', 'senior_investigator') %}
                 <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
                 {% endif %}
+                {% if not investigator_primary_navigation %}
                 <div style="border-top:1px solid rgba(255,255,255,0.15);margin:0.4rem 0.5rem;"></div>
                 <a href="{{ url_for('cms.cases') }}">{{ _('Legacy cases') }}</a>
+                {% endif %}
               </div>
             </div>
             {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Invoices') }}</a>{% endif %}

@@ -216,6 +216,9 @@ class TestDetailAuthMatrix:
         client = _login_as(app.test_client(), viewer)
         resp = client.get(_detail_url(case_id, inv.id))
         assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert f'href="/cms/cases/{case_id}"' in body
+        assert f'href="/cms/workflow/case/{case_id}"' not in body
 
     def test_viewer_without_case_access_gets_403(self, app, auth_client):
         tid = _admin_tenant_id()

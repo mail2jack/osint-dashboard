@@ -226,6 +226,22 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"theme_style": "classic", "app_logo": ""}
 
+    @app.context_processor
+    def inject_investigator_navigation():
+        """Keep the old navigation unless both rollout gates are enabled."""
+        from flask_login import current_user
+
+        if not current_user.is_authenticated or not current_user.tenant_id:
+            return {"investigator_primary_navigation": False}
+        from .tier_limits import check_feature
+
+        return {
+            "investigator_primary_navigation": check_feature(
+                "investigator_primary_navigation"
+            )
+            and check_feature("investigation_workspace")
+        }
+
     # Inject license banner state into all templates (only when license is not
     # fully active, e.g. trial / expired / revoked / invalid).
     @app.context_processor
