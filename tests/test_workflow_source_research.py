@@ -12,6 +12,7 @@ from cms.services.workflow_source_research import (
     queue_passive_source_research,
     validate_target,
 )
+from cms.services import workflow_source_research_worker as source_worker
 from cms.workflow.models import WorkflowResearchAction
 
 
@@ -219,3 +220,114 @@ def test_route_rejects_archived_investigation_without_partial_records(auth_clien
     assert response.status_code == 409
     assert WorkflowResearchAction.query.count() == before_actions
     assert SpiderFootScan.query.count() == before_scans
+
+
+class _FakeSpiderFoot:
+    def __init__(self, *, status=None):
+        self.status = status or {"status": "finished", "progress": 100}
+        self.started = []
+
+    def is_available(self):
+        return True
+
+    def start_scan(self, **kwargs):
+        self.started.append(kwargs)
+        return {"scan_id": "external-passive-scan"}
+
+    def get_scan_status(self, scan_id):
+        assert scan_id == "external-passive-scan"
+        return self.status
+
+    def get_scan_results(self, scan_id, limit=250):
+        assert scan_id == "external-passive-scan"
+        assert limit == 250
+        return [
+            {
+                "type": "EMAILADDR",
+                "data": "analyst@example.test",
+                "sourceModule": "sfp_example",
+                "sourceUrl": "https://example.test/evidence",
+                "raw": ["not persisted"],
+            }
+        ]
+
+    def get_result_summary(self, results):
+        return {"EMAILADDR": len(results)}
+
+
+def test_worker_starts_and_completes_only_passive_scan(auth_client, monkeypatch):
+    _enable_workflow_source_research()
+    case, investigation, subject = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="email",
+        target_value="analyst@example.test",
+        subject=subject,
+    )
+    db.session.commit()
+    fake = _FakeSpiderFoot()
+    monkeypatch.setattr(source_worker, "get_source_research_service", lambda: fake)
+
+    assert source_worker.start_one_source_research() == "started"
+    db.session.expire_all()
+    persisted_scan = db.session.get(SpiderFootScan, scan.id)
+    persisted_action = db.session.get(WorkflowResearchAction, action.id)
+    assert persisted_scan.status == persisted_action.status == "running"
+    assert persisted_scan.scan_id == "external-passive-scan"
+    assert fake.started == [
+        {
+            "target": "analyst@example.test",
+            "target_type": "EMAILADDR",
+            "scan_name": "Passive source research: analyst@example.test",
+            "use_case": "passive",
+            "profile": "investigation",
+        }
+    ]
+
+    assert source_worker.refresh_one_source_research() == "completed"
+    db.session.expire_all()
+    persisted_scan = db.session.get(SpiderFootScan, scan.id)
+    persisted_action = db.session.get(WorkflowResearchAction, action.id)
+    assert persisted_scan.status == persisted_action.status == "completed"
+    assert persisted_scan.result_count == 1
+    assert persisted_scan.result_summary == {
+        "summary": {"EMAILADDR": 1},
+        "proposals": [
+            {
+                "type": "EMAILADDR",
+                "data": "analyst@example.test",
+                "source_module": "sfp_example",
+                "source_url": "https://example.test/evidence",
+            }
+        ],
+    }
+    assert "raw" not in str(persisted_scan.result_summary)
+
+
+def test_worker_honours_feature_kill_switch_before_external_start(auth_client, monkeypatch):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    db.session.commit()
+    FeatureFlag.query.filter_by(
+        tenant_id=case.tenant_id, flag_name="workflow_spiderfoot"
+    ).update({"enabled": False})
+    db.session.commit()
+    monkeypatch.setattr(
+        source_worker,
+        "get_source_research_service",
+        lambda: (_ for _ in ()).throw(AssertionError("external service must not run")),
+    )
+
+    assert source_worker.start_one_source_research() == "disabled"
+    db.session.expire_all()
+    assert db.session.get(SpiderFootScan, scan.id).status == "failed"
+    assert db.session.get(WorkflowResearchAction, action.id).status == "error"

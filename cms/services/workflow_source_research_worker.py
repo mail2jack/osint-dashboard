@@ -1,0 +1,253 @@
+"""Bounded worker operations for workflow-native passive source research.
+
+The worker starts at most one queued SpiderFoot scan or refreshes at most one
+running scan per invocation.  It must run outside Gunicorn with an explicit
+RLS bypass because it operates across tenants; the rows themselves retain
+their tenant, case, investigation and action references.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+
+import sqlalchemy as sa
+
+from cms.models import SpiderFootScan, db
+from cms.tenant_context import set_tenant_context
+from cms.tier_limits import check_feature
+from cms.workflow.models import WorkflowResearchAction
+
+logger = logging.getLogger(__name__)
+
+_QUEUED_PREFIX = "queued:"
+_TERMINAL = {"completed", "failed", "cancelled"}
+
+
+def _worker_context() -> None:
+    """Establish the only cross-tenant context used by this worker."""
+    set_tenant_context(db, None, bypass_rls=True)
+
+
+def get_source_research_service():
+    """Construct the configured SpiderFoot client without importing a route."""
+    from cms.setting_cache import cached_setting_get
+    from cms.spiderfoot_service import SpiderFootConfig, SpiderFootService
+
+    return SpiderFootService(
+        SpiderFootConfig(
+            base_url=cached_setting_get("spiderfoot_url", "http://localhost:5001")
+            or "http://localhost:5001",
+            username=cached_setting_get("spiderfoot_username", "admin") or "admin",
+            password=cached_setting_get("spiderfoot_password", "") or "",
+        )
+    )
+
+
+def _next_scan(*, status: str, queued_only: bool = False) -> SpiderFootScan | None:
+    statement = (
+        sa.select(SpiderFootScan)
+        .where(
+            SpiderFootScan.research_action_id.is_not(None),
+            SpiderFootScan.is_deleted.is_(False),
+            SpiderFootScan.status == status,
+        )
+        .order_by(SpiderFootScan.created_at, SpiderFootScan.id)
+        .limit(1)
+    )
+    if queued_only:
+        statement = statement.where(SpiderFootScan.scan_id.startswith(_QUEUED_PREFIX))
+    if db.session.bind and db.session.bind.dialect.name == "postgresql":
+        statement = statement.with_for_update(skip_locked=True)
+    return db.session.execute(statement).scalar_one_or_none()
+
+
+def _set_failed(scan_id: str, message: str) -> None:
+    """Record a bounded, non-sensitive failure on both linked records."""
+    _worker_context()
+    scan = db.session.get(SpiderFootScan, scan_id)
+    if scan is None:
+        db.session.rollback()
+        return
+    scan.update_status("failed")
+    action = db.session.get(WorkflowResearchAction, scan.research_action_id)
+    if action is not None:
+        action.status = "error"
+        action.error = message[:500]
+        action.completed_at = datetime.now(timezone.utc)
+        action.result_summary = "Source research could not be started"
+    db.session.commit()
+
+
+def _scan_status(raw: object) -> tuple[str, int | None]:
+    """Map permissive SpiderFoot API status payloads to local lifecycle values."""
+    if not isinstance(raw, dict):
+        return "running", None
+    value = str(raw.get("status") or raw.get("state") or "running").lower()
+    status = {
+        "finished": "completed",
+        "complete": "completed",
+        "completed": "completed",
+        "error": "failed",
+        "failed": "failed",
+        "aborted": "cancelled",
+        "cancelled": "cancelled",
+    }.get(value, "running")
+    progress = raw.get("progress")
+    return status, progress if isinstance(progress, int) and 0 <= progress <= 100 else None
+
+
+def _safe_proposals(results: list[dict]) -> list[dict]:
+    """Store a bounded review snapshot; never retain SpiderFoot raw payloads."""
+    proposals = []
+    for result in results[:250]:
+        if not isinstance(result, dict):
+            continue
+        proposals.append(
+            {
+                "type": str(result.get("type") or "UNKNOWN")[:100],
+                "data": str(
+                    result.get("data") or result.get("dataTransformed") or ""
+                )[:2000],
+                "source_module": str(result.get("sourceModule") or "")[:200],
+                "source_url": str(result.get("sourceUrl") or "")[:2000],
+            }
+        )
+    return proposals
+
+
+def start_one_source_research() -> str:
+    """Claim and start at most one queued passive scan, never from a request."""
+    _worker_context()
+    scan = _next_scan(status="pending", queued_only=True)
+    if scan is None:
+        db.session.commit()
+        return "idle"
+    scan_id = scan.id
+    action_id = scan.research_action_id
+    tenant_id = scan.tenant_id
+    scan.update_status("running", progress=0)
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if action is None:
+        db.session.rollback()
+        _set_failed(scan_id, "Source research action is unavailable")
+        return "failed"
+    action.status = "running"
+    action.started_at = datetime.now(timezone.utc)
+    action.result_summary = "Passive source research is starting"
+    db.session.commit()
+
+    # A flag may have been disabled after the request was stored.  Re-check at
+    # execution time, before any external connection is attempted.
+    _worker_context()
+    if not (
+        check_feature("workflow_spiderfoot", tenant_id)
+        and check_feature("spiderfoot", tenant_id)
+    ):
+        _set_failed(scan_id, "Source research is disabled for this tenant")
+        return "disabled"
+
+    try:
+        service = get_source_research_service()
+        if not service.is_available():
+            _set_failed(scan_id, "Source research service is unavailable")
+            return "failed"
+        # Reload the record under the worker context after the external client
+        # initialization: a pooled connection may have changed.
+        _worker_context()
+        current = db.session.get(SpiderFootScan, scan_id)
+        if current is None or current.status != "running":
+            db.session.rollback()
+            return "cancelled"
+        result = service.start_scan(
+            target=current.target_value,
+            target_type=current.target_type,
+            scan_name=current.scan_name,
+            use_case="passive",
+            profile=current.profile,
+        )
+        real_scan_id = result.get("scan_id") if isinstance(result, dict) else None
+        if not isinstance(real_scan_id, str) or not real_scan_id:
+            _set_failed(scan_id, "Source research service did not accept the request")
+            return "failed"
+        current.scan_id = real_scan_id[:100]
+        current.status = "running"
+        action = db.session.get(WorkflowResearchAction, action_id)
+        if action is not None:
+            action.result_summary = "Passive source research is running"
+        db.session.commit()
+        return "started"
+    except Exception:
+        logger.exception("Workflow source-research start failed scan_id=%s", scan_id)
+        db.session.rollback()
+        _set_failed(scan_id, "Source research worker could not start the scan")
+        return "failed"
+
+
+def refresh_one_source_research() -> str:
+    """Refresh at most one running source-research scan and cache proposals."""
+    _worker_context()
+    scan = _next_scan(status="running")
+    if scan is None or scan.scan_id.startswith(_QUEUED_PREFIX):
+        db.session.commit()
+        return "idle"
+    scan_id = scan.id
+    external_id = scan.scan_id
+    db.session.commit()
+
+    try:
+        service = get_source_research_service()
+        status_payload = service.get_scan_status(external_id)
+        status, progress = _scan_status(status_payload)
+        if status == "running":
+            _worker_context()
+            current = db.session.get(SpiderFootScan, scan_id)
+            if current is not None and current.status == "running" and progress is not None:
+                current.progress = progress
+                db.session.commit()
+            else:
+                db.session.rollback()
+            return "running"
+
+        proposals: list[dict] = []
+        summary: dict = {}
+        if status == "completed":
+            results = service.get_scan_results(external_id, limit=250)
+            proposals = _safe_proposals(results)
+            summary = service.get_result_summary(results)
+
+        _worker_context()
+        current = db.session.get(SpiderFootScan, scan_id)
+        if current is None or current.status != "running":
+            db.session.rollback()
+            return "cancelled"
+        current.update_status(status, progress=100 if status == "completed" else None)
+        current.result_count = len(proposals)
+        current.result_summary = {"summary": summary, "proposals": proposals}
+        action = db.session.get(WorkflowResearchAction, current.research_action_id)
+        if action is not None:
+            action.status = "completed" if status == "completed" else "error"
+            action.completed_at = datetime.now(timezone.utc)
+            action.result_summary = (
+                f"{len(proposals)} reviewable source-research results"
+                if status == "completed"
+                else "Source research did not complete"
+            )
+            if status != "completed":
+                action.error = "Source research service did not complete the scan"
+        db.session.commit()
+        return status
+    except Exception:
+        logger.exception("Workflow source-research refresh failed scan_id=%s", scan_id)
+        db.session.rollback()
+        # A transient status failure is retained as running.  We never discard
+        # a scan just because a single poll could not reach SpiderFoot.
+        return "retry"
+
+
+def process_one_source_research() -> str:
+    """Perform one bounded start or refresh operation for the worker loop."""
+    started = start_one_source_research()
+    if started != "idle":
+        return started
+    return refresh_one_source_research()
