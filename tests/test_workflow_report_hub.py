@@ -96,8 +96,10 @@ def test_report_hub_never_requires_a_template(client):
     assert f"/cms/workflow/case/{case.id}/pv" in body
     assert f"/cms/cases/{case.id}/report" in body
     assert f"/cms/cases/{case.id}/report-pdf" in body
-    assert "No document templates have been configured" in body
-    assert "You can still view the live report and download its PDF above." in body
+    # The app's locale can be selected by a preceding request in the shared
+    # test process.  Assert the stable report controls, not English copy.
+    assert "Create a document template" in body or "Documentsjabloon maken" in body
+    assert "/cms/templates/create" in body
 
 
 def test_report_hub_lists_tenant_template_and_preselects_it(auth_client):
@@ -168,4 +170,4 @@ def test_case_detail_links_linked_subject_to_profile(auth_client):
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert f'/cms/subjects/{subject.id}/profile' in body
-    assert "Open subject profile" in body
+    assert 'class="subject-profile-link"' in body
