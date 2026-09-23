@@ -12,6 +12,10 @@ hoofdnavigatie, dashboard, case-create, case-detail, het
 child-investigations-overzicht, het PV en het Subject Profile — in NL en EN.
 """
 
+import uuid
+
+from bs4 import BeautifulSoup
+
 from cms.models import Case, FeatureFlag, User, db
 
 
@@ -58,6 +62,81 @@ def _case_with_subject(auth_client, title="Nav Terminology Case"):
 
 
 class TestMainNav:
+    def test_primary_navigation_requires_both_flags_and_preserves_legacy_routes(
+        self, auth_client
+    ):
+        tenant_id = _admin().tenant_id
+
+        def links():
+            response = auth_client.get("/cms/workflow/")
+            assert response.status_code == 200
+            menu = BeautifulSoup(response.data, "html.parser").select_one(
+                "#entity-nav-menu"
+            )
+            return [(a.get_text(strip=True), a.get("href")) for a in menu.select("a")]
+
+        assert any("Legacy cases" in label for label, _ in links())
+        db.session.add(
+            FeatureFlag(
+                tenant_id=tenant_id,
+                flag_name="investigator_primary_navigation",
+                enabled=True,
+            )
+        )
+        db.session.commit()
+        assert any("Legacy cases" in label for label, _ in links())
+
+        db.session.add(
+            FeatureFlag(
+                tenant_id=tenant_id, flag_name="investigation_workspace", enabled=True
+            )
+        )
+        db.session.commit()
+        enabled_links = links()
+        assert ("Cases", "/cms/workflow/") in enabled_links
+        assert not any("Legacy cases" in label for label, _ in enabled_links)
+        # Hiding a menu entry does not break existing bookmarks or write routes.
+        assert auth_client.get("/cms/cases").status_code == 200
+
+    def test_reader_gets_accessible_cases_link_when_navigation_enabled(
+        self, app, auth_client
+    ):
+        tenant_id = _admin().tenant_id
+        db.session.add_all(
+            [
+                FeatureFlag(tenant_id=tenant_id, flag_name=name, enabled=True)
+                for name in (
+                    "investigator_primary_navigation",
+                    "investigation_workspace",
+                )
+            ]
+        )
+        token = uuid.uuid4().hex[:8]
+        viewer = User(
+            username=f"nav_viewer_{token}",
+            email=f"nav_viewer_{token}@localhost",
+            full_name="Navigation Viewer",
+            tenant_id=tenant_id,
+            role="viewer",
+            is_active=True,
+        )
+        viewer.set_password("Test1234!")
+        db.session.add(viewer)
+        db.session.commit()
+        viewer_client = app.test_client()
+        with viewer_client.session_transaction() as sess:
+            sess["_user_id"] = str(viewer.id)
+            sess["_fresh"] = True
+        response = viewer_client.get("/cms/cases")
+        assert response.status_code == 200
+        menu = BeautifulSoup(response.data, "html.parser").select_one(
+            "#entity-nav-menu"
+        )
+        assert ("Cases", "/cms/cases") in [
+            (a.get_text(strip=True), a.get("href")) for a in menu.select("a")
+        ]
+        assert viewer_client.get("/cms/workflow/").status_code == 403
+
     def test_owner_sees_workflow_cases_and_findings_navigation(self, auth_client):
         owner = _admin()
         owner.role = "owner"
