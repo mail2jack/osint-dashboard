@@ -105,7 +105,12 @@ if docker compose ps -q postgres 2>/dev/null | grep -q .; then
 
 elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (local)..."
-    if pg_dump "$DATABASE_URL" --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+    # FORCE ROW LEVEL SECURITY rejects pg_dump's default attempt to disable RLS.
+    # Keep RLS enabled and provide the application's explicitly authorised
+    # backup context instead, so policy-protected tables are exported in full.
+    if PGOPTIONS="${PGOPTIONS:+$PGOPTIONS }-c app.bypass_rls=true" \
+        pg_dump --enable-row-security "$DATABASE_URL" --clean --if-exists --no-owner --no-acl \
+        > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else
@@ -117,7 +122,9 @@ elif command -v pg_dump &>/dev/null && [ -n "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (PGSERVICE: $BACKUP_PGSERVICE)..."
     if PGSERVICE="$BACKUP_PGSERVICE" PGPASSFILE="$BACKUP_PGPASSFILE" \
         PGSERVICEFILE="$BACKUP_PGSERVICEFILE" \
-        pg_dump --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        PGOPTIONS="${PGOPTIONS:+$PGOPTIONS }-c app.bypass_rls=true" \
+        pg_dump --enable-row-security --clean --if-exists --no-owner --no-acl \
+        > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else

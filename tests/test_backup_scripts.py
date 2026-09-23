@@ -29,3 +29,12 @@ def test_backup_script_loads_pgservice_config_even_with_caller_database_url():
     assert 'if [ -f "$ENV_FILE" ]; then' in source
     assert 'set -a; source "$ENV_FILE"; set +a' in source
     assert 'export DATABASE_URL="$CALLER_DATABASE_URL"' in source
+
+
+def test_backup_script_handles_force_rls_without_disabling_row_security():
+    """Backups must export FORCE-RLS tables through the explicit backup context."""
+    source = (ROOT / "scripts/backup.sh").read_text(encoding="utf-8")
+
+    # pg_dump normally tries SET row_security=off, which FORCE RLS rejects.
+    assert source.count("pg_dump --enable-row-security") == 2
+    assert source.count("-c app.bypass_rls=true") == 2
