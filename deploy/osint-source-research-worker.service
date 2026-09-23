@@ -1,0 +1,29 @@
+[Unit]
+Description=OSINT passive workflow source-research worker (disabled foundation)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+# The worker stays inert until the dedicated installer creates an explicit
+# enablement file.  A feature flag alone is never enough to start a process.
+Environment=WORKFLOW_SOURCE_RESEARCH_WORKER_ENABLED=0
+Environment=WORKFLOW_SOURCE_RESEARCH_POLL_SECONDS=15
+EnvironmentFile=-/etc/default/osint-source-research-worker
+ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/run_source_research_worker.py --loop
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/osint-dashboard/instance
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
