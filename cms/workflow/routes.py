@@ -1484,6 +1484,64 @@ def request_passive_source_research(case_id, investigation_id):
 
 
 @workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>",
+    methods=["GET"],
+)
+@login_required
+@_investigator_required
+def passive_source_research_status(case_id, investigation_id, action_id):
+    """Return bounded workflow-visible state for one source-research action."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    action = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        action_type="source_research",
+    ).first()
+    if action is None:
+        return jsonify({"error": "Not found"}), 404
+
+    from cms.models import SpiderFootScan
+
+    scan = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        research_action_id=action.id,
+        is_deleted=False,
+    ).first()
+    if scan is None:
+        return jsonify({"error": "Not found"}), 404
+    result = scan.result_summary if isinstance(scan.result_summary, dict) else {}
+    proposals = result.get("proposals", []) if scan.status == "completed" else []
+    # Stored proposal snapshots are bounded by the worker.  Defend again at
+    # this boundary so a historic or manually malformed row cannot make a
+    # status response unexpectedly large.
+    if not isinstance(proposals, list):
+        proposals = []
+    return jsonify(
+        {
+            "ok": True,
+            "action": {
+                "id": action.id,
+                "status": action.status,
+                "result_summary": action.result_summary,
+            },
+            "scan": {
+                "id": scan.id,
+                "status": scan.status,
+                "progress": scan.progress,
+                "result_count": scan.result_count,
+                "proposals": proposals[:250],
+            },
+        }
+    )
+
+
+@workflow_bp.route(
     "/case/<case_id>/investigations/<investigation_id>/edit",
     methods=["GET"],
 )

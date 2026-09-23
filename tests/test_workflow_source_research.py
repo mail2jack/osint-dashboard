@@ -69,6 +69,10 @@ def _request_url(case_id, investigation_id):
     )
 
 
+def _status_url(case_id, investigation_id, action_id):
+    return f"{_request_url(case_id, investigation_id)}/{action_id}"
+
+
 def test_target_contract_accepts_supported_target_types_and_passive_profiles():
     assert set(TARGET_TYPES) >= {
         "person",
@@ -331,3 +335,34 @@ def test_worker_honours_feature_kill_switch_before_external_start(auth_client, m
     db.session.expire_all()
     assert db.session.get(SpiderFootScan, scan.id).status == "failed"
     assert db.session.get(WorkflowResearchAction, action.id).status == "error"
+
+
+def test_status_route_exposes_only_completed_bounded_proposals(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    scan.status = "completed"
+    scan.progress = 100
+    scan.result_count = 1
+    scan.result_summary = {
+        "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
+        "summary": {"DOMAIN_NAME": 1},
+    }
+    action.status = "completed"
+    db.session.commit()
+
+    response = auth_client.get(_status_url(case.id, investigation.id, action.id))
+    assert response.status_code == 200
+    assert response.get_json()["scan"] == {
+        "id": scan.id,
+        "status": "completed",
+        "progress": 100,
+        "result_count": 1,
+        "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
+    }
