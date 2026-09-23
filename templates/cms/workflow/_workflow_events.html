@@ -30,6 +30,12 @@ document.addEventListener('DOMContentLoaded', function() {
       showActionPicker(btn.getAttribute('data-action-key'));
       return;
     }
+    var sourceReview = e.target.closest('[data-review-case-source-research]');
+    if (sourceReview) {
+      e.preventDefault();
+      showSourceResearchPicker(sourceReview.getAttribute('data-review-case-source-research'));
+      return;
+    }
     var propose = e.target.closest('[data-action="propose-action"]');
     if (propose) {
       e.preventDefault();

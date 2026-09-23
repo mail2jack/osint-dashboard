@@ -82,6 +82,10 @@ def _import_url(case_id, investigation_id, action_id):
     return f"{_status_url(case_id, investigation_id, action_id)}/import"
 
 
+def _case_wide_url(case_id):
+    return f"/cms/workflow/api/case/{case_id}/source-research"
+
+
 def test_target_contract_accepts_supported_target_types_and_passive_profiles():
     assert set(TARGET_TYPES) >= {
         "person",
@@ -202,15 +206,14 @@ def test_workspace_renders_source_research_control_only_when_enabled(auth_client
     _enable_flag("investigation_workspace")
     case, investigation, _ = _case_with_open_investigation(auth_client)
     detail_url = f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
-    assert 'data-open-source-research' not in auth_client.get(detail_url).get_data(
-        as_text=True
-    )
+    assert 'value="source_research"' not in auth_client.get(detail_url).get_data(as_text=True)
 
     _enable_workflow_source_research()
     html = auth_client.get(detail_url).get_data(as_text=True)
-    assert 'data-open-source-research' in html
+    assert 'value="source_research"' in html
+    assert 'data-open-source-research style=' not in html
     assert 'id="wsSourceResearchModal"' in html
-    assert 'name="target_type"' in html
+    assert 'name="source_target_type"' in html
     assert 'value="ipv6"' in html
     assert "use_case: 'all'" not in html
 
@@ -243,6 +246,28 @@ def test_route_queues_scoped_passive_research_with_audit(auth_client):
         "research_action",
         "spiderfoot_scan",
     }
+
+
+def test_route_queues_case_wide_passive_research(auth_client):
+    _enable_workflow_source_research()
+    case, _, subject = _case_with_open_investigation(auth_client)
+
+    response = auth_client.post(
+        _case_wide_url(case.id),
+        json={
+            "target_type": "domain",
+            "target_value": "example.test",
+            "subject_id": subject.id,
+            "investigation_id": None,
+        },
+    )
+    assert response.status_code == 202
+    body = response.get_json()
+    action = db.session.get(WorkflowResearchAction, body["action"]["id"])
+    scan = db.session.get(SpiderFootScan, body["scan"]["id"])
+    assert action.investigation_id is None
+    assert scan.investigation_id is None
+    assert action.target_kind == "subject"
 
 
 def test_route_rejects_unknown_field_without_partial_records(auth_client):
@@ -476,6 +501,24 @@ def test_status_route_exposes_only_completed_bounded_proposals(auth_client):
         "result_count": 1,
         "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
     }
+
+
+def test_case_wide_status_route_is_scoped_to_case_wide_action(auth_client):
+    _enable_workflow_source_research()
+    case, _, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    action.status = scan.status = "completed"
+    scan.result_summary = {"proposals": []}
+    db.session.commit()
+
+    response = auth_client.get(f"{_case_wide_url(case.id)}/{action.id}")
+    assert response.status_code == 200
+    assert response.get_json()["action"]["id"] == action.id
 
 
 def test_import_route_creates_selected_linked_candidate_once(auth_client):

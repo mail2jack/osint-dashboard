@@ -1207,6 +1207,10 @@ def case_detail(case_id):
             show_archived=show_archived,
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
+            source_research_enabled=(
+                _current_user_is_investigator()
+                and _workflow_source_research_enabled()
+            ),
             investigation_workspace_enabled=check_feature("investigation_workspace"),
             local_browser_capture_enabled=(
                 _current_user_is_investigator()
@@ -1313,6 +1317,18 @@ def investigation_detail(case_id, investigation_id):
         for key, cfg in ACTION_REGISTRY.items()
         if key not in ("photo_analysis", "manual_entry")
     ]
+    if can_start_actions and _workflow_source_research_enabled():
+        # Native passive research has its own durable queue rather than a
+        # synchronous ACTION_REGISTRY handler, but belongs in the same Start
+        # Action chooser as every other investigation action.
+        action_types.append(
+            {
+                "key": "source_research",
+                "label": "Deep source research",
+                "icon": "🕷️",
+                "category": "open",
+            }
+        )
     # Modal subject options — explicit tenant/case/soft-delete scoped query via
     # the case-subject junction (review P1-1). Only the plaintext name fields
     # are rendered in the modal, so decrypt_identifiers() is deliberately NOT
@@ -1366,9 +1382,10 @@ def investigation_detail(case_id, investigation_id):
     "/api/case/<case_id>/investigations/<investigation_id>/source-research",
     methods=["POST"],
 )
+@workflow_bp.route("/api/case/<case_id>/source-research", methods=["POST"])
 @login_required
 @_investigator_required
-def request_passive_source_research(case_id, investigation_id):
+def request_passive_source_research(case_id, investigation_id=None):
     """Queue one explicitly requested passive source-research action.
 
     This endpoint is deliberately a durable request boundary: it records the
@@ -1379,19 +1396,38 @@ def request_passive_source_research(case_id, investigation_id):
     if not _workflow_source_research_enabled():
         return jsonify({"error": "Not found"}), 404
 
-    investigation, case = ensure_investigation_access(case_id, investigation_id)
-    try:
-        require_open(investigation)
-    except OperationalConflict:
-        return jsonify({"error": "Investigation is not open"}), 409
-
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"error": "Payload must be a JSON object"}), 400
-    allowed = {"target_type", "target_value", "subject_id"}
+    allowed = {"target_type", "target_value", "subject_id", "investigation_id"}
     unknown = sorted(set(body) - allowed)
     if unknown:
         return jsonify({"error": f"Unknown fields: {', '.join(unknown)}"}), 400
+
+    # The legacy investigation-specific URL remains supported, but the native
+    # action UI can now use one case endpoint for both an investigation and a
+    # case-wide action.  A URL scope and body scope may never disagree.
+    body_investigation_id = body.get("investigation_id")
+    if investigation_id is not None and body_investigation_id not in (None, investigation_id):
+        return jsonify({"error": "Investigation scope does not match this URL"}), 400
+    selected_investigation_id = investigation_id or body_investigation_id
+
+    if selected_investigation_id is not None:
+        if not isinstance(selected_investigation_id, str) or not selected_investigation_id:
+            return jsonify({"error": "investigation_id must be a non-empty string"}), 400
+        investigation, case = ensure_investigation_access(
+            case_id, selected_investigation_id
+        )
+        try:
+            require_open(investigation)
+        except OperationalConflict:
+            return jsonify({"error": "Investigation is not open"}), 409
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Case not found"}), 404
+        ensure_case_access(case)
+        investigation = None
 
     subject = None
     subject_id = body.get("subject_id")
@@ -1445,8 +1481,12 @@ def request_passive_source_research(case_id, investigation_id):
             user_id=current_user.id,
             ip_address=request.remote_addr,
             case_id=case.id,
-            description="Queued passive source research (linked to investigation)",
-            new_investigation_id=investigation.id,
+            description=(
+                "Queued passive source research (linked to investigation)"
+                if investigation is not None
+                else "Queued passive source research (case-wide)"
+            ),
+            new_investigation_id=investigation.id if investigation is not None else None,
         )
         AuditLog.log(
             user_id=current_user.id,
@@ -1490,32 +1530,52 @@ def request_passive_source_research(case_id, investigation_id):
     "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>",
     methods=["GET"],
 )
+@workflow_bp.route(
+    "/api/case/<case_id>/source-research/<action_id>", methods=["GET"]
+)
 @login_required
 @_investigator_required
-def passive_source_research_status(case_id, investigation_id, action_id):
+def passive_source_research_status(case_id, action_id, investigation_id=None):
     """Return bounded workflow-visible state for one source-research action."""
     if not _workflow_source_research_enabled():
         return jsonify({"error": "Not found"}), 404
-    investigation, case = ensure_investigation_access(case_id, investigation_id)
-    action = WorkflowResearchAction.query.filter_by(
+    if investigation_id is not None:
+        investigation, case = ensure_investigation_access(case_id, investigation_id)
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Not found"}), 404
+        ensure_case_access(case)
+        investigation = None
+    action_query = WorkflowResearchAction.query.filter_by(
         id=action_id,
         tenant_id=current_user.tenant_id,
         case_id=case.id,
-        investigation_id=investigation.id,
         action_type="source_research",
-    ).first()
+    )
+    action_query = (
+        action_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else action_query.filter(WorkflowResearchAction.investigation_id.is_(None))
+    )
+    action = action_query.first()
     if action is None:
         return jsonify({"error": "Not found"}), 404
 
     from cms.models import SpiderFootScan
 
-    scan = SpiderFootScan.query.filter_by(
+    scan_query = SpiderFootScan.query.filter_by(
         tenant_id=current_user.tenant_id,
         case_id=case.id,
-        investigation_id=investigation.id,
         research_action_id=action.id,
         is_deleted=False,
-    ).first()
+    )
+    scan_query = (
+        scan_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else scan_query.filter(SpiderFootScan.investigation_id.is_(None))
+    )
+    scan = scan_query.first()
     if scan is None:
         return jsonify({"error": "Not found"}), 404
     result = scan.result_summary if isinstance(scan.result_summary, dict) else {}
@@ -1548,13 +1608,23 @@ def passive_source_research_status(case_id, investigation_id, action_id):
     "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>/import",
     methods=["POST"],
 )
+@workflow_bp.route(
+    "/api/case/<case_id>/source-research/<action_id>/import", methods=["POST"]
+)
 @login_required
 @_investigator_required
-def import_passive_source_research(case_id, investigation_id, action_id):
+def import_passive_source_research(case_id, action_id, investigation_id=None):
     """Import selected, cached source-research proposals as workflow findings."""
     if not _workflow_source_research_enabled():
         return jsonify({"error": "Not found"}), 404
-    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    if investigation_id is not None:
+        investigation, case = ensure_investigation_access(case_id, investigation_id)
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Not found"}), 404
+        ensure_case_access(case)
+        investigation = None
     body = request.get_json(silent=True)
     if not isinstance(body, dict) or set(body) != {"proposal_indexes"}:
         return jsonify({"error": "proposal_indexes is required"}), 400
@@ -1574,23 +1644,32 @@ def import_passive_source_research(case_id, investigation_id, action_id):
     scan_query = SpiderFootScan.query.filter_by(
         tenant_id=current_user.tenant_id,
         case_id=case.id,
-        investigation_id=investigation.id,
         research_action_id=action_id,
         is_deleted=False,
         status="completed",
+    )
+    scan_query = (
+        scan_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else scan_query.filter(SpiderFootScan.investigation_id.is_(None))
     )
     if db.session.bind and db.session.bind.dialect.name == "postgresql":
         scan_query = scan_query.with_for_update()
     scan = scan_query.first()
     if scan is None:
         return jsonify({"error": "Completed source research not found"}), 404
-    action = WorkflowResearchAction.query.filter_by(
+    action_query = WorkflowResearchAction.query.filter_by(
         id=action_id,
         tenant_id=current_user.tenant_id,
         case_id=case.id,
-        investigation_id=investigation.id,
         action_type="source_research",
-    ).first()
+    )
+    action_query = (
+        action_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else action_query.filter(WorkflowResearchAction.investigation_id.is_(None))
+    )
+    action = action_query.first()
     if action is None:
         return jsonify({"error": "Source-research action not found"}), 404
 
