@@ -4293,3 +4293,97 @@ msgstr ""
 #: templates/cms/workflow/workflow_case_detail.html
 msgid "Open subject profile"
 msgstr ""
+
+#: templates/cms/workflow/workflow_investigation_detail.html
+msgid "Deep source research"
+msgstr ""
+
+msgid "This starts passive source research in the background. It can take a little while; you can continue working meanwhile."
+msgstr ""
+
+msgid "Target type"
+msgstr ""
+
+msgid "Person or name"
+msgstr ""
+
+msgid "Email address"
+msgstr ""
+
+msgid "Phone number"
+msgstr ""
+
+msgid "Subdomain"
+msgstr ""
+
+msgid "Website URL"
+msgstr ""
+
+msgid "IP address"
+msgstr ""
+
+msgid "IPv6 address"
+msgstr ""
+
+msgid "Organisation"
+msgstr ""
+
+msgid "License plate"
+msgstr ""
+
+msgid "Search value"
+msgstr ""
+
+msgid "— Investigation-wide target —"
+msgstr ""
+
+msgid "Start passive research"
+msgstr ""
+
+msgid "No reviewable results were returned."
+msgstr ""
+
+msgid "Select the results you want to add as findings."
+msgstr ""
+
+msgid "Add selected findings"
+msgstr ""
+
+msgid "Select at least one result."
+msgstr ""
+
+msgid "Could not add findings."
+msgstr ""
+
+msgid "Selected findings added. Refreshing this page…"
+msgstr ""
+
+msgid "Research is still running. You can refresh this page later."
+msgstr ""
+
+msgid "Could not check research status."
+msgstr ""
+
+msgid "Research complete. Review the results below."
+msgstr ""
+
+msgid "Research could not be completed."
+msgstr ""
+
+msgid "Research is running…"
+msgstr ""
+
+msgid "Checking research status…"
+msgstr ""
+
+msgid "Could not start research."
+msgstr ""
+
+msgid "Enter a search value."
+msgstr ""
+
+msgid "Review results"
+msgstr ""
+
+msgid "View progress"
+msgstr ""

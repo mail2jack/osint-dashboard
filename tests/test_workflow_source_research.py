@@ -47,19 +47,23 @@ def _case_with_open_investigation(auth_client):
     return case, investigation, case.subjects.first()
 
 
-def _enable_workflow_source_research():
+def _enable_flag(flag_name):
     tenant_id = _admin().tenant_id
     flag = FeatureFlag.query.filter_by(
-        tenant_id=tenant_id, flag_name="workflow_spiderfoot"
+        tenant_id=tenant_id, flag_name=flag_name
     ).first()
     if flag is None:
         flag = FeatureFlag(
-            tenant_id=tenant_id, flag_name="workflow_spiderfoot", enabled=True
+            tenant_id=tenant_id, flag_name=flag_name, enabled=True
         )
         db.session.add(flag)
     else:
         flag.enabled = True
     db.session.commit()
+
+
+def _enable_workflow_source_research():
+    _enable_flag("workflow_spiderfoot")
 
 
 def _request_url(case_id, investigation_id):
@@ -164,6 +168,23 @@ def test_route_is_hidden_until_explicit_feature_enablement(auth_client):
         json={"target_type": "domain", "target_value": "example.test"},
     )
     assert response.status_code == 404
+
+
+def test_workspace_renders_source_research_control_only_when_enabled(auth_client):
+    _enable_flag("investigation_workspace")
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    detail_url = f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
+    assert 'data-open-source-research' not in auth_client.get(detail_url).get_data(
+        as_text=True
+    )
+
+    _enable_workflow_source_research()
+    html = auth_client.get(detail_url).get_data(as_text=True)
+    assert 'data-open-source-research' in html
+    assert 'id="wsSourceResearchModal"' in html
+    assert 'name="target_type"' in html
+    assert 'value="ipv6"' in html
+    assert "use_case: 'all'" not in html
 
 
 def test_route_queues_scoped_passive_research_with_audit(auth_client):
@@ -312,6 +333,63 @@ def test_worker_starts_and_completes_only_passive_scan(auth_client, monkeypatch)
         ],
     }
     assert "raw" not in str(persisted_scan.result_summary)
+
+
+def test_worker_refresh_skips_unstarted_placeholder_when_real_scan_runs(
+    auth_client, monkeypatch
+):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    stalled_action, stalled_scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="stalled.example.test",
+    )
+    active_action, active_scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="active.example.test",
+    )
+    stalled_action.status = active_action.status = "running"
+    stalled_scan.status = active_scan.status = "running"
+    active_scan.scan_id = "external-active-scan"
+    db.session.commit()
+
+    fake = _FakeSpiderFoot(status={"status": "running", "progress": 42})
+    fake.get_scan_status = lambda scan_id: {"status": "running", "progress": 42}
+    monkeypatch.setattr(source_worker, "get_source_research_service", lambda: fake)
+
+    assert source_worker.refresh_one_source_research() == "running"
+    db.session.expire_all()
+    assert db.session.get(SpiderFootScan, active_scan.id).progress == 42
+    stalled = db.session.get(SpiderFootScan, stalled_scan.id)
+    assert stalled.scan_id.startswith("queued:")
+    assert stalled.progress != 42
+
+
+def test_completed_source_research_action_has_reopenable_review_control(auth_client):
+    _enable_flag("investigation_workspace")
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    action.status = scan.status = "completed"
+    db.session.commit()
+
+    html = auth_client.get(
+        f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
+    ).get_data(as_text=True)
+    assert f'data-source-action-id="{action.id}"' in html
+    assert "data-review-source-research" in html
 
 
 def test_worker_honours_feature_kill_switch_before_external_start(auth_client, monkeypatch):

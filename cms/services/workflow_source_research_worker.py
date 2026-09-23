@@ -57,6 +57,11 @@ def _next_scan(*, status: str, queued_only: bool = False) -> SpiderFootScan | No
     )
     if queued_only:
         statement = statement.where(SpiderFootScan.scan_id.startswith(_QUEUED_PREFIX))
+    elif status == "running":
+        # A process can be interrupted after it claims a local placeholder but
+        # before SpiderFoot returns its real scan id.  Such a record is not
+        # pollable; do not let it starve an already-running real scan.
+        statement = statement.where(~SpiderFootScan.scan_id.startswith(_QUEUED_PREFIX))
     if db.session.bind and db.session.bind.dialect.name == "postgresql":
         statement = statement.with_for_update(skip_locked=True)
     return db.session.execute(statement).scalar_one_or_none()
