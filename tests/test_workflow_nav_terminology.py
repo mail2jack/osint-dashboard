@@ -17,6 +17,7 @@ import uuid
 from bs4 import BeautifulSoup
 
 from cms.models import Case, FeatureFlag, User, db
+from cms.feature_flag_policy import FEATURE_FLAG_NAMES, tier_default
 
 
 def _set_lang(client, lang):
@@ -62,6 +63,45 @@ def _case_with_subject(auth_client, title="Nav Terminology Case"):
 
 
 class TestMainNav:
+    def test_workflow_spiderfoot_is_off_by_default(self):
+        """The long-running source-research workflow needs an explicit rollout."""
+        assert FEATURE_FLAG_NAMES["workflow_spiderfoot"] == "🕷️ Verdiept brononderzoek"
+        assert tier_default("workflow_spiderfoot", "enterprise") is False
+
+    def test_spiderfoot_navigation_is_reserved_for_super_admins(self, app):
+        """Investigators use the workflow UI; the legacy SpiderFoot UI is admin-only."""
+        tenant_id = _admin().tenant_id
+        token = uuid.uuid4().hex[:8]
+        investigator = User(
+            username=f"sf_nav_investigator_{token}",
+            email=f"sf_nav_investigator_{token}@localhost",
+            full_name="SpiderFoot Navigation Investigator",
+            tenant_id=tenant_id,
+            role="senior_investigator",
+            is_active=True,
+            is_super_admin=False,
+        )
+        investigator.set_password("Test1234!")
+        db.session.add(investigator)
+        db.session.commit()
+
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(investigator.id)
+            sess["_fresh"] = True
+
+        response = client.get("/cms/workflow/")
+        assert response.status_code == 200
+        assert 'href="/cms/spiderfoot"' not in response.get_data(as_text=True)
+
+    def test_web_research_no_longer_claims_to_run_spiderfoot(self):
+        """Web research and the future SpiderFoot workflow must remain distinct."""
+        from cms.workflow.actions.register import ACTION_REGISTRY
+
+        action = ACTION_REGISTRY["osint"]
+        assert action["label"] == "Webonderzoek"
+        assert "SpiderFoot" not in action["description"]
+
     def test_primary_navigation_requires_both_flags_and_preserves_legacy_routes(
         self, auth_client
     ):
