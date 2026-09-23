@@ -30,7 +30,7 @@ from cms.models import (
     User,
     UserRole,
     db,
-    report_include_filter,
+    report_visible_finding_filter,
 )
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
 from cms.services.action_scope import (
@@ -2393,8 +2393,7 @@ def pv_view(case_id):
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
     findings = (
-        case.findings.filter_by(is_deleted=False, archived_at=None)
-        .filter(report_include_filter())
+        case.findings.filter(report_visible_finding_filter())
         .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
         .order_by(WorkflowFinding.created_at)
         .all()
@@ -2470,8 +2469,7 @@ def pv_regenerate(case_id):
     ensure_case_access(case)
 
     findings = (
-        case.findings.filter_by(is_deleted=False, archived_at=None)
-        .filter(report_include_filter())
+        case.findings.filter(report_visible_finding_filter())
         .order_by(WorkflowFinding.created_at)
         .all()
     )
