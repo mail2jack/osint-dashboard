@@ -208,6 +208,12 @@
   border-radius: 4px;
   margin-left: auto;
 }
+.subject-profile-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: 0.25rem;
+  white-space: nowrap;
+}
 .findings-counter {
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
@@ -326,6 +332,7 @@ input:-webkit-autofill:focus {
         <span class="subject-card-nr">{{ loop.index }}</span>
         <span class="subject-card-name">{{ sd.display_name }}</span>
         <span class="subject-card-type">{{ sd.subject_type }}</span>
+        <a class="subject-profile-link" href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}">{{ _('Open subject profile') }}</a>
       </div>
       <div class="subject-info-grid">
         {# ── Common fields ── #}

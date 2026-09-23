@@ -5057,3 +5057,6 @@ msgstr "You can still view the live report and download its PDF above."
 
 msgid "Create a document template"
 msgstr "Create a document template"
+
+msgid "Open subject profile"
+msgstr "Open subject profile"

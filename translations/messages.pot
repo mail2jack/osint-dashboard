@@ -4289,3 +4289,7 @@ msgstr ""
 
 msgid "Create a document template"
 msgstr ""
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "Open subject profile"
+msgstr ""

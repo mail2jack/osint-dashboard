@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from cms.models import Case, Client, DocumentTemplate, Tenant, User, db
+from cms.models import Case, Client, DocumentTemplate, Subject, Tenant, User, db
 
 
 def _admin() -> User:
@@ -149,3 +149,23 @@ def test_report_hub_rejects_non_investigator(auth_client, client):
     response = client.get(f"/cms/workflow/case/{case.id}/report")
 
     assert response.status_code == 403
+
+
+def test_case_detail_links_linked_subject_to_profile(auth_client):
+    case = _case_for_admin()
+    subject = Subject(
+        tenant_id=case.tenant_id,
+        name="Profile navigation subject",
+        subject_type="person",
+    )
+    db.session.add(subject)
+    db.session.flush()
+    case.subjects.append(subject)
+    db.session.commit()
+
+    response = auth_client.get(f"/cms/workflow/case/{case.id}")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert f'/cms/subjects/{subject.id}/profile' in body
+    assert "Open subject profile" in body

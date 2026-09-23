@@ -4849,3 +4849,6 @@ msgstr "Je kunt hierboven wel het live rapport bekijken en de PDF downloaden."
 
 msgid "Create a document template"
 msgstr "Documentsjabloon maken"
+
+msgid "Open subject profile"
+msgstr "Subjectprofiel openen"
