@@ -174,6 +174,11 @@ def generate_case_report(case_id: str) -> flask.Response:
     tmpl_query = DocumentTemplate.query.filter_by(is_active=True)
     tmpl_query = apply_tenant_filter(tmpl_query, DocumentTemplate)
     templates = tmpl_query.order_by(DocumentTemplate.name).all()
+    selected_template_id = request.args.get("template_id", "")
+    # A report-hub link may preselect a tenant-visible template.  Never render
+    # a cross-tenant or inactive ID back into the form.
+    if selected_template_id not in {template.id for template in templates}:
+        selected_template_id = ""
 
     if request.method == "POST":
         vd = request.validated_data
@@ -190,7 +195,10 @@ def generate_case_report(case_id: str) -> flask.Response:
                 ), 400
             flash("Please select a template.", "danger")
             return render_template(
-                "cms/templates/generate_report.html", case=case, templates=templates
+                "cms/templates/generate_report.html",
+                case=case,
+                templates=templates,
+                selected_template_id=selected_template_id,
             )
 
         custom_fields = {
@@ -245,7 +253,10 @@ def generate_case_report(case_id: str) -> flask.Response:
         return redirect(url_for("cms.view_case", case_id=case.id))
 
     return render_template(
-        "cms/templates/generate_report.html", case=case, templates=templates
+        "cms/templates/generate_report.html",
+        case=case,
+        templates=templates,
+        selected_template_id=selected_template_id,
     )
 
 

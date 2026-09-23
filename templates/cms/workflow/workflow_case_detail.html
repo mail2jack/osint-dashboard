@@ -208,6 +208,12 @@
   border-radius: 4px;
   margin-left: auto;
 }
+.subject-profile-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: 0.25rem;
+  white-space: nowrap;
+}
 .findings-counter {
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
@@ -247,7 +253,7 @@ input:-webkit-autofill:focus {
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
-    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
+    <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary small">📄 {{ _('Report') }}</a>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
   </div>
 </div>
@@ -326,6 +332,7 @@ input:-webkit-autofill:focus {
         <span class="subject-card-nr">{{ loop.index }}</span>
         <span class="subject-card-name">{{ sd.display_name }}</span>
         <span class="subject-card-type">{{ sd.subject_type }}</span>
+        <a class="subject-profile-link" href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}">{{ _('Open subject profile') }}</a>
       </div>
       <div class="subject-info-grid">
         {# ── Common fields ── #}
@@ -707,8 +714,8 @@ input:-webkit-autofill:focus {
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
-      <span style="font-size:0.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
+      <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary">📄 {{ _('Open report centre') }}</a>
+      <span style="font-size:0.85rem;color:var(--text-muted);">{{ _('View the live report, download a PDF, or create a document from a template.') }}</span>
     </div>
   </div>
 </div>
