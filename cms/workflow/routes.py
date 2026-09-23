@@ -1542,6 +1542,142 @@ def passive_source_research_status(case_id, investigation_id, action_id):
 
 
 @workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>/import",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def import_passive_source_research(case_id, investigation_id, action_id):
+    """Import selected, cached source-research proposals as workflow findings."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"proposal_indexes"}:
+        return jsonify({"error": "proposal_indexes is required"}), 400
+    indexes = body.get("proposal_indexes")
+    if (
+        not isinstance(indexes, list)
+        or not indexes
+        or len(indexes) > 50
+        or any(not isinstance(index, int) or isinstance(index, bool) for index in indexes)
+    ):
+        return jsonify({"error": "proposal_indexes must contain 1 to 50 indexes"}), 400
+    if len(set(indexes)) != len(indexes):
+        return jsonify({"error": "proposal_indexes must be unique"}), 400
+
+    from cms.models import SpiderFootScan
+
+    scan_query = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        research_action_id=action_id,
+        is_deleted=False,
+        status="completed",
+    )
+    if db.session.bind and db.session.bind.dialect.name == "postgresql":
+        scan_query = scan_query.with_for_update()
+    scan = scan_query.first()
+    if scan is None:
+        return jsonify({"error": "Completed source research not found"}), 404
+    action = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        investigation_id=investigation.id,
+        action_type="source_research",
+    ).first()
+    if action is None:
+        return jsonify({"error": "Source-research action not found"}), 404
+
+    state = dict(scan.result_summary) if isinstance(scan.result_summary, dict) else {}
+    proposals = state.get("proposals")
+    if not isinstance(proposals, list):
+        return jsonify({"error": "Source-research proposals are unavailable"}), 409
+    if any(index < 0 or index >= len(proposals) for index in indexes):
+        return jsonify({"error": "Proposal index is out of range"}), 400
+    imported_indexes = {
+        index
+        for index in state.get("imported_indexes", [])
+        if isinstance(index, int) and not isinstance(index, bool)
+    }
+    selected_indexes = [index for index in indexes if index not in imported_indexes]
+    if not selected_indexes:
+        return jsonify({"ok": True, "imported": 0, "finding_ids": []})
+
+    # The action's optional subject remains the only subject context used by
+    # its findings; proposals never submit client-controlled subject ids.
+    finding_ids = []
+    try:
+        for index in selected_indexes:
+            proposal = proposals[index]
+            if not isinstance(proposal, dict):
+                raise ValueError("Stored source-research proposal is invalid")
+            event_type = str(proposal.get("type") or "UNKNOWN")[:100]
+            data = str(proposal.get("data") or "")[:2000]
+            module = str(proposal.get("source_module") or "")[:200]
+            source_url = str(proposal.get("source_url") or "")[:2000] or None
+            if not data:
+                raise ValueError("Stored source-research proposal has no data")
+            finding = WorkflowFinding(
+                id=str(uuid.uuid4()),
+                tenant_id=case.tenant_id,
+                case_id=case.id,
+                subject_id=action.subject_id,
+                title=f"[SpiderFoot] {event_type}: {data[:100]}",
+                content=(
+                    f"Source: SpiderFoot\nType: {event_type}\nData: {data}"
+                    + (f"\nModule: {module}" if module else "")
+                ),
+                detail=data,
+                source_url=source_url,
+                source_type="spiderfoot",
+                icon="🕷️",
+                verified=False,
+                status="candidate",
+                raw_data={
+                    "source_research_action_id": action.id,
+                    "proposal_index": index,
+                    "event_type": event_type,
+                    "source_module": module,
+                },
+                created_by=current_user.id,
+                created_at=datetime.now(UTC),
+            )
+            db.session.add(finding)
+            db.session.flush()
+            db.session.add(
+                WorkflowActionFinding(action_id=action.id, finding_id=finding.id)
+            )
+            finding_ids.append(finding.id)
+
+        state["imported_indexes"] = sorted(imported_indexes | set(selected_indexes))
+        scan.result_summary = state
+        AuditLog.log(
+            user_id=current_user.id,
+            action="import",
+            entity_type="spiderfoot_scan",
+            entity_id=scan.id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={"imported_count": len(finding_ids)},
+            description="Imported selected workflow source-research findings",
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 409
+    except Exception:
+        db.session.rollback()
+        logger.exception("import_passive_source_research failed action_id=%s", action_id)
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify({"ok": True, "imported": len(finding_ids), "finding_ids": finding_ids})
+
+
+@workflow_bp.route(
     "/case/<case_id>/investigations/<investigation_id>/edit",
     methods=["GET"],
 )

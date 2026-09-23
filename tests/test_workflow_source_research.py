@@ -73,6 +73,10 @@ def _status_url(case_id, investigation_id, action_id):
     return f"{_request_url(case_id, investigation_id)}/{action_id}"
 
 
+def _import_url(case_id, investigation_id, action_id):
+    return f"{_status_url(case_id, investigation_id, action_id)}/import"
+
+
 def test_target_contract_accepts_supported_target_types_and_passive_profiles():
     assert set(TARGET_TYPES) >= {
         "person",
@@ -366,3 +370,81 @@ def test_status_route_exposes_only_completed_bounded_proposals(auth_client):
         "result_count": 1,
         "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
     }
+
+
+def test_import_route_creates_selected_linked_candidate_once(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, subject = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="email",
+        target_value="analyst@example.test",
+        subject=subject,
+    )
+    action.status = "completed"
+    scan.status = "completed"
+    scan.result_summary = {
+        "proposals": [
+            {
+                "type": "EMAILADDR",
+                "data": "analyst@example.test",
+                "source_module": "sfp_example",
+                "source_url": "https://example.test/evidence",
+            }
+        ]
+    }
+    db.session.commit()
+
+    response = auth_client.post(
+        _import_url(case.id, investigation.id, action.id),
+        json={"proposal_indexes": [0]},
+    )
+    assert response.status_code == 200
+    finding_id = response.get_json()["finding_ids"][0]
+    from cms.models import Finding
+    from cms.workflow.models import WorkflowActionFinding
+
+    finding = db.session.get(Finding, finding_id)
+    assert finding is not None
+    assert finding.case_id == case.id
+    assert finding.subject_id == subject.id
+    assert finding.status == "candidate"
+    assert finding.source_type == "spiderfoot"
+    assert finding.raw_data["proposal_index"] == 0
+    assert WorkflowActionFinding.query.filter_by(
+        action_id=action.id, finding_id=finding.id
+    ).count() == 1
+    assert db.session.get(SpiderFootScan, scan.id).result_summary["imported_indexes"] == [0]
+
+    repeat = auth_client.post(
+        _import_url(case.id, investigation.id, action.id),
+        json={"proposal_indexes": [0]},
+    )
+    assert repeat.status_code == 200
+    assert repeat.get_json() == {"ok": True, "imported": 0, "finding_ids": []}
+
+
+def test_import_route_rejects_invalid_selection_without_findings(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    action.status = scan.status = "completed"
+    scan.result_summary = {"proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}]}
+    db.session.commit()
+    from cms.models import Finding
+
+    before = Finding.query.count()
+    response = auth_client.post(
+        _import_url(case.id, investigation.id, action.id),
+        json={"proposal_indexes": [1]},
+    )
+    assert response.status_code == 400
+    assert Finding.query.count() == before
