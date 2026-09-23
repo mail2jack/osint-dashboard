@@ -22,9 +22,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 ENV_FILE="$SCRIPT_DIR/.env"
 
-# Source .env if it exists and DATABASE_URL is not already set
-if [ -f "$ENV_FILE" ] && [ -z "${DATABASE_URL:-}" ]; then
+# Always load the backup-specific PostgreSQL service settings from .env.  The
+# update flow may invoke this script with DATABASE_URL already in its
+# environment; skipping .env in that case used to leave PGSERVICE without its
+# matching PGSERVICEFILE/PGPASSFILE, making pg_dump fail closed.
+#
+# Preserve an explicitly supplied DATABASE_URL for callers that intentionally
+# override the database target, while still importing the backup configuration.
+CALLER_DATABASE_URL="${DATABASE_URL:-}"
+if [ -f "$ENV_FILE" ]; then
     set -a; source "$ENV_FILE"; set +a
+    if [ -n "$CALLER_DATABASE_URL" ]; then
+        export DATABASE_URL="$CALLER_DATABASE_URL"
+    fi
 fi
 
 BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
