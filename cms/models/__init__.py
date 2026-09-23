@@ -3850,6 +3850,22 @@ class SpiderFootScan(db.Model):
     target_type = db.Column(db.String(50))
     case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
     subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
+    # Workflow-native scans retain their case scope but also point to the
+    # action that owns the lifecycle and, optionally, its investigation.
+    # Legacy SpiderFoot records leave both references NULL.
+    investigation_id = db.Column(
+        db.String(36),
+        db.ForeignKey("investigations.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    research_action_id = db.Column(
+        db.String(36),
+        db.ForeignKey("research_actions.id", ondelete="SET NULL"),
+        index=True,
+        unique=True,
+        nullable=True,
+    )
     use_case = db.Column(db.String(50), default="passive")
     profile = db.Column(db.String(50))
     module_ids = db.Column(SafeJSON)
@@ -3876,6 +3892,12 @@ class SpiderFootScan(db.Model):
     subject = db.relationship(
         "Subject", backref="spiderfoot_scans", foreign_keys=[subject_id]
     )
+    investigation = db.relationship(
+        "Investigation", backref="spiderfoot_scans", foreign_keys=[investigation_id]
+    )
+    research_action = db.relationship(
+        "ResearchAction", backref="spiderfoot_scan", foreign_keys=[research_action_id]
+    )
 
     def update_status(self, status: str, progress: int = None) -> None:
         self.status = status
@@ -3900,6 +3922,8 @@ class SpiderFootScan(db.Model):
             "target_type": self.target_type,
             "case_id": self.case_id,
             "subject_id": self.subject_id,
+            "investigation_id": self.investigation_id,
+            "research_action_id": self.research_action_id,
             "use_case": self.use_case,
             "profile": self.profile,
             "module_ids": self.module_ids,
