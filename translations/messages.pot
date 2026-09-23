@@ -4239,3 +4239,53 @@ msgstr ""
 #: templates/cms/workflow/workflow_investigation_detail.html
 msgid "Capture queued. It will not run until the capture worker is separately enabled."
 msgstr ""
+
+#: templates/cms/workflow/workflow_case_detail.html
+msgid "Open report centre"
+msgstr ""
+
+msgid "View the live report, download a PDF, or create a document from a template."
+msgstr ""
+
+#: templates/cms/workflow/workflow_case_report_hub.html
+msgid "Report centre"
+msgstr ""
+
+msgid "← Back to case"
+msgstr ""
+
+msgid "Official case report"
+msgstr ""
+
+msgid "This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence."
+msgstr ""
+
+msgid "View live report"
+msgstr ""
+
+msgid "View detailed report"
+msgstr ""
+
+msgid "Download PDF"
+msgstr ""
+
+msgid "Document from template"
+msgstr ""
+
+msgid "Templates are optional. Use one only when you need a specific house style or reusable narrative format."
+msgstr ""
+
+msgid "Default"
+msgstr ""
+
+msgid "Use this template"
+msgstr ""
+
+msgid "No document templates have been configured for this tenant."
+msgstr ""
+
+msgid "You can still view the live report and download its PDF above."
+msgstr ""
+
+msgid "Create a document template"
+msgstr ""

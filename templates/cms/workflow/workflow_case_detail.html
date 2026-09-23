@@ -247,7 +247,7 @@ input:-webkit-autofill:focus {
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
-    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
+    <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary small">📄 {{ _('Report') }}</a>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
   </div>
 </div>
@@ -707,8 +707,8 @@ input:-webkit-autofill:focus {
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
-      <span style="font-size:0.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
+      <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary">📄 {{ _('Open report centre') }}</a>
+      <span style="font-size:0.85rem;color:var(--text-muted);">{{ _('View the live report, download a PDF, or create a document from a template.') }}</span>
     </div>
   </div>
 </div>

@@ -1,0 +1,49 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Report centre') }} — {{ case.case_number }}{% endblock %}
+{% block content %}
+<div class="back" style="margin-bottom:1rem;">
+  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}">{{ _('← Back to case') }}</a>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h1 style="margin:0 0 0.3rem;font-size:1.3rem;">📄 {{ _('Report centre') }}</h1>
+  <p style="margin:0;color:var(--text-muted);"><strong>{{ case.case_number }}</strong> — {{ case.title }}</p>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">{{ _('Official case report') }}</h2>
+  <p style="color:var(--text-secondary);">{{ _('This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence.') }}</p>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 {{ _('View live report') }}</a>
+    <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms teal">📋 {{ _('View detailed report') }}</a>
+    <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms danger">⬇️ {{ _('Download PDF') }}</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">{{ _('Document from template') }}</h2>
+  <p style="color:var(--text-secondary);">{{ _('Templates are optional. Use one only when you need a specific house style or reusable narrative format.') }}</p>
+  {% if templates %}
+  <div style="display:grid;gap:0.7rem;">
+    {% for template in templates %}
+    <div style="border:1px solid var(--border-color);border-radius:8px;padding:0.85rem;display:flex;gap:0.75rem;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+      <div>
+        <strong>{{ template.name }}</strong>{% if template.is_default %} <span class="badge">{{ _('Default') }}</span>{% endif %}
+        {% if template.description %}<div style="color:var(--text-muted);font-size:0.9rem;margin-top:0.2rem;">{{ template.description }}</div>{% endif %}
+      </div>
+      <a href="{{ url_for('cms.generate_case_report', case_id=case.id, template_id=template.id) }}" class="btn-cms small">{{ _('Use this template') }}</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:1.25rem 0;">
+    <div class="icon">📭</div>
+    <p>{{ _('No document templates have been configured for this tenant.') }}</p>
+    <p style="font-size:0.9rem;color:var(--text-muted);">{{ _('You can still view the live report and download its PDF above.') }}</p>
+    {% if can_manage_templates %}
+    <a href="{{ url_for('cms.create_template') }}" class="btn-cms small">+ {{ _('Create a document template') }}</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

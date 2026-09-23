@@ -4801,3 +4801,51 @@ msgstr "Vastlegging voltooid. Deze pagina wordt vernieuwd…"
 
 msgid "Capture could not be completed."
 msgstr "De vastlegging kon niet worden voltooid."
+
+msgid "Open report centre"
+msgstr "Rapportcentrum openen"
+
+msgid "View the live report, download a PDF, or create a document from a template."
+msgstr "Bekijk het live rapport, download een PDF of maak een document vanuit een sjabloon."
+
+msgid "Report centre"
+msgstr "Rapportcentrum"
+
+msgid "← Back to case"
+msgstr "← Terug naar zaak"
+
+msgid "Official case report"
+msgstr "Officieel zaakrapport"
+
+msgid "This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence."
+msgstr "Dit rapport is direct beschikbaar. Het gebruikt de voor rapportage geselecteerde bevindingen, met hun opmerkingen en beschikbaar screenshotbewijs."
+
+msgid "View live report"
+msgstr "Live rapport bekijken"
+
+msgid "View detailed report"
+msgstr "Gedetailleerd rapport bekijken"
+
+msgid "Download PDF"
+msgstr "PDF downloaden"
+
+msgid "Document from template"
+msgstr "Document uit sjabloon"
+
+msgid "Templates are optional. Use one only when you need a specific house style or reusable narrative format."
+msgstr "Sjablonen zijn optioneel. Gebruik er alleen een wanneer je een specifieke huisstijl of herbruikbare tekstindeling nodig hebt."
+
+msgid "Default"
+msgstr "Standaard"
+
+msgid "Use this template"
+msgstr "Dit sjabloon gebruiken"
+
+msgid "No document templates have been configured for this tenant."
+msgstr "Voor deze tenant zijn nog geen documentsjablonen ingesteld."
+
+msgid "You can still view the live report and download its PDF above."
+msgstr "Je kunt hierboven wel het live rapport bekijken en de PDF downloaden."
+
+msgid "Create a document template"
+msgstr "Documentsjabloon maken"

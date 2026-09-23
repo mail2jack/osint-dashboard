@@ -23,6 +23,7 @@ from flask_login import current_user, login_required
 from cms.auth import ensure_case_access, ensure_tenant_access
 from cms.models import (
     AuditLog,
+    DocumentTemplate,
     FindingCaptureJob,
     Investigation,
     InvestigationStatus,
@@ -1197,6 +1198,38 @@ def case_detail(case_id):
                 )
             ),
         )
+
+
+@workflow_bp.route("/case/<case_id>/report")
+@login_required
+@_investigator_required
+def case_report_hub(case_id):
+    """Single report entry point for the investigator workflow.
+
+    The live report and PDF never depend on a document template.  Templates
+    remain an optional document-generation facility, retained for teams that
+    need a particular house style or a reusable narrative format.
+    """
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        abort(404)
+    ensure_case_access(case)
+
+    templates = (
+        DocumentTemplate.query.filter_by(tenant_id=case.tenant_id, is_active=True)
+        .order_by(DocumentTemplate.is_default.desc(), DocumentTemplate.name)
+        .all()
+    )
+    return render_template(
+        "cms/workflow/workflow_case_report_hub.html",
+        case=case,
+        templates=templates,
+        can_manage_templates=current_user.has_role(
+            UserRole.SENIOR_INVESTIGATOR,
+            UserRole.ADMIN,
+            UserRole.OWNER,
+        ),
+    )
 
 
 @workflow_bp.route("/case/<case_id>/investigations")

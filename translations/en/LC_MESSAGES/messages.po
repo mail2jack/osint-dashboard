@@ -5009,3 +5009,51 @@ msgstr "Capture complete. Refreshing this page…"
 
 msgid "Capture could not be completed."
 msgstr "Capture could not be completed."
+
+msgid "Open report centre"
+msgstr "Open report centre"
+
+msgid "View the live report, download a PDF, or create a document from a template."
+msgstr "View the live report, download a PDF, or create a document from a template."
+
+msgid "Report centre"
+msgstr "Report centre"
+
+msgid "← Back to case"
+msgstr "← Back to case"
+
+msgid "Official case report"
+msgstr "Official case report"
+
+msgid "This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence."
+msgstr "This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence."
+
+msgid "View live report"
+msgstr "View live report"
+
+msgid "View detailed report"
+msgstr "View detailed report"
+
+msgid "Download PDF"
+msgstr "Download PDF"
+
+msgid "Document from template"
+msgstr "Document from template"
+
+msgid "Templates are optional. Use one only when you need a specific house style or reusable narrative format."
+msgstr "Templates are optional. Use one only when you need a specific house style or reusable narrative format."
+
+msgid "Default"
+msgstr "Default"
+
+msgid "Use this template"
+msgstr "Use this template"
+
+msgid "No document templates have been configured for this tenant."
+msgstr "No document templates have been configured for this tenant."
+
+msgid "You can still view the live report and download its PDF above."
+msgstr "You can still view the live report and download its PDF above."
+
+msgid "Create a document template"
+msgstr "Create a document template"
