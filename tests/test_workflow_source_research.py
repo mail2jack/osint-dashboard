@@ -10,6 +10,7 @@ from cms.services.workflow_source_research import (
     TARGET_TYPES,
     passive_profile_for,
     queue_passive_source_research,
+    spiderfoot_seed_for,
     validate_target,
 )
 from cms.services import workflow_source_research_worker as source_worker
@@ -97,6 +98,19 @@ def test_target_contract_accepts_supported_target_types_and_passive_profiles():
         "email",
         "analyst@example.test",
     )
+    assert spiderfoot_seed_for("person", "Lindsey Jonker") == (
+        '"Lindsey Jonker"',
+        "HUMAN_NAME",
+    )
+    assert spiderfoot_seed_for("username", "research_user") == (
+        '"research_user"',
+        "USERNAME",
+    )
+
+
+def test_target_contract_rejects_quotes_in_spiderfoot_syntax():
+    with pytest.raises(SourceResearchRejected, match="quotation"):
+        spiderfoot_seed_for("person", 'Lindsey "Jonker"')
 
 
 @pytest.mark.parametrize(
@@ -139,6 +153,20 @@ def test_queue_creates_action_and_linked_passive_scan(auth_client):
     assert persisted_scan.scan_id == f"queued:{persisted_action.id}"
     assert persisted_scan.use_case == "passive"
     assert persisted_scan.status == "pending"
+
+
+def test_queue_quotes_person_seed_for_spiderfoot(auth_client):
+    case, investigation, subject = _case_with_open_investigation(auth_client)
+    _, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="person",
+        target_value="Lindsey Jonker",
+        subject=subject,
+    )
+    assert scan.target_value == '"Lindsey Jonker"'
+    assert scan.target_type == "HUMAN_NAME"
 
 
 def test_queue_rejects_cross_case_investigation_without_writes(auth_client):

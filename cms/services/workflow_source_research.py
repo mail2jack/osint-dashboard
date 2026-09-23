@@ -82,6 +82,25 @@ def validate_target(target_type: object, target_value: object) -> tuple[str, str
     return target_type, target
 
 
+def spiderfoot_seed_for(target_type: str, target: str) -> tuple[str, str]:
+    """Return SpiderFoot's unambiguous seed syntax for a native target.
+
+    SpiderFoot infers its seed type from the target string; its HTTP API does
+    not accept a separate target-type field.  Human names and usernames are
+    therefore quoted deliberately.  Without this conversion a plain name
+    (for example ``Lindsey Jonker``) is rejected by SpiderFoot before a scan
+    can start.
+    """
+    if target_type in {"person", "username"}:
+        # Quotes are syntax in SpiderFoot's seed language, never user data.
+        # Reject them rather than allowing an input value to change that
+        # syntax or to be interpreted as a different target kind.
+        if '"' in target:
+            raise SourceResearchRejected("Target must not contain quotation marks")
+        return f'"{target}"', "HUMAN_NAME" if target_type == "person" else "USERNAME"
+    return target, TARGET_TYPES[target_type]
+
+
 def queue_passive_source_research(
     *, case, investigation, actor, target_type: object, target_value: object, subject=None
 ) -> tuple[WorkflowResearchAction, SpiderFootScan]:
@@ -93,6 +112,7 @@ def queue_passive_source_research(
     independent database backstop.
     """
     target_type, target = validate_target(target_type, target_value)
+    spiderfoot_target, spiderfoot_target_type = spiderfoot_seed_for(target_type, target)
 
     if not case or not investigation or not actor:
         raise SourceResearchRejected("Case, investigation and actor are required")
@@ -142,8 +162,8 @@ def queue_passive_source_research(
         tenant_id=case.tenant_id,
         scan_id=f"queued:{action.id}",
         scan_name=f"Passive source research: {target}"[:300],
-        target_value=target,
-        target_type=TARGET_TYPES[target_type],
+        target_value=spiderfoot_target,
+        target_type=spiderfoot_target_type,
         case_id=case.id,
         subject_id=subject.id if subject is not None else None,
         investigation_id=investigation.id,
