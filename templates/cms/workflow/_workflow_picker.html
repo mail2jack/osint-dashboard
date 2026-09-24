@@ -65,7 +65,7 @@ function showSourceResearchPicker(reviewActionId) {
         .then(function(data) {
           if (!data.ok) throw new Error(data.error || '{{ _('Could not check research status.') }}');
           if (data.scan.status === 'completed') {
-            renderProposals(actionId, data.scan.proposals || []);
+            renderProposals(actionId, data.scan.proposals || [], data.scan.imported_count || 0);
           } else if (data.scan.status === 'failed' || data.scan.status === 'cancelled') {
             status.textContent = '{{ _('Research could not be completed.') }}';
           } else {
@@ -75,10 +75,16 @@ function showSourceResearchPicker(reviewActionId) {
         }).catch(function(error) { status.textContent = error.message || '{{ _('Could not check research status.') }}'; });
     }, 2000);
   }
-  function renderProposals(actionId, proposals) {
+  function renderProposals(actionId, proposals, importedCount) {
     status.replaceChildren();
     if (!proposals.length) {
       status.textContent = '{{ _('No reviewable results were returned.') }}';
+      return;
+    }
+    if (importedCount) {
+      var done = document.createElement('p');
+      done.textContent = importedCount + ' {{ _('unverified findings were added. Review them in the findings section.') }}';
+      status.appendChild(done);
       return;
     }
     var intro = document.createElement('p');

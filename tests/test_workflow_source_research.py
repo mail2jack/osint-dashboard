@@ -384,8 +384,49 @@ def test_worker_starts_and_completes_only_passive_scan(auth_client, monkeypatch)
                 "source_url": "https://example.test/evidence",
             }
         ],
+        "imported_indexes": [0],
     }
+    from cms.models import Finding
+    from cms.workflow.models import WorkflowActionFinding
+
+    finding = Finding.query.filter_by(
+        case_id=case.id, source_type="spiderfoot"
+    ).one()
+    assert finding.status == "candidate"
+    assert finding.verified is False
+    assert finding.raw_data["proposal_index"] == 0
+    assert WorkflowActionFinding.query.filter_by(
+        action_id=action.id, finding_id=finding.id
+    ).count() == 1
     assert "raw" not in str(persisted_scan.result_summary)
+
+
+def test_worker_materializes_previously_completed_proposals_once(auth_client):
+    """Completed scans from before the release become normal candidates."""
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    action.status = scan.status = "completed"
+    scan.result_summary = {
+        "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}]
+    }
+    db.session.commit()
+
+    assert source_worker.process_one_source_research() == "materialized"
+    db.session.expire_all()
+    from cms.models import Finding
+
+    assert Finding.query.filter_by(case_id=case.id, source_type="spiderfoot").count() == 1
+    assert db.session.get(SpiderFootScan, scan.id).result_summary["imported_indexes"] == [0]
+    assert source_worker.process_one_source_research() == "idle"
+    assert Finding.query.filter_by(case_id=case.id, source_type="spiderfoot").count() == 1
+
 
 
 def test_worker_refresh_skips_unstarted_placeholder_when_real_scan_runs(
@@ -497,10 +538,11 @@ def test_status_route_exposes_only_completed_bounded_proposals(auth_client):
     assert response.get_json()["scan"] == {
         "id": scan.id,
         "status": "completed",
-        "progress": 100,
-        "result_count": 1,
-        "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
-    }
+            "progress": 100,
+            "result_count": 1,
+            "proposals": [{"type": "DOMAIN_NAME", "data": "example.test"}],
+            "imported_count": 0,
+        }
 
 
 def test_case_wide_status_route_is_scoped_to_case_wide_action(auth_client):
