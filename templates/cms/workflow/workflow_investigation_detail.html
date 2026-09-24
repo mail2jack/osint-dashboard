@@ -1,4 +1,10 @@
 {% extends "cms/base.html" %}
+
+{% block extra_css %}
+<style nonce="{{ csp_nonce }}">
+.findings-pager{display:flex;align-items:center;gap:.5rem;justify-content:center;margin:.65rem 0;font-size:.82rem;color:var(--text-muted);}
+</style>
+{% endblock %}
 {% block title %}{{ _('Workflow') }} — {{ inv.human_number }}{% endblock %}
 {% block content %}
 <style>
@@ -281,14 +287,36 @@
     <span class="badge badge-info" style="font-size:0.7rem;">{{ ws.counts.findings }}</span>
   </div>
   <div class="workflow-step-body">
-    {% if ws.findings %}
+    {% if investigation_findings %}
+    {% if investigation_findings_pages > 1 %}
+    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
+      {% if investigation_findings_page > 1 %}
+      <a class="btn-cms small" href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id, findings_page=investigation_findings_page-1) }}">← {{ _('Previous') }}</a>
+      {% endif %}
+      <span>{{ _('Page') }} {{ investigation_findings_page }} / {{ investigation_findings_pages }}</span>
+      {% if investigation_findings_page < investigation_findings_pages %}
+      <a class="btn-cms small" href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id, findings_page=investigation_findings_page+1) }}">{{ _('Next') }} →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
     <div style="display:flex;flex-direction:column;gap:0.75rem;">
-      {% for fd in ws.findings %}
+      {% for fd in investigation_findings %}
       {% with fd=fd %}
       {% include "cms/workflow/_finding_item_readonly.html" %}
       {% endwith %}
       {% endfor %}
     </div>
+    {% if investigation_findings_pages > 1 %}
+    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
+      {% if investigation_findings_page > 1 %}
+      <a class="btn-cms small" href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id, findings_page=investigation_findings_page-1) }}">← {{ _('Previous') }}</a>
+      {% endif %}
+      <span>{{ _('Page') }} {{ investigation_findings_page }} / {{ investigation_findings_pages }}</span>
+      {% if investigation_findings_page < investigation_findings_pages %}
+      <a class="btn-cms small" href="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id, findings_page=investigation_findings_page+1) }}">{{ _('Next') }} →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
     {% else %}
     <div style="color:var(--text-muted);font-size:0.85rem;">{{ _('No findings generated yet. Run research actions to produce findings.') }}</div>
     {% endif %}

@@ -1096,6 +1096,9 @@ def case_detail(case_id):
         abort(404)
     ensure_case_access(case)
     show_archived = request.args.get("show_archived") == "1"
+    findings_page = max(1, request.args.get("findings_page", 1, type=int))
+    findings_per_page = 25
+    finding_scope = request.args.get("finding_scope", "").strip()
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
         .filter(
@@ -1106,14 +1109,39 @@ def case_detail(case_id):
         .order_by(WorkflowResearchAction.created_at.desc())
         .all()
     )
-    findings = (
+    findings_query = (
         WorkflowFinding.query.filter_by(case_id=case_id)
         .filter(WorkflowFinding.is_deleted == False)
         .filter(
             WorkflowFinding.archived_at.is_(None) if not show_archived else sa.true()
         )
-        .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
+    )
+    if finding_scope:
+        scoped_actions = WorkflowResearchAction.query.with_entities(
+            WorkflowResearchAction.id
+        ).filter(WorkflowResearchAction.case_id == case_id)
+        if finding_scope == "__wide":
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id.is_(None)
+            )
+        else:
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id == finding_scope
+            )
+        scoped_finding_ids = db.session.query(
+            WorkflowActionFinding.finding_id
+        ).filter(WorkflowActionFinding.action_id.in_(scoped_actions))
+        findings_query = findings_query.filter(
+            WorkflowFinding.id.in_(scoped_finding_ids)
+        )
+    findings_total = findings_query.count()
+    findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
+    findings_page = min(findings_page, findings_pages)
+    findings = (
+        findings_query.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
+        .order_by(WorkflowFinding.created_at.desc(), WorkflowFinding.id.desc())
+        .offset((findings_page - 1) * findings_per_page)
+        .limit(findings_per_page)
         .all()
     )
 
@@ -1227,6 +1255,11 @@ def case_detail(case_id):
             subjects_data=subjects_data,
             actions=actions,
             findings=findings,
+            findings_total=findings_total,
+            findings_page=findings_page,
+            findings_pages=findings_pages,
+            findings_per_page=findings_per_page,
+            finding_scope=finding_scope,
             finding_actions=finding_actions,
             investigations=investigations,
             investigations_meta=investigations_meta,
@@ -1335,6 +1368,23 @@ def investigation_detail(case_id, investigation_id):
     inv, case = ensure_investigation_access(case_id, investigation_id)
 
     ws = build_inv_workspace(inv, case)
+    investigation_findings_page = max(
+        1, request.args.get("findings_page", 1, type=int)
+    )
+    investigation_findings_per_page = 25
+    investigation_findings_total = len(ws.findings)
+    investigation_findings_pages = max(
+        1,
+        (investigation_findings_total + investigation_findings_per_page - 1)
+        // investigation_findings_per_page,
+    )
+    investigation_findings_page = min(
+        investigation_findings_page, investigation_findings_pages
+    )
+    finding_start = (investigation_findings_page - 1) * investigation_findings_per_page
+    investigation_findings = ws.findings[
+        finding_start : finding_start + investigation_findings_per_page
+    ]
 
     # PR4: minimal "Start Action" modal context (action types + case subjects).
     # photo_analysis needs its file-upload picker and manual_entry its rich form,
@@ -1401,6 +1451,10 @@ def investigation_detail(case_id, investigation_id):
         can_start_actions=can_start_actions,
         created_by_name=ws.created_by_name or "",
         ws=ws,
+        investigation_findings=investigation_findings,
+        investigation_findings_page=investigation_findings_page,
+        investigation_findings_pages=investigation_findings_pages,
+        investigation_findings_total=investigation_findings_total,
         action_types=action_types,
         subjects_cfg=subjects_cfg,
         paid_enabled=paid_channels_enabled(),

@@ -23,6 +23,7 @@ from ..services.investigation_workspace import (
     source_research_display_title,
     source_research_display_type,
 )
+from ..services.legacy_workflow_redirect import redirect_legacy_case_get
 from . import cms_bp
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,11 @@ def export_case_json(case_id: str) -> flask.Response:
 @audit_read("case")
 def view_case(case_id: str) -> str:
     """View case details with subjects, findings, and financials."""
+    workflow_redirect = redirect_legacy_case_get(
+        "workflow.case_detail", case_id=case_id
+    )
+    if workflow_redirect:
+        return workflow_redirect
     case = db.session.get(Case, case_id) or abort(404)
     subjects = case.subjects.filter(Subject.is_deleted == False).all()
     child_cases = case.child_cases.filter_by(is_deleted=False).all()
@@ -330,6 +336,11 @@ def case_timeline(case_id: str) -> flask.Response:
 @case_access_required
 def case_report(case_id: str) -> str:
     """Chronological report merging Findings + Comments for a case."""
+    workflow_redirect = redirect_legacy_case_get(
+        "workflow.case_report_hub", case_id=case_id
+    )
+    if workflow_redirect:
+        return workflow_redirect
     case = db.session.get(Case, case_id) or abort(404)
     from_date = request.args.get("from")
     to_date = request.args.get("to")
