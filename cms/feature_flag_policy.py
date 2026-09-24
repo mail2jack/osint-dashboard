@@ -14,6 +14,8 @@ FEATURE_FLAG_NAMES = {
     "workflow_spiderfoot": "🕷️ Verdiept brononderzoek",
     "workflow_source_research_intensity": "🕷️ Verdiept brononderzoek: scanintensiteit",
     "workflow_source_research_expert": "🕷️ Verdiept brononderzoek: expertmodus",
+    "legacy_spiderfoot_ui": "🕷️ Legacy SpiderFoot beheerinterface",
+    "workflow_legacy_case_redirect": "🧭 Oude zaakschermen doorsturen naar workflow",
 }
 
 FEATURE_FLAG_ORDER = tuple(FEATURE_FLAG_NAMES)
@@ -29,6 +31,8 @@ OFF_BY_DEFAULT = frozenset(
         "workflow_spiderfoot",
         "workflow_source_research_intensity",
         "workflow_source_research_expert",
+        "legacy_spiderfoot_ui",
+        "workflow_legacy_case_redirect",
     }
 )
 

@@ -27,6 +27,7 @@ from ..auth import (
 )
 from ..notifications import notify_case_created
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
+from ..services.legacy_workflow_redirect import redirect_legacy_case_get
 
 from .response import api_error
 
@@ -66,6 +67,9 @@ def bulk_delete_cases() -> flask.Response:
 @login_required
 def cases() -> str:
     """List all cases with filtering, sorting, and search."""
+    workflow_redirect = redirect_legacy_case_get("workflow.dashboard")
+    if workflow_redirect:
+        return workflow_redirect
     page = request.args.get("page", 1, type=int)
     per_page = 20
     status = request.args.get("status", "")
@@ -205,6 +209,9 @@ def cases() -> str:
 @validate(CreateCaseSchema)
 def create_case() -> flask.Response:
     """Create a new case."""
+    workflow_redirect = redirect_legacy_case_get("workflow.case_new")
+    if workflow_redirect:
+        return workflow_redirect
     clients = (
         Client.query.filter_by(is_deleted=False, is_active=True)
         .filter(Client.tenant_id == current_user.tenant_id)
@@ -347,6 +354,11 @@ def create_case() -> flask.Response:
 @validate(EditCaseSchema)
 def edit_case(case_id: str) -> flask.Response:
     """Edit case details."""
+    workflow_redirect = redirect_legacy_case_get(
+        "workflow.case_edit", case_id=case_id
+    )
+    if workflow_redirect:
+        return workflow_redirect
     case = db.session.get(Case, case_id) or abort(404)
     clients = (
         apply_tenant_filter(

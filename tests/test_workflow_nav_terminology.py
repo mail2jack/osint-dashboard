@@ -94,6 +94,53 @@ class TestMainNav:
         assert response.status_code == 200
         assert 'href="/cms/spiderfoot"' not in response.get_data(as_text=True)
 
+    def test_legacy_spiderfoot_console_requires_explicit_super_admin_flag(
+        self, auth_client
+    ):
+        """A direct old-console URL is unavailable until explicitly enabled."""
+        admin = _admin()
+        assert auth_client.get("/cms/spiderfoot").status_code == 404
+        admin.is_super_admin = True
+        db.session.add(
+            FeatureFlag(
+                tenant_id=admin.tenant_id,
+                flag_name="legacy_spiderfoot_ui",
+                enabled=True,
+            )
+        )
+        db.session.commit()
+        response = auth_client.get("/cms/spiderfoot")
+        assert response.status_code == 200
+
+    def test_legacy_case_redirect_is_opt_in_and_keeps_pdf_compatibility(
+        self, auth_client
+    ):
+        admin = _admin()
+        case = _case_with_subject(auth_client, "Legacy redirect case")
+        assert auth_client.get(f"/cms/cases/{case.id}").status_code == 200
+        db.session.add_all(
+            [
+                FeatureFlag(tenant_id=admin.tenant_id, flag_name=name, enabled=True)
+                for name in (
+                    "investigator_primary_navigation",
+                    "investigation_workspace",
+                    "workflow_legacy_case_redirect",
+                )
+            ]
+        )
+        db.session.commit()
+        assert auth_client.get("/cms/cases").location.endswith("/cms/workflow/")
+        detail = auth_client.get(f"/cms/cases/{case.id}")
+        assert detail.status_code == 302
+        assert detail.location.endswith(f"/cms/workflow/case/{case.id}")
+        report = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert report.status_code == 302
+        assert report.location.endswith(f"/cms/workflow/case/{case.id}/report")
+        # Output endpoints are deliberately not redirected to the workflow.
+        pdf = auth_client.get(f"/cms/cases/{case.id}/report-pdf")
+        assert pdf.status_code in (200, 302)
+        assert "/cms/workflow/" not in (pdf.location or "")
+
     def test_web_research_no_longer_claims_to_run_spiderfoot(self):
         """Web research and the future SpiderFoot workflow must remain distinct."""
         from cms.workflow.actions.register import ACTION_REGISTRY
