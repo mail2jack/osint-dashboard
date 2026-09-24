@@ -1585,6 +1585,10 @@ def passive_source_research_status(case_id, action_id, investigation_id=None):
     # status response unexpectedly large.
     if not isinstance(proposals, list):
         proposals = []
+    imported_indexes = result.get("imported_indexes", [])
+    imported_count = len(
+        [index for index in imported_indexes if isinstance(index, int) and not isinstance(index, bool)]
+    ) if isinstance(imported_indexes, list) else 0
     return jsonify(
         {
             "ok": True,
@@ -1599,6 +1603,7 @@ def passive_source_research_status(case_id, action_id, investigation_id=None):
                 "progress": scan.progress,
                 "result_count": scan.result_count,
                 "proposals": proposals[:250],
+                "imported_count": imported_count,
             },
         }
     )

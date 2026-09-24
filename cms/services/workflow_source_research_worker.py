@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 
-from cms.models import SpiderFootScan, db
+from cms.models import ActionFinding, Finding, SpiderFootScan, db
 from cms.tenant_context import set_tenant_context
 from cms.tier_limits import check_feature
 from cms.workflow.models import WorkflowResearchAction
@@ -119,6 +119,64 @@ def _safe_proposals(results: list[dict]) -> list[dict]:
             }
         )
     return proposals
+
+
+def _materialize_completed_proposals(
+    scan: SpiderFootScan, action: WorkflowResearchAction
+) -> int:
+    """Create ordinary unverified findings for completed source proposals.
+
+    The index ledger in ``result_summary`` makes this safe to run repeatedly:
+    an interrupted or later worker tick never duplicates a finding.
+    """
+    state = dict(scan.result_summary) if isinstance(scan.result_summary, dict) else {}
+    proposals = state.get("proposals")
+    if not isinstance(proposals, list):
+        return 0
+    imported = {
+        index
+        for index in state.get("imported_indexes", [])
+        if isinstance(index, int) and not isinstance(index, bool)
+    }
+    created = 0
+    for index, proposal in enumerate(proposals):
+        if index in imported or not isinstance(proposal, dict):
+            continue
+        event_type = str(proposal.get("type") or "UNKNOWN")[:100]
+        data = str(proposal.get("data") or "")[:2000]
+        if not data:
+            imported.add(index)
+            continue
+        module = str(proposal.get("source_module") or "")[:200]
+        source_url = str(proposal.get("source_url") or "")[:2000] or None
+        finding = Finding(
+            tenant_id=action.tenant_id,
+            case_id=action.case_id,
+            subject_id=action.subject_id,
+            title=f"[SpiderFoot] {event_type}: {data[:100]}",
+            content=(f"Source: SpiderFoot\nType: {event_type}\nData: {data}"
+                     + (f"\nModule: {module}" if module else "")),
+            detail=data,
+            source_url=source_url,
+            source_type="spiderfoot",
+            icon="🕷️",
+            verified=False,
+            status="candidate",
+            raw_data={"source_research_action_id": action.id,
+                      "proposal_index": index,
+                      "event_type": event_type,
+                      "source_module": module},
+            created_by=action.created_by,
+            created_at=datetime.now(timezone.utc),
+        )
+        db.session.add(finding)
+        db.session.flush()
+        db.session.add(ActionFinding(action_id=action.id, finding_id=finding.id))
+        imported.add(index)
+        created += 1
+    state["imported_indexes"] = sorted(imported)
+    scan.result_summary = state
+    return created
 
 
 def start_one_source_research() -> str:
@@ -231,10 +289,15 @@ def refresh_one_source_research() -> str:
         current.result_summary = {"summary": summary, "proposals": proposals}
         action = db.session.get(WorkflowResearchAction, current.research_action_id)
         if action is not None:
+            created = (
+                _materialize_completed_proposals(current, action)
+                if status == "completed"
+                else 0
+            )
             action.status = "completed" if status == "completed" else "error"
             action.completed_at = datetime.now(timezone.utc)
             action.result_summary = (
-                f"{len(proposals)} reviewable source-research results"
+                f"{created} candidate findings added from source research"
                 if status == "completed"
                 else "Source research did not complete"
             )
@@ -255,4 +318,25 @@ def process_one_source_research() -> str:
     started = start_one_source_research()
     if started != "idle":
         return started
-    return refresh_one_source_research()
+    refreshed = refresh_one_source_research()
+    if refreshed != "idle":
+        return refreshed
+
+    # One completed scan per tick is reconciled for releases that stored
+    # proposals before automatic candidate findings existed.
+    _worker_context()
+    scan = _next_scan(status="completed")
+    if scan is None:
+        db.session.commit()
+        return "idle"
+    action = db.session.get(WorkflowResearchAction, scan.research_action_id)
+    if action is None:
+        db.session.rollback()
+        return "idle"
+    created = _materialize_completed_proposals(scan, action)
+    if created:
+        action.result_summary = f"{created} candidate findings added from source research"
+        db.session.commit()
+        return "materialized"
+    db.session.commit()
+    return "idle"
