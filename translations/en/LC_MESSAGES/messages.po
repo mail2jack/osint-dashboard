@@ -5154,3 +5154,33 @@ msgstr "Review results"
 
 msgid "View progress"
 msgstr "View progress"
+
+msgid "Scan intensity"
+msgstr "Scan intensity"
+
+msgid "Passive"
+msgstr "Passive"
+
+msgid "Footprint"
+msgstr "Footprint"
+
+msgid "Investigate"
+msgstr "Investigate"
+
+msgid "Comprehensive"
+msgstr "Comprehensive"
+
+msgid "Higher intensities can take longer. You can continue working while the scan runs."
+msgstr "Higher intensities can take longer. You can continue working while the scan runs."
+
+msgid "Expert module selection"
+msgstr "Expert module selection"
+
+msgid "Deep source research is running"
+msgstr "Deep source research is running"
+
+msgid "Waiting for the background worker…"
+msgstr "Waiting for the background worker…"
+
+msgid "Running — you can continue working."
+msgstr "Running — you can continue working."

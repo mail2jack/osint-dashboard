@@ -4,12 +4,14 @@ import uuid
 
 import pytest
 
-from cms.models import AuditLog, Case, FeatureFlag, Investigation, SpiderFootScan, User, db
+from cms.models import AuditLog, Case, FeatureFlag, Investigation, Notification, SpiderFootScan, User, db
 from cms.services.workflow_source_research import (
+    SCAN_INTENSITIES,
     SourceResearchRejected,
     TARGET_TYPES,
     passive_profile_for,
     queue_passive_source_research,
+    resolve_scan_configuration,
     spiderfoot_seed_for,
     validate_target,
 )
@@ -102,6 +104,17 @@ def test_target_contract_accepts_supported_target_types_and_passive_profiles():
         "email",
         "analyst@example.test",
     )
+
+
+def test_curated_intensities_resolve_to_stable_allowlisted_modules():
+    assert SCAN_INTENSITIES == ("passive", "footprint", "investigate", "all")
+    profile, modules = resolve_scan_configuration("email", "investigate")
+    assert profile == "full"
+    assert modules
+    with pytest.raises(SourceResearchRejected, match="Unsupported"):
+        resolve_scan_configuration("email", "arbitrary")
+    with pytest.raises(SourceResearchRejected, match="not allowed"):
+        resolve_scan_configuration("email", "passive", ["not-a-module"])
     assert spiderfoot_seed_for("person", "Lindsey Jonker") == (
         '"Lindsey Jonker"',
         "HUMAN_NAME",
@@ -171,6 +184,18 @@ def test_queue_quotes_person_seed_for_spiderfoot(auth_client):
     )
     assert scan.target_value == '"Lindsey Jonker"'
     assert scan.target_type == "HUMAN_NAME"
+
+
+def test_queue_persists_exact_advanced_intensity_and_modules(auth_client):
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case, investigation=investigation, actor=_admin(),
+        target_type="email", target_value="analyst@example.test", intensity="investigate",
+    )
+    assert scan.use_case == "investigate"
+    assert scan.profile == "full"
+    assert scan.module_ids == resolve_scan_configuration("email", "investigate")[1]
+    assert '"scan_intensity": "investigate"' in action.target_snapshot
 
 
 def test_queue_rejects_cross_case_investigation_without_writes(auth_client):
@@ -278,6 +303,40 @@ def test_route_queues_case_wide_passive_research(auth_client):
     assert action.target_kind == "subject"
 
 
+def test_route_requires_explicit_advanced_and_expert_feature_gates(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    payload = {"target_type": "email", "target_value": "analyst@example.test", "scan_intensity": "investigate"}
+    assert auth_client.post(_request_url(case.id, investigation.id), json=payload).status_code == 403
+
+    _enable_flag("workflow_source_research_intensity")
+    response = auth_client.post(_request_url(case.id, investigation.id), json=payload)
+    assert response.status_code == 202
+    scan = db.session.get(SpiderFootScan, response.get_json()["scan"]["id"])
+    assert scan.use_case == "investigate"
+
+    expert_payload = dict(payload, expert_module_ids=["sfp_accounts"])
+    assert auth_client.post(_request_url(case.id, investigation.id), json=expert_payload).status_code == 403
+
+
+def test_active_endpoint_returns_only_own_pending_scans(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, scan = queue_passive_source_research(
+        case=case, investigation=investigation, actor=_admin(),
+        target_type="domain", target_value="example.test",
+    )
+    db.session.commit()
+    response = auth_client.get("/cms/workflow/api/source-research/active")
+    assert response.status_code == 200
+    assert response.get_json()["scans"] == [
+        {
+            "id": scan.id, "status": "pending", "progress": 0,
+            "case_id": case.id, "investigation_id": investigation.id,
+        }
+    ]
+
+
 def test_route_rejects_unknown_field_without_partial_records(auth_client):
     _enable_workflow_source_research()
     case, investigation, _ = _case_with_open_investigation(auth_client)
@@ -370,9 +429,9 @@ def test_worker_starts_and_completes_only_passive_scan(auth_client, monkeypatch)
         {
             "target": "analyst@example.test",
             "target_type": "EMAILADDR",
-            "scan_name": "Passive source research: analyst@example.test",
+            "scan_name": "Deep source research: analyst@example.test",
             "use_case": "passive",
-            "profile": "investigation",
+            "module_ids": resolve_scan_configuration("email", "passive")[1],
         }
     ]
 
@@ -402,11 +461,19 @@ def test_worker_starts_and_completes_only_passive_scan(auth_client, monkeypatch)
     ).one()
     assert finding.status == "candidate"
     assert finding.verified is False
+    assert "SpiderFoot" not in finding.title
+    assert "Verdiept bronnenonderzoek" in finding.title
     assert finding.raw_data["proposal_index"] == 0
     assert WorkflowActionFinding.query.filter_by(
         action_id=action.id, finding_id=finding.id
     ).count() == 1
     assert "raw" not in str(persisted_scan.result_summary)
+    notifications = Notification.query.filter_by(
+        user_id=_admin().id, category="source_research"
+    ).all()
+    assert len(notifications) == 1
+    assert notifications[0].link.endswith("#investigation-findings")
+    assert "SpiderFoot" not in notifications[0].message
 
 
 def test_worker_materializes_previously_completed_proposals_once(auth_client):

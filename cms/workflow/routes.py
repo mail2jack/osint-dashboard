@@ -27,6 +27,7 @@ from cms.models import (
     FindingCaptureJob,
     Investigation,
     InvestigationStatus,
+    SpiderFootScan,
     Subject,
     User,
     UserRole,
@@ -53,9 +54,15 @@ from cms.services.finding_capture_queue import (
     CaptureRequestRejected,
     enqueue_finding_capture,
 )
-from cms.services.investigation_workspace import build_inv_workspace
+from cms.services.investigation_workspace import (
+    build_inv_workspace,
+    source_research_display_title,
+    source_research_display_type,
+)
 from cms.services.workflow_source_research import (
+    SCAN_INTENSITIES,
     SourceResearchRejected,
+    expert_module_options_by_target,
     queue_passive_source_research,
 )
 from cms.services.sequence_service import (
@@ -93,6 +100,10 @@ _INVESTIGATOR_ROLES = (
     UserRole.ADMIN.value,
     UserRole.OWNER.value,
 )
+_ADVANCED_SOURCE_RESEARCH_ROLES = (
+    UserRole.SENIOR_INVESTIGATOR.value,
+    UserRole.ADMIN.value,
+)
 
 
 def _current_user_is_investigator() -> bool:
@@ -110,6 +121,27 @@ def _workflow_source_research_enabled() -> bool:
     return (
         check_feature("workflow_spiderfoot", current_user.tenant_id)
         and check_feature("spiderfoot", current_user.tenant_id)
+    )
+
+
+def _can_choose_source_research_intensity() -> bool:
+    """Return whether the current actor may request curated advanced scans."""
+    return bool(
+        current_user.is_authenticated
+        and (
+            getattr(current_user, "is_super_admin", False)
+            or current_user.role in _ADVANCED_SOURCE_RESEARCH_ROLES
+        )
+        and check_feature("workflow_source_research_intensity", current_user.tenant_id)
+    )
+
+
+def _can_use_source_research_expert_mode() -> bool:
+    """Expert module selection is intentionally super-admin only."""
+    return bool(
+        current_user.is_authenticated
+        and getattr(current_user, "is_super_admin", False)
+        and check_feature("workflow_source_research_expert", current_user.tenant_id)
     )
 
 
@@ -532,10 +564,10 @@ def _finding_json_with_context(f, case=None, subject=None):
         "id": f.id,
         "case_id": f.case_id,
         "subject_id": f.subject_id,
-        "title": f.title,
+        "title": source_research_display_title(f.title, f.source_type),
         "detail": f.detail,
         "source_url": f.source_url,
-        "source_type": f.source_type,
+        "source_type": source_research_display_type(f.source_type),
         "icon": f.icon,
         "verified": f.verified,
         "status": f.status,
@@ -1211,6 +1243,16 @@ def case_detail(case_id):
                 _current_user_is_investigator()
                 and _workflow_source_research_enabled()
             ),
+            source_research_intensity_enabled=(
+                _current_user_is_investigator()
+                and _can_choose_source_research_intensity()
+            ),
+            source_research_expert_enabled=_can_use_source_research_expert_mode(),
+            source_research_expert_options=(
+                expert_module_options_by_target()
+                if _can_use_source_research_expert_mode()
+                else {}
+            ),
             investigation_workspace_enabled=check_feature("investigation_workspace"),
             local_browser_capture_enabled=(
                 _current_user_is_investigator()
@@ -1365,6 +1407,17 @@ def investigation_detail(case_id, investigation_id):
         source_research_enabled=(
             can_start_actions and _workflow_source_research_enabled()
         ),
+        source_research_intensity_enabled=(
+            can_start_actions and _can_choose_source_research_intensity()
+        ),
+        source_research_expert_enabled=(
+            can_start_actions and _can_use_source_research_expert_mode()
+        ),
+        source_research_expert_options=(
+            expert_module_options_by_target()
+            if can_start_actions and _can_use_source_research_expert_mode()
+            else {}
+        ),
         finding_capture_enabled=(
             can_write
             and check_feature("finding_screenshot_capture", current_user.tenant_id)
@@ -1378,6 +1431,44 @@ def investigation_detail(case_id, investigation_id):
     )
 
 
+@workflow_bp.route("/api/source-research/active", methods=["GET"])
+@login_required
+@_investigator_required
+def active_source_research():
+    """Return only the caller's bounded, active native research jobs.
+
+    This powers a non-blocking status panel.  It never returns another
+    investigator's work or cached third-party results.
+    """
+    if not _workflow_source_research_enabled():
+        return jsonify({"scans": []})
+    scans = (
+        SpiderFootScan.query.filter_by(
+            tenant_id=current_user.tenant_id,
+            created_by=current_user.id,
+            is_deleted=False,
+        )
+        .filter(SpiderFootScan.status.in_(("pending", "running")))
+        .order_by(SpiderFootScan.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    return jsonify(
+        {
+            "scans": [
+                {
+                    "id": scan.id,
+                    "status": scan.status,
+                    "progress": scan.progress,
+                    "case_id": scan.case_id,
+                    "investigation_id": scan.investigation_id,
+                }
+                for scan in scans
+            ]
+        }
+    )
+
+
 @workflow_bp.route(
     "/api/case/<case_id>/investigations/<investigation_id>/source-research",
     methods=["POST"],
@@ -1386,7 +1477,7 @@ def investigation_detail(case_id, investigation_id):
 @login_required
 @_investigator_required
 def request_passive_source_research(case_id, investigation_id=None):
-    """Queue one explicitly requested passive source-research action.
+    """Queue one explicitly requested, policy-bounded source-research action.
 
     This endpoint is deliberately a durable request boundary: it records the
     action, scan and audit entries in one transaction but never opens a
@@ -1399,7 +1490,10 @@ def request_passive_source_research(case_id, investigation_id=None):
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"error": "Payload must be a JSON object"}), 400
-    allowed = {"target_type", "target_value", "subject_id", "investigation_id"}
+    allowed = {
+        "target_type", "target_value", "subject_id", "investigation_id",
+        "scan_intensity", "expert_module_ids",
+    }
     unknown = sorted(set(body) - allowed)
     if unknown:
         return jsonify({"error": f"Unknown fields: {', '.join(unknown)}"}), 400
@@ -1411,6 +1505,15 @@ def request_passive_source_research(case_id, investigation_id=None):
     if investigation_id is not None and body_investigation_id not in (None, investigation_id):
         return jsonify({"error": "Investigation scope does not match this URL"}), 400
     selected_investigation_id = investigation_id or body_investigation_id
+
+    intensity = body.get("scan_intensity", "passive")
+    if not isinstance(intensity, str) or intensity not in SCAN_INTENSITIES:
+        return jsonify({"error": "Unsupported source-research intensity"}), 400
+    if intensity != "passive" and not _can_choose_source_research_intensity():
+        return jsonify({"error": "Forbidden"}), 403
+    expert_module_ids = body.get("expert_module_ids")
+    if expert_module_ids is not None and not _can_use_source_research_expert_mode():
+        return jsonify({"error": "Forbidden"}), 403
 
     if selected_investigation_id is not None:
         if not isinstance(selected_investigation_id, str) or not selected_investigation_id:
@@ -1469,6 +1572,8 @@ def request_passive_source_research(case_id, investigation_id=None):
             target_type=body.get("target_type"),
             target_value=body.get("target_value"),
             subject=subject,
+            intensity=intensity,
+            expert_module_ids=expert_module_ids,
         )
         # Capture scalar ids before commit: under FORCE RLS a post-commit ORM
         # refresh may use a different pooled connection and turn a successful
@@ -1497,7 +1602,7 @@ def request_passive_source_research(case_id, investigation_id=None):
             case_id=case.id,
             ip_address=request.remote_addr,
             new_values={
-                "use_case": "passive",
+                "use_case": scan.use_case,
                 "target_type": scan.target_type,
                 "profile": scan.profile,
                 "status": "pending",
@@ -1521,7 +1626,7 @@ def request_passive_source_research(case_id, investigation_id=None):
         {
             "ok": True,
             "action": {"id": action_id, "status": "pending"},
-            "scan": {"id": scan_id, "status": "pending", "use_case": "passive"},
+            "scan": {"id": scan_id, "status": "pending", "use_case": intensity},
         }
     ), 202
 
@@ -1712,9 +1817,9 @@ def import_passive_source_research(case_id, action_id, investigation_id=None):
                 tenant_id=case.tenant_id,
                 case_id=case.id,
                 subject_id=action.subject_id,
-                title=f"[SpiderFoot] {event_type}: {data[:100]}",
+                title=f"Verdiept bronnenonderzoek · {event_type}: {data[:100]}",
                 content=(
-                    f"Source: SpiderFoot\nType: {event_type}\nData: {data}"
+                    f"Bron: Verdiept bronnenonderzoek\nType: {event_type}\nData: {data}"
                     + (f"\nModule: {module}" if module else "")
                 ),
                 detail=data,

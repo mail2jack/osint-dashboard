@@ -12,6 +12,8 @@ FEATURE_FLAG_NAMES = {
     "finding_screenshot_capture": "📷 Finding Screenshot Capture",
     "local_browser_screenshot_capture": "🧩 Local Browser Screenshot Capture",
     "workflow_spiderfoot": "🕷️ Verdiept brononderzoek",
+    "workflow_source_research_intensity": "🕷️ Verdiept brononderzoek: scanintensiteit",
+    "workflow_source_research_expert": "🕷️ Verdiept brononderzoek: expertmodus",
 }
 
 FEATURE_FLAG_ORDER = tuple(FEATURE_FLAG_NAMES)
@@ -25,6 +27,8 @@ OFF_BY_DEFAULT = frozenset(
         "finding_screenshot_capture",
         "local_browser_screenshot_capture",
         "workflow_spiderfoot",
+        "workflow_source_research_intensity",
+        "workflow_source_research_expert",
     }
 )
 

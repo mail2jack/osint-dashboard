@@ -19,6 +19,10 @@ from ..models import (
     report_visible_finding_filter,
 )
 from ..services.report_evidence import report_screenshots, safe_source_url
+from ..services.investigation_workspace import (
+    source_research_display_title,
+    source_research_display_type,
+)
 from . import cms_bp
 
 logger = logging.getLogger(__name__)
@@ -219,10 +223,12 @@ def case_timeline(case_id: str) -> flask.Response:
                 "type": "finding",
                 "icon": "🔍",
                 "title": "Finding Added",
-                "description": finding.title[:100]
+                "description": source_research_display_title(
+                    finding.title, finding.source_type
+                )[:100]
                 + ("..." if len(finding.title) > 100 else ""),
                 "user": finding.author,
-                "details": f"Source: {finding.source_type or 'manual'}",
+                "details": f"Source: {source_research_display_type(finding.source_type) or 'manual'}",
             }
         )
 
@@ -388,10 +394,10 @@ def case_report(case_id: str) -> str:
                 "type": "finding",
                 "icon": "🔍",
                 "timestamp": f.created_at,
-                "title": f.title,
+                "title": source_research_display_title(f.title, f.source_type),
                 "content": f.content,
                 "comment": f.comment,
-                "source_type": f.source_type,
+                "source_type": source_research_display_type(f.source_type),
                 "confidence": f.confidence_level,
                 "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
@@ -497,10 +503,10 @@ def case_report_pdf(case_id: str) -> flask.Response:
                 "type": "finding",
                 "icon": "🔍",
                 "timestamp": f.created_at,
-                "title": f.title,
+                "title": source_research_display_title(f.title, f.source_type),
                 "content": f.content,
                 "comment": f.comment,
-                "source_type": f.source_type,
+                "source_type": source_research_display_type(f.source_type),
                 "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
                 "subject_name": subject.name if subject else "-",

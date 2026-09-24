@@ -13,8 +13,8 @@
   <div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="{{ f.id }}"></div>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
-      <strong>{{ f.title }}</strong>
-      <span class="badge badge-info" style="margin-left:0.5rem;">{{ f.source_type or 'manual' }}</span>
+      <strong>{% if f.source_type == 'spiderfoot' and f.title.startswith('[SpiderFoot] ') %}{{ _('Deep source research') }} · {{ f.title[13:] }}{% else %}{{ f.title }}{% endif %}</strong>
+      <span class="badge badge-info" style="margin-left:0.5rem;">{{ _('Deep source research') if f.source_type == 'spiderfoot' else (f.source_type or 'manual') }}</span>
       {% if f.confidence_level %}
       <span class="badge {% if f.confidence_level in ('high','verified') %}badge-status-success{% elif f.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ f.confidence_level }}</span>
       {% endif %}

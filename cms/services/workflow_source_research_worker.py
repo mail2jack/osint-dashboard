@@ -8,12 +8,13 @@ their tenant, case, investigation and action references.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
 
-from cms.models import ActionFinding, Finding, SpiderFootScan, db
+from cms.models import ActionFinding, Finding, Notification, SpiderFootScan, db
 from cms.tenant_context import set_tenant_context
 from cms.tier_limits import check_feature
 from cms.workflow.models import WorkflowResearchAction
@@ -22,6 +23,36 @@ logger = logging.getLogger(__name__)
 
 _QUEUED_PREFIX = "queued:"
 _TERMINAL = {"completed", "failed", "cancelled"}
+
+
+def _notification_link(action: WorkflowResearchAction) -> str:
+    """Build a local workflow link without exposing third-party internals."""
+    if action.investigation_id:
+        return (
+            f"/cms/workflow/case/{action.case_id}/investigations/"
+            f"{action.investigation_id}#investigation-findings"
+        )
+    return f"/cms/workflow/case/{action.case_id}#case-findings"
+
+
+def _notify_terminal(action: WorkflowResearchAction, *, completed: bool, count: int = 0) -> None:
+    """Create one durable, user-owned terminal notification in this transaction."""
+    if not action.created_by:
+        return
+    db.session.add(
+        Notification(
+            tenant_id=action.tenant_id,
+            user_id=action.created_by,
+            category="source_research",
+            title=("Verdiept bronnenonderzoek klaar" if completed else "Verdiept bronnenonderzoek mislukt"),
+            message=(
+                f"{count} nieuwe bevindingen zijn beschikbaar."
+                if completed
+                else "De vastlegging kon niet worden voltooid. Probeer het later opnieuw."
+            ),
+            link=_notification_link(action),
+        )
+    )
 
 
 def _worker_context() -> None:
@@ -81,6 +112,7 @@ def _set_failed(scan_id: str, message: str) -> None:
         action.error = message[:500]
         action.completed_at = datetime.now(timezone.utc)
         action.result_summary = "Source research could not be started"
+        _notify_terminal(action, completed=False)
     db.session.commit()
 
 
@@ -153,8 +185,8 @@ def _materialize_completed_proposals(
             tenant_id=action.tenant_id,
             case_id=action.case_id,
             subject_id=action.subject_id,
-            title=f"[SpiderFoot] {event_type}: {data[:100]}",
-            content=(f"Source: SpiderFoot\nType: {event_type}\nData: {data}"
+            title=f"Verdiept bronnenonderzoek · {event_type}: {data[:100]}",
+            content=(f"Bron: Verdiept bronnenonderzoek\nType: {event_type}\nData: {data}"
                      + (f"\nModule: {module}" if module else "")),
             detail=data,
             source_url=source_url,
@@ -189,15 +221,21 @@ def start_one_source_research() -> str:
     scan_id = scan.id
     action_id = scan.research_action_id
     tenant_id = scan.tenant_id
+    use_case = scan.use_case or "passive"
     scan.update_status("running", progress=0)
     action = db.session.get(WorkflowResearchAction, action_id)
     if action is None:
         db.session.rollback()
         _set_failed(scan_id, "Source research action is unavailable")
         return "failed"
+    try:
+        request_metadata = json.loads(action.target_snapshot or "{}")
+    except (TypeError, ValueError):
+        request_metadata = {}
+    expert_mode = bool(request_metadata.get("expert_mode"))
     action.status = "running"
     action.started_at = datetime.now(timezone.utc)
-    action.result_summary = "Passive source research is starting"
+    action.result_summary = "Verdiept bronnenonderzoek wordt gestart"
     db.session.commit()
 
     # A flag may have been disabled after the request was stored.  Re-check at
@@ -208,6 +246,14 @@ def start_one_source_research() -> str:
         and check_feature("spiderfoot", tenant_id)
     ):
         _set_failed(scan_id, "Source research is disabled for this tenant")
+        return "disabled"
+    if use_case != "passive" and not check_feature(
+        "workflow_source_research_intensity", tenant_id
+    ):
+        _set_failed(scan_id, "Advanced source research is disabled for this tenant")
+        return "disabled"
+    if expert_mode and not check_feature("workflow_source_research_expert", tenant_id):
+        _set_failed(scan_id, "Expert source research is disabled for this tenant")
         return "disabled"
 
     try:
@@ -226,8 +272,8 @@ def start_one_source_research() -> str:
             target=current.target_value,
             target_type=current.target_type,
             scan_name=current.scan_name,
-            use_case="passive",
-            profile=current.profile,
+            use_case=current.use_case or "passive",
+            module_ids=list(current.module_ids or []),
         )
         real_scan_id = result.get("scan_id") if isinstance(result, dict) else None
         if not isinstance(real_scan_id, str) or not real_scan_id:
@@ -237,7 +283,7 @@ def start_one_source_research() -> str:
         current.status = "running"
         action = db.session.get(WorkflowResearchAction, action_id)
         if action is not None:
-            action.result_summary = "Passive source research is running"
+            action.result_summary = "Verdiept bronnenonderzoek loopt"
         db.session.commit()
         return "started"
     except Exception:
@@ -297,12 +343,13 @@ def refresh_one_source_research() -> str:
             action.status = "completed" if status == "completed" else "error"
             action.completed_at = datetime.now(timezone.utc)
             action.result_summary = (
-                f"{created} candidate findings added from source research"
+                f"{created} kandidaatbevindingen toegevoegd vanuit verdiept bronnenonderzoek"
                 if status == "completed"
-                else "Source research did not complete"
+                else "Verdiept bronnenonderzoek is niet voltooid"
             )
             if status != "completed":
-                action.error = "Source research service did not complete the scan"
+                action.error = "Verdiept bronnenonderzoek is niet voltooid"
+            _notify_terminal(action, completed=status == "completed", count=created)
         db.session.commit()
         return status
     except Exception:
@@ -353,7 +400,7 @@ def process_one_source_research() -> str:
         created = _materialize_completed_proposals(scan, action)
         if created:
             action.result_summary = (
-                f"{created} candidate findings added from source research"
+                f"{created} kandidaatbevindingen toegevoegd vanuit verdiept bronnenonderzoek"
             )
         db.session.commit()
         return "materialized" if created else "reconciled"
