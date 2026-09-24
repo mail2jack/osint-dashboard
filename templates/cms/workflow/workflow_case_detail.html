@@ -581,7 +581,7 @@ input:-webkit-autofill:focus {
   <div class="workflow-step-header">
     <span class="step-nr">5</span>
     Findings
-    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} findings</span>
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} {{ _('of') }} {{ findings_total }} {{ _('findings') }}</span>
     <span id="findingsToggleAll" style="font-size:0.78rem;margin-left:0.5rem;">
       <button type="button" id="collapseAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬛ Collapse all</button>
       <button type="button" id="expandAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬜ Expand all</button>
@@ -604,6 +604,17 @@ input:-webkit-autofill:focus {
     {% endif %}
   </div>
   <div class="workflow-step-body">
+    {% if findings_pages > 1 %}
+    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
+      {% if findings_page > 1 %}
+      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page-1, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>
+      {% endif %}
+      <span>{{ _('Page') }} {{ findings_page }} / {{ findings_pages }}</span>
+      {% if findings_page < findings_pages %}
+      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page+1, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
     <div id="findingsContainer">
       {% if findings %}
 
@@ -714,6 +725,17 @@ input:-webkit-autofill:focus {
       </div>
       {% endif %}
     </div>
+    {% if findings_pages > 1 %}
+    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
+      {% if findings_page > 1 %}
+      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page-1, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>
+      {% endif %}
+      <span>{{ _('Page') }} {{ findings_page }} / {{ findings_pages }}</span>
+      {% if findings_page < findings_pages %}
+      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page+1, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
   </div>
 </div>
 
@@ -783,6 +805,7 @@ input:-webkit-autofill:focus {
 .picker-item > *{min-width:0;}
 .pi-subject,.pi-label,.pi-value{min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:normal;}
 #findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
+.findings-pager{display:flex;align-items:center;gap:.5rem;justify-content:center;margin:.5rem 0;font-size:.82rem;color:var(--text-muted);}
 
 /* ── RDW card ── */
 .rdw-card {
