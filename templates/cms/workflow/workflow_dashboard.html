@@ -13,6 +13,7 @@
 .wf-card .title { font-weight: 600; font-size: 0.95rem; }
 .wf-card .meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
 .wf-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.workflow-pager { display:flex; align-items:center; justify-content:center; gap:0.75rem; margin:1rem 0; font-size:0.85rem; }
 .super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
@@ -28,12 +29,24 @@ input:-webkit-autofill:focus {
     <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('Cases') }}</h1>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
       <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('All findings register') }}</a>
+      {% if cases_total %} · {{ cases_total }} {{ _('Cases')|lower }}{% endif %}
     </p>
   </div>
   <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ {{ _('New case') }}</a>
 </div>
 
 {% if cases %}
+  {% if cases_pages > 1 %}
+  <nav class="workflow-pager" aria-label="{{ _('Cases') }}">
+    {% if cases_page > 1 %}
+    <a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page-1) }}">← {{ _('Previous') }}</a>
+    {% endif %}
+    <span>{{ _('Page') }} {{ cases_page }} / {{ cases_pages }}</span>
+    {% if cases_page < cases_pages %}
+    <a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">{{ _('Next') }} →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% for case in cases %}
   <div class="wf-card">
     <div class="info">
@@ -56,6 +69,17 @@ input:-webkit-autofill:focus {
     </div>
   </div>
   {% endfor %}
+  {% if cases_pages > 1 %}
+  <nav class="workflow-pager" aria-label="{{ _('Cases') }}">
+    {% if cases_page > 1 %}
+    <a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page-1) }}">← {{ _('Previous') }}</a>
+    {% endif %}
+    <span>{{ _('Page') }} {{ cases_page }} / {{ cases_pages }}</span>
+    {% if cases_page < cases_pages %}
+    <a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">{{ _('Next') }} →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
 {% else %}
 <div style="text-align:center;padding:3rem;color:var(--text-muted);">
   <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>

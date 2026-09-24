@@ -486,13 +486,32 @@ def _remove_orphan_screenshot(file_path):
 @login_required
 @_investigator_required
 def dashboard():
+    # Use the same bulk access rule as the findings register.  A tenant-wide
+    # dashboard query would otherwise expose case cards which a non-admin
+    # investigator cannot open.
+    from cms.auth import get_accessible_case_ids
+
+    per_page = 25
+    requested_page = request.args.get("page", 1, type=int) or 1
+    accessible_ids = get_accessible_case_ids(current_user)
+    cases_query = WorkflowCase.query.filter(
+        WorkflowCase.archived_at.is_(None),
+        WorkflowCase.is_deleted == False,
+    )
+    if accessible_ids:
+        cases_query = cases_query.filter(WorkflowCase.id.in_(accessible_ids))
+    else:
+        cases_query = cases_query.filter(sa.false())
+
+    cases_query = cases_query.order_by(
+        WorkflowCase.created_at.desc(), WorkflowCase.id.desc()
+    )
+    cases_total = cases_query.count()
+    cases_pages = max(1, (cases_total + per_page - 1) // per_page)
+    cases_page = min(max(requested_page, 1), cases_pages)
     cases = (
-        WorkflowCase.query.filter(
-            WorkflowCase.archived_at.is_(None),
-            WorkflowCase.is_deleted == False,
-            WorkflowCase.tenant_id == current_user.tenant_id,
-        )
-        .order_by(WorkflowCase.created_at.desc())
+        cases_query.offset((cases_page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
     case_ids = [c.id for c in cases]
@@ -519,6 +538,9 @@ def dashboard():
     return render_template(
         "cms/workflow/workflow_dashboard.html",
         cases=cases,
+        cases_total=cases_total,
+        cases_page=cases_page,
+        cases_pages=cases_pages,
         action_counts=action_counts,
         action_types=ACTION_REGISTRY,
     )
