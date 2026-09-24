@@ -428,6 +428,35 @@ def test_worker_materializes_previously_completed_proposals_once(auth_client):
     assert Finding.query.filter_by(case_id=case.id, source_type="spiderfoot").count() == 1
 
 
+def test_worker_reconciliation_skips_already_imported_completed_scans(auth_client):
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    old_action, old_scan = queue_passive_source_research(
+        case=case, investigation=investigation, actor=_admin(),
+        target_type="domain", target_value="old.example.test",
+    )
+    old_action.status = old_scan.status = "completed"
+    old_scan.result_summary = {
+        "proposals": [{"type": "DOMAIN_NAME", "data": "old.example.test"}],
+        "imported_indexes": [0],
+    }
+    action, scan = queue_passive_source_research(
+        case=case, investigation=investigation, actor=_admin(),
+        target_type="domain", target_value="new.example.test",
+    )
+    action.status = scan.status = "completed"
+    scan.result_summary = {
+        "proposals": [{"type": "DOMAIN_NAME", "data": "new.example.test"}]
+    }
+    db.session.commit()
+
+    assert source_worker.process_one_source_research() == "materialized"
+    from cms.models import Finding
+
+    finding = Finding.query.filter_by(case_id=case.id, source_type="spiderfoot").one()
+    assert finding.detail == "new.example.test"
+
+
 
 def test_worker_refresh_skips_unstarted_placeholder_when_real_scan_runs(
     auth_client, monkeypatch

@@ -325,18 +325,37 @@ def process_one_source_research() -> str:
     # One completed scan per tick is reconciled for releases that stored
     # proposals before automatic candidate findings existed.
     _worker_context()
-    scan = _next_scan(status="completed")
-    if scan is None:
+    statement = (
+        sa.select(SpiderFootScan)
+        .where(
+            SpiderFootScan.research_action_id.is_not(None),
+            SpiderFootScan.is_deleted.is_(False),
+            SpiderFootScan.status == "completed",
+        )
+        .order_by(SpiderFootScan.created_at, SpiderFootScan.id)
+        .limit(50)
+    )
+    if db.session.bind and db.session.bind.dialect.name == "postgresql":
+        statement = statement.with_for_update(skip_locked=True)
+    for scan in db.session.execute(statement).scalars():
+        action = db.session.get(WorkflowResearchAction, scan.research_action_id)
+        if action is None:
+            continue
+        state = scan.result_summary if isinstance(scan.result_summary, dict) else {}
+        proposals = state.get("proposals")
+        imported = state.get("imported_indexes", [])
+        if not isinstance(proposals, list) or not proposals:
+            continue
+        if isinstance(imported, list) and all(
+            index in imported for index in range(len(proposals))
+        ):
+            continue
+        created = _materialize_completed_proposals(scan, action)
+        if created:
+            action.result_summary = (
+                f"{created} candidate findings added from source research"
+            )
         db.session.commit()
-        return "idle"
-    action = db.session.get(WorkflowResearchAction, scan.research_action_id)
-    if action is None:
-        db.session.rollback()
-        return "idle"
-    created = _materialize_completed_proposals(scan, action)
-    if created:
-        action.result_summary = f"{created} candidate findings added from source research"
-        db.session.commit()
-        return "materialized"
+        return "materialized" if created else "reconciled"
     db.session.commit()
     return "idle"
