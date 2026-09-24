@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
@@ -116,6 +117,26 @@ def _set_failed(scan_id: str, message: str) -> None:
     db.session.commit()
 
 
+def _scan_progress(raw_progress: object) -> int | None:
+    """Return a real, bounded source-provided percentage when available.
+
+    The currently used SpiderFoot client normally exposes a scan state but no
+    progress field.  In that common case the caller deliberately receives
+    ``None`` rather than a misleading permanent ``0%``.  Some compatible API
+    versions do expose numeric progress as a string or decimal, which we can
+    safely round for display.
+    """
+    if isinstance(raw_progress, bool) or raw_progress is None:
+        return None
+    try:
+        value = Decimal(str(raw_progress).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    if not value.is_finite() or not Decimal("0") <= value <= Decimal("100"):
+        return None
+    return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
 def _scan_status(raw: object) -> tuple[str, int | None]:
     """Map permissive SpiderFoot API status payloads to local lifecycle values."""
     if not isinstance(raw, dict):
@@ -130,8 +151,7 @@ def _scan_status(raw: object) -> tuple[str, int | None]:
         "aborted": "cancelled",
         "cancelled": "cancelled",
     }.get(value, "running")
-    progress = raw.get("progress")
-    return status, progress if isinstance(progress, int) and 0 <= progress <= 100 else None
+    return status, _scan_progress(raw.get("progress"))
 
 
 def _safe_proposals(results: list[dict]) -> list[dict]:
@@ -311,9 +331,17 @@ def refresh_one_source_research() -> str:
         if status == "running":
             _worker_context()
             current = db.session.get(SpiderFootScan, scan_id)
-            if current is not None and current.status == "running" and progress is not None:
-                current.progress = progress
-                db.session.commit()
+            if current is not None and current.status == "running":
+                # Never overwrite the initial 0% with pretend progress when
+                # the external service exposes no percentage API (the normal
+                # client response).  The browser derives elapsed time from
+                # the persisted start timestamp, avoiding a database write
+                # for every otherwise idle worker poll.
+                if progress is not None:
+                    current.progress = progress
+                    db.session.commit()
+                else:
+                    db.session.rollback()
             else:
                 db.session.rollback()
             return "running"

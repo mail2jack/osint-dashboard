@@ -329,12 +329,17 @@ def test_active_endpoint_returns_only_own_pending_scans(auth_client):
     db.session.commit()
     response = auth_client.get("/cms/workflow/api/source-research/active")
     assert response.status_code == 200
-    assert response.get_json()["scans"] == [
-        {
-            "id": scan.id, "status": "pending", "progress": 0,
-            "case_id": case.id, "investigation_id": investigation.id,
-        }
-    ]
+    scans = response.get_json()["scans"]
+    assert len(scans) == 1
+    active = scans[0]
+    assert active["id"] == scan.id
+    assert active["status"] == "pending"
+    assert active["progress"] == 0
+    assert active["progress_available"] is False
+    assert active["case_id"] == case.id
+    assert active["investigation_id"] == investigation.id
+    assert active["created_at"]
+    assert active["started_at"] is None
 
 
 def test_route_rejects_unknown_field_without_partial_records(auth_client):
@@ -567,6 +572,30 @@ def test_worker_refresh_skips_unstarted_placeholder_when_real_scan_runs(
     stalled = db.session.get(SpiderFootScan, stalled_scan.id)
     assert stalled.scan_id.startswith("queued:")
     assert stalled.progress != 42
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ({"status": "running", "progress": "42"}, ("running", 42)),
+        ({"state": "RUNNING", "progress": 42.5}, ("running", 43)),
+        ({"status": "running", "progress": "not a number"}, ("running", None)),
+        ({"status": "finished", "progress": 100}, ("completed", 100)),
+    ],
+)
+def test_worker_normalizes_only_real_source_progress(raw, expected):
+    assert source_worker._scan_status(raw) == expected
+
+
+def test_source_research_status_panel_uses_elapsed_time_and_refreshes_current_case():
+    from pathlib import Path
+
+    source = Path("static/js/base.js").read_text()
+    assert "scan.progress_available" in source
+    assert "elapsed(scan.started_at, scan.created_at)" in source
+    assert "window.location.reload()" in source
+    assert "cms-source-research-refresh-notification" in source
+    assert "JSON.stringify({message: message, type: type})" in source
 
 
 def test_completed_source_research_action_links_directly_to_materialized_findings(auth_client):

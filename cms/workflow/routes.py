@@ -1460,8 +1460,11 @@ def active_source_research():
                     "id": scan.id,
                     "status": scan.status,
                     "progress": scan.progress,
+                    "progress_available": scan.progress is not None and scan.progress > 0,
                     "case_id": scan.case_id,
                     "investigation_id": scan.investigation_id,
+                    "created_at": scan.created_at.isoformat() if scan.created_at else None,
+                    "started_at": scan.started_at.isoformat() if scan.started_at else None,
                 }
                 for scan in scans
             ]

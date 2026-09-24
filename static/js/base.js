@@ -37,12 +37,41 @@ window.apiFetch = function(url, options) {
   var C = window.CMS || {};
   if (!C.sourceResearchActiveUrl) return;
   var seenKey = 'cms-source-research-notifications';
+  var refreshKey = 'cms-source-research-refresh-notification';
+  var nextDelay = 30000;
   function seen() {
     try { return JSON.parse(sessionStorage.getItem(seenKey) || '[]'); } catch (_) { return []; }
   }
   function markSeen(id) {
     var ids = seen(); if (ids.indexOf(id) === -1) ids.push(id);
     try { sessionStorage.setItem(seenKey, JSON.stringify(ids.slice(-50))); } catch (_) {}
+  }
+  function elapsed(startedAt, createdAt) {
+    var raw = startedAt || createdAt;
+    var started = raw ? Date.parse(raw) : NaN;
+    if (isNaN(started)) return '';
+    var seconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+    if (seconds < 60) return '< 1 min';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + ' min';
+    return Math.floor(minutes / 60) + ' h ' + (minutes % 60) + ' min';
+  }
+  function refreshCurrentCase(notification) {
+    if (!notification.link) return false;
+    try {
+      var destination = new URL(notification.link, window.location.origin);
+      return destination.pathname === window.location.pathname;
+    } catch (_) { return false; }
+  }
+  function showDeferredCompletion() {
+    try {
+      var saved = sessionStorage.getItem(refreshKey);
+      if (saved) {
+        sessionStorage.removeItem(refreshKey);
+        var completion = JSON.parse(saved);
+        window.showToast(completion.message, completion.type);
+      }
+    } catch (_) {}
   }
   function panel(scans) {
     var node = document.getElementById('sourceResearchActivity');
@@ -57,17 +86,24 @@ window.apiFetch = function(url, options) {
     var title = document.createElement('strong'); title.textContent = '🔍 ' + (C.sourceResearchRunningTitle || 'Deep source research is running'); node.appendChild(title);
     scans.forEach(function(scan) {
       var line = document.createElement('div');
-      var progress = typeof scan.progress === 'number' ? ' ' + scan.progress + '%' : '';
+      var progress = scan.progress_available && typeof scan.progress === 'number'
+        ? ' ' + scan.progress + '%'
+        : '';
+      var duration = elapsed(scan.started_at, scan.created_at);
       line.textContent = scan.status === 'pending'
         ? (C.sourceResearchPending || 'Waiting for the background worker…')
-        : (C.sourceResearchRunning || 'Running — you can continue working.') + progress;
+        : (C.sourceResearchRunning || 'Running — you can continue working.') + progress + (duration ? ' (' + duration + ')' : '');
       line.style.marginTop = '.35rem'; node.appendChild(line);
     });
   }
   function refresh() {
     window.apiFetch(C.sourceResearchActiveUrl, {headers:{'Accept':'application/json'}})
       .then(function(r) { if (!r.ok) throw new Error('unavailable'); return r.json(); })
-      .then(function(data) { panel(Array.isArray(data.scans) ? data.scans : []); })
+      .then(function(data) {
+        var scans = Array.isArray(data.scans) ? data.scans : [];
+        panel(scans);
+        nextDelay = scans.length ? 15000 : 30000;
+      })
       .catch(function() {});
     window.apiFetch(C.notificationListUrl + '?category=source_research&limit=10', {headers:{'Accept':'application/json'}})
       .then(function(r) { if (!r.ok) throw new Error('unavailable'); return r.json(); })
@@ -75,11 +111,21 @@ window.apiFetch = function(url, options) {
         (data.notifications || []).forEach(function(notification) {
           if (seen().indexOf(notification.id) !== -1) return;
           markSeen(notification.id);
-          window.showToast((notification.title ? notification.title + ': ' : '') + notification.message, notification.title && notification.title.indexOf('mislukt') !== -1 ? 'error' : 'success');
+          var message = (notification.title ? notification.title + ': ' : '') + notification.message;
+          var type = notification.title && notification.title.indexOf('mislukt') !== -1 ? 'error' : 'success';
+          if (refreshCurrentCase(notification)) {
+            try { sessionStorage.setItem(refreshKey, JSON.stringify({message: message, type: type})); } catch (_) {}
+            window.location.reload();
+            return;
+          }
+          window.showToast(message, type);
         });
       }).catch(function() {});
   }
-  document.addEventListener('DOMContentLoaded', function() { refresh(); window.setInterval(refresh, 30000); });
+  document.addEventListener('DOMContentLoaded', function() {
+    showDeferredCompletion();
+    (function poll() { refresh(); window.setTimeout(poll, nextDelay); })();
+  });
 })();
 
 (function() {
