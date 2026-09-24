@@ -325,7 +325,7 @@ function findingHtml(f) {
     '</div>' +
     (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
     (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
-    (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
+    (f.source_type === 'rdw' && f.raw_data ? rdwCardHtml(f.raw_data) : '') +
     ssHtml +
     '<div style="margin-top:0.4rem;">' +
       '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Note / comment..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +

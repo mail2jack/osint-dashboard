@@ -218,6 +218,14 @@ def test_workspace_renders_source_research_control_only_when_enabled(auth_client
     assert "use_case: 'all'" not in html
 
 
+def test_live_finding_renderer_only_uses_rdw_card_for_rdw_findings():
+    """SpiderFoot metadata must never be rendered as an RDW vehicle card."""
+    from pathlib import Path
+
+    source = Path("templates/cms/workflow/_workflow_polling.html").read_text()
+    assert "f.source_type === 'rdw' && f.raw_data ? rdwCardHtml(f.raw_data) : ''" in source
+
+
 def test_route_queues_scoped_passive_research_with_audit(auth_client):
     _enable_workflow_source_research()
     case, investigation, subject = _case_with_open_investigation(auth_client)
