@@ -175,9 +175,15 @@
         {% endif %}
         {% if source_research_enabled and a.action_type == 'source_research' %}
         <div style="margin-top:0.45rem;">
+          {% if a.status == 'completed' %}
+          <a href="#investigation-findings" class="btn-cms small" style="font-size:0.78rem;padding:0.2rem 0.6rem;">
+            {{ _('View findings') }}
+          </a>
+          {% else %}
           <button type="button" class="btn-cms small" data-review-source-research data-source-action-id="{{ a.id }}" style="font-size:0.78rem;padding:0.2rem 0.6rem;">
-            {% if a.status == 'completed' %}{{ _('Review results') }}{% else %}{{ _('View progress') }}{% endif %}
+            {{ _('View progress') }}
           </button>
+          {% endif %}
         </div>
         {% endif %}
       </div>
@@ -268,7 +274,7 @@
 </div>
 
 {# ── Findings ── #}
-<div class="workflow-step">
+<div class="workflow-step" id="investigation-findings">
   <div class="workflow-step-header">
     <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">F</span>
     <span>{{ _('Findings') }}</span>

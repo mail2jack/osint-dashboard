@@ -502,7 +502,7 @@ def test_worker_refresh_skips_unstarted_placeholder_when_real_scan_runs(
     assert stalled.progress != 42
 
 
-def test_completed_source_research_action_has_reopenable_review_control(auth_client):
+def test_completed_source_research_action_links_directly_to_materialized_findings(auth_client):
     _enable_flag("investigation_workspace")
     _enable_workflow_source_research()
     case, investigation, _ = _case_with_open_investigation(auth_client)
@@ -519,8 +519,30 @@ def test_completed_source_research_action_has_reopenable_review_control(auth_cli
     html = auth_client.get(
         f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
     ).get_data(as_text=True)
+    assert 'href="#investigation-findings"' in html
+    assert "View findings" in html
+    assert f'data-source-action-id="{action.id}"' not in html
+
+
+def test_active_source_research_action_keeps_progress_control(auth_client):
+    _enable_flag("investigation_workspace")
+    _enable_workflow_source_research()
+    case, investigation, _ = _case_with_open_investigation(auth_client)
+    action, _ = queue_passive_source_research(
+        case=case,
+        investigation=investigation,
+        actor=_admin(),
+        target_type="domain",
+        target_value="example.test",
+    )
+    db.session.commit()
+
+    html = auth_client.get(
+        f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
+    ).get_data(as_text=True)
     assert f'data-source-action-id="{action.id}"' in html
     assert "data-review-source-research" in html
+    assert "View progress" in html
 
 
 def test_worker_honours_feature_kill_switch_before_external_start(auth_client, monkeypatch):
