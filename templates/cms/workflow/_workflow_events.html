@@ -430,10 +430,11 @@ document.addEventListener('DOMContentLoaded', function() {
   var scopeFilterSel = document.getElementById('scopeFilter');
   if (scopeFilterSel) {
     scopeFilterSel.addEventListener('change', function(e) {
-      scopeFilter = e.target.value || '';
-      _forceFindingsUpdate = true;
-      _lastFindingsHash = '';
-      pollStatus();
+      var url = new URL(window.location.href);
+      if (e.target.value) url.searchParams.set('finding_scope', e.target.value);
+      else url.searchParams.delete('finding_scope');
+      url.searchParams.delete('findings_page');
+      window.location.assign(url.toString());
     });
   }
 

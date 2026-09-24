@@ -1098,6 +1098,7 @@ def case_detail(case_id):
     show_archived = request.args.get("show_archived") == "1"
     findings_page = max(1, request.args.get("findings_page", 1, type=int))
     findings_per_page = 25
+    finding_scope = request.args.get("finding_scope", "").strip()
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
         .filter(
@@ -1115,6 +1116,24 @@ def case_detail(case_id):
             WorkflowFinding.archived_at.is_(None) if not show_archived else sa.true()
         )
     )
+    if finding_scope:
+        scoped_actions = WorkflowResearchAction.query.with_entities(
+            WorkflowResearchAction.id
+        ).filter(WorkflowResearchAction.case_id == case_id)
+        if finding_scope == "__wide":
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id.is_(None)
+            )
+        else:
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id == finding_scope
+            )
+        scoped_finding_ids = db.session.query(
+            WorkflowActionFinding.finding_id
+        ).filter(WorkflowActionFinding.action_id.in_(scoped_actions))
+        findings_query = findings_query.filter(
+            WorkflowFinding.id.in_(scoped_finding_ids)
+        )
     findings_total = findings_query.count()
     findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
     findings_page = min(findings_page, findings_pages)
@@ -1240,6 +1259,7 @@ def case_detail(case_id):
             findings_page=findings_page,
             findings_pages=findings_pages,
             findings_per_page=findings_per_page,
+            finding_scope=finding_scope,
             finding_actions=finding_actions,
             investigations=investigations,
             investigations_meta=investigations_meta,

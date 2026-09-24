@@ -175,7 +175,7 @@ function scopeLinkSelectHtml(a) {
 }
 
 // ── PR-C/ADR-0005: client-side scope filter (All / Case-wide / investigation) ──
-var scopeFilter = '';
+var scopeFilter = {{ finding_scope|default('')|tojson }};
 function scopeMatches(a) {
   if (!scopeFilter) return true;
   if (scopeFilter === '__wide') return !a.investigation_id;
