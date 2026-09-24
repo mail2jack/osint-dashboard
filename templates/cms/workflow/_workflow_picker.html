@@ -44,6 +44,14 @@ function showSourceResearchPicker(reviewActionId) {
         '<input class="source-target-value" type="text" style="width:100%;box-sizing:border-box;margin-bottom:0.65rem;padding:0.45rem;" autofocus>' +
         '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;">{{ _('Subject (optional)') }}</label>' +
         '<select class="source-subject" style="width:100%;margin-bottom:0.65rem;padding:0.45rem;">' + subjectOptions + '</select>' +
+        {% if source_research_intensity_enabled %}
+        '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;">{{ _('Scan intensity') }}</label>' +
+        '<select class="source-intensity" style="width:100%;margin-bottom:0.35rem;padding:0.45rem;"><option value="passive">{{ _('Passive') }}</option><option value="footprint">{{ _('Footprint') }}</option><option value="investigate">{{ _('Investigate') }}</option><option value="all">{{ _('Comprehensive') }}</option></select>' +
+        '<p style="margin:0 0 0.65rem;color:var(--text-muted);font-size:0.78rem;">{{ _('Higher intensities can take longer. You can continue working while the scan runs.') }}</p>' +
+        {% endif %}
+        {% if source_research_expert_enabled %}
+        '<label style="display:block;font-size:0.8rem;margin-bottom:0.35rem;"><input type="checkbox" class="source-expert"> {{ _('Expert module selection') }}</label><div class="source-expert-modules" hidden style="margin-bottom:0.65rem;"></div>' +
+        {% endif %}
         '<div style="display:flex;gap:0.5rem;justify-content:flex-end;"><button class="action-btn" data-action="close-source-research" style="background:var(--border-color);color:var(--text-primary);">{{ _('Cancel') }}</button><button class="action-btn source-start" style="background:#1877f2;color:#fff;font-weight:600;">{{ _('Start') }}</button></div>' +
         '</div>' +
         '<div class="source-research-status" aria-live="polite" style="font-size:0.82rem;margin:0.5rem 0;"></div>' +
@@ -54,6 +62,26 @@ function showSourceResearchPicker(reviewActionId) {
   var status = overlay.querySelector('.source-research-status');
   var start = overlay.querySelector('.source-start');
   var formBox = overlay.querySelector('.source-research-form');
+  {% if source_research_expert_enabled %}
+  var expertToggle = overlay.querySelector('.source-expert');
+  var expertModules = overlay.querySelector('.source-expert-modules');
+  var expertOptions = {{ source_research_expert_options|tojson }};
+  function renderExpertModules() {
+    var targetType = overlay.querySelector('.source-target-type').value;
+    var intensity = (overlay.querySelector('.source-intensity') || {}).value || 'passive';
+    expertModules.replaceChildren();
+    ((expertOptions[targetType] || {})[intensity] || []).forEach(function(module) {
+      var label = document.createElement('label');
+      label.style.cssText = 'display:inline-flex;gap:0.25rem;margin:0.25rem 0.5rem 0.25rem 0;font-size:0.78rem;';
+      var input = document.createElement('input'); input.type = 'checkbox'; input.value = module;
+      label.appendChild(input); label.appendChild(document.createTextNode(module)); expertModules.appendChild(label);
+    });
+  }
+  overlay.querySelector('.source-target-type').addEventListener('change', renderExpertModules);
+  var intensitySelect = overlay.querySelector('.source-intensity'); if (intensitySelect) intensitySelect.addEventListener('change', renderExpertModules);
+  renderExpertModules();
+  expertToggle.addEventListener('change', function() { expertModules.hidden = !expertToggle.checked; });
+  {% endif %}
   if (!reviewActionId) targetInput.focus();
 
   function close() { overlay.remove(); }
@@ -123,12 +151,12 @@ function showSourceResearchPicker(reviewActionId) {
     fetch('/cms/workflow/api/case/' + CASE_ID + '/source-research', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         target_type: overlay.querySelector('.source-target-type').value,
         target_value: target,
         subject_id: overlay.querySelector('.source-subject').value || null,
         investigation_id: null,
-      }),
+      }, {% if source_research_intensity_enabled %}{scan_intensity: overlay.querySelector('.source-intensity').value}{% else %}{}{% endif %}, {% if source_research_expert_enabled %}(expertToggle.checked ? {expert_module_ids: Array.prototype.map.call(expertModules.querySelectorAll('input:checked'), function(input) { return input.value; })} : {}){% else %}{}{% endif %})),
     }).then(function(r) { return r.json(); })
       .then(function(data) {
         if (!data.ok) throw new Error(data.error || '{{ _('Could not start research.') }}');

@@ -4126,6 +4126,7 @@ NOTIFICATION_CATEGORIES = [
     ("usage_alerts", "Usage Alerts"),
     ("search_restricted", "Search Restrictions"),
     ("case_updates", "Case Updates"),
+    ("source_research", "Deep Source Research"),
     ("system", "System Notifications"),
     ("general", "General"),
 ]

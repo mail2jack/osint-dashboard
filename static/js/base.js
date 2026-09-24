@@ -31,6 +31,57 @@ window.apiFetch = function(url, options) {
   return fetch(url, options);
 };
 
+// Native deep source research is a worker job.  Keep its state visible without
+// trapping the investigator in a modal or exposing any third-party UI.
+(function() {
+  var C = window.CMS || {};
+  if (!C.sourceResearchActiveUrl) return;
+  var seenKey = 'cms-source-research-notifications';
+  function seen() {
+    try { return JSON.parse(sessionStorage.getItem(seenKey) || '[]'); } catch (_) { return []; }
+  }
+  function markSeen(id) {
+    var ids = seen(); if (ids.indexOf(id) === -1) ids.push(id);
+    try { sessionStorage.setItem(seenKey, JSON.stringify(ids.slice(-50))); } catch (_) {}
+  }
+  function panel(scans) {
+    var node = document.getElementById('sourceResearchActivity');
+    if (!scans.length) { if (node) node.remove(); return; }
+    if (!node) {
+      node = document.createElement('aside'); node.id = 'sourceResearchActivity';
+      node.setAttribute('aria-live', 'polite');
+      node.style.cssText = 'position:fixed;right:1rem;bottom:1rem;z-index:9998;max-width:340px;padding:0.8rem 1rem;background:var(--bg-card,#fff);border:1px solid var(--border-color,#ddd);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.18);font-size:.85rem;';
+      document.body.appendChild(node);
+    }
+    node.replaceChildren();
+    var title = document.createElement('strong'); title.textContent = '🔍 ' + (C.sourceResearchRunningTitle || 'Deep source research is running'); node.appendChild(title);
+    scans.forEach(function(scan) {
+      var line = document.createElement('div');
+      var progress = typeof scan.progress === 'number' ? ' ' + scan.progress + '%' : '';
+      line.textContent = scan.status === 'pending'
+        ? (C.sourceResearchPending || 'Waiting for the background worker…')
+        : (C.sourceResearchRunning || 'Running — you can continue working.') + progress;
+      line.style.marginTop = '.35rem'; node.appendChild(line);
+    });
+  }
+  function refresh() {
+    window.apiFetch(C.sourceResearchActiveUrl, {headers:{'Accept':'application/json'}})
+      .then(function(r) { if (!r.ok) throw new Error('unavailable'); return r.json(); })
+      .then(function(data) { panel(Array.isArray(data.scans) ? data.scans : []); })
+      .catch(function() {});
+    window.apiFetch(C.notificationListUrl + '?category=source_research&limit=10', {headers:{'Accept':'application/json'}})
+      .then(function(r) { if (!r.ok) throw new Error('unavailable'); return r.json(); })
+      .then(function(data) {
+        (data.notifications || []).forEach(function(notification) {
+          if (seen().indexOf(notification.id) !== -1) return;
+          markSeen(notification.id);
+          window.showToast((notification.title ? notification.title + ': ' : '') + notification.message, notification.title && notification.title.indexOf('mislukt') !== -1 ? 'error' : 'success');
+        });
+      }).catch(function() {});
+  }
+  document.addEventListener('DOMContentLoaded', function() { refresh(); window.setInterval(refresh, 30000); });
+})();
+
 (function() {
   var C = window.CMS || {};
   if (!C.isAdmin) return;

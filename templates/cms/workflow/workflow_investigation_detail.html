@@ -410,6 +410,24 @@
             <option value="vin">VIN</option>
           </select>
         </div>
+        {% if source_research_intensity_enabled %}
+        <div class="ws-field" id="wsSourceIntensityWrap" hidden>
+          <label class="lbl" for="wsSourceIntensity">{{ _('Scan intensity') }}</label>
+          <select id="wsSourceIntensity" name="scan_intensity">
+            <option value="passive">{{ _('Passive') }}</option>
+            <option value="footprint">{{ _('Footprint') }}</option>
+            <option value="investigate">{{ _('Investigate') }}</option>
+            <option value="all">{{ _('Comprehensive') }}</option>
+          </select>
+          <small>{{ _('Higher intensities can take longer. You can continue working while the scan runs.') }}</small>
+        </div>
+        {% endif %}
+        {% if source_research_expert_enabled %}
+        <div class="ws-field" id="wsSourceExpertWrap" hidden>
+          <label><input type="checkbox" id="wsSourceExpert"> {{ _('Expert module selection') }}</label>
+          <div id="wsSourceExpertModules" hidden></div>
+        </div>
+        {% endif %}
         <div class="ws-mode" id="wsActionMode">
           <label><input type="radio" name="mode" value="run" checked> ▶ {{ _('Run now') }}</label>
           <label><input type="radio" name="mode" value="proposal"> 📌 {{ _('Save as proposal') }}</label>
@@ -477,15 +495,40 @@
   var valueInput = document.getElementById('wsActionDataValue');
   var valueLabel = document.querySelector('label[for="wsActionDataValue"]');
   var sourceTypeWrap = document.getElementById('wsSourceTargetTypeWrap');
+  var sourceIntensityWrap = document.getElementById('wsSourceIntensityWrap');
+  var sourceExpertWrap = document.getElementById('wsSourceExpertWrap');
   var modeWrap = document.getElementById('wsActionMode');
   var HINTS = {
     google_dork: { lbl: '{{ _('Dork query') }}', ph: 'site:domein.nl' },
     browser_search: { lbl: '{{ _('Search query') }}', ph: '' },
   };
+  (function () {
+    var expert = document.getElementById('wsSourceExpert');
+    var modules = document.getElementById('wsSourceExpertModules');
+    if (!expert || !modules) return;
+    var choices = {{ source_research_expert_options|tojson }};
+    function renderModules() {
+      var type = document.getElementById('wsSourceTargetType').value;
+      var intensity = (document.getElementById('wsSourceIntensity') || {}).value || 'passive';
+      modules.replaceChildren();
+      ((choices[type] || {})[intensity] || []).forEach(function (module) {
+        var label = document.createElement('label');
+        label.style.cssText = 'display:inline-flex;gap:0.25rem;margin:0.25rem 0.5rem 0.25rem 0;font-size:0.78rem;';
+        var input = document.createElement('input'); input.type = 'checkbox'; input.value = module;
+        label.appendChild(input); label.appendChild(document.createTextNode(module)); modules.appendChild(label);
+      });
+    }
+    document.getElementById('wsSourceTargetType').addEventListener('change', renderModules);
+    var intensity = document.getElementById('wsSourceIntensity'); if (intensity) intensity.addEventListener('change', renderModules);
+    renderModules();
+    expert.addEventListener('change', function () { modules.hidden = !expert.checked; });
+  })();
   function refreshDataValueHint() {
     var hints = HINTS[typeSel ? typeSel.value : ''];
     var isSourceResearch = typeSel && typeSel.value === 'source_research';
     if (sourceTypeWrap) sourceTypeWrap.hidden = !isSourceResearch;
+    if (sourceIntensityWrap) sourceIntensityWrap.hidden = !isSourceResearch;
+    if (sourceExpertWrap) sourceExpertWrap.hidden = !isSourceResearch;
     if (modeWrap) modeWrap.hidden = isSourceResearch;
     if (isSourceResearch && valueLabel) valueLabel.textContent = '{{ _('Search target') }}';
     else if (hints && valueLabel) valueLabel.textContent = hints.lbl;
@@ -531,6 +574,17 @@
           investigation_id: investigationId,
           mode: mode,
         };
+    if (isSourceResearch) {
+      var intensity = document.getElementById('wsSourceIntensity');
+      if (intensity) payload.scan_intensity = intensity.value;
+      var expert = document.getElementById('wsSourceExpert');
+      if (expert && expert.checked) {
+        payload.expert_module_ids = Array.prototype.map.call(
+          document.querySelectorAll('#wsSourceExpertModules input:checked'),
+          function(input) { return input.value; }
+        );
+      }
+    }
     window.apiFetch(endpoint, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},

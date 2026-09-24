@@ -1,4 +1,4 @@
-"""Queue contract for workflow-native, passive SpiderFoot research.
+"""Queue contract for workflow-native deep source research.
 
 The workflow web request creates a durable ``ResearchAction`` plus a linked
 ``SpiderFootScan`` record.  It never calls SpiderFoot itself: a dedicated
@@ -6,9 +6,9 @@ worker claims the pending scan later.  That boundary keeps long-running source
 research out of Gunicorn and makes the action, its audit trail and its
 investigation scope durable across web-worker restarts.
 
-Only SpiderFoot's passive use case is exposed here.  The legacy SpiderFoot UI
-may retain broader controls for super-admin operations, but ordinary workflow
-users do not receive raw module or active-scan controls.
+The native workflow exposes curated intensity levels, never raw third-party
+module identifiers.  This keeps the user-facing contract stable while storing
+the exact resolved module set for an auditable, reproducible worker run.
 """
 
 from __future__ import annotations
@@ -49,6 +49,28 @@ _IDENTITY_TARGETS = frozenset({"person", "username", "email", "phone_number"})
 _ORGANISATION_TARGETS = frozenset({"company", "organization", "domain", "subdomain", "url"})
 _NETWORK_TARGETS = frozenset({"ip", "ipv6"})
 
+# These values are workflow policy, rather than a reflection of every raw
+# SpiderFoot switch.  ``all`` is deliberately a curated maximum, not a pass-
+# through to arbitrary modules.  Profiles below are resolved to an immutable
+# list at queue time so a later profile edit cannot alter a queued scan.
+SCAN_INTENSITIES = ("passive", "footprint", "investigate", "all")
+_INTENSITY_PROFILES = {
+    "passive": {"identity": "investigation", "organisation": "company", "network": "threat_hunt", "other": "basic"},
+    "footprint": {"identity": "full", "organisation": "company", "network": "threat_hunt", "other": "full"},
+    "investigate": {"identity": "full", "organisation": "full", "network": "threat_hunt", "other": "full"},
+    "all": {"identity": "full", "organisation": "full", "network": "threat_hunt", "other": "full"},
+}
+
+
+def _target_family(target_type: str) -> str:
+    if target_type in _IDENTITY_TARGETS:
+        return "identity"
+    if target_type in _ORGANISATION_TARGETS:
+        return "organisation"
+    if target_type in _NETWORK_TARGETS:
+        return "network"
+    return "other"
+
 
 def passive_profile_for(target_type: str) -> str:
     """Return the fixed curated profile for an allowed target type.
@@ -64,6 +86,56 @@ def passive_profile_for(target_type: str) -> str:
     if target_type in _NETWORK_TARGETS:
         return "threat_hunt"
     return "basic"
+
+
+def resolve_scan_configuration(
+    target_type: str, intensity: object = "passive", expert_module_ids: object = None
+) -> tuple[str, list[str]]:
+    """Resolve a bounded, reproducible profile and allowlisted module set.
+
+    The route separately authorizes advanced intensities and expert mode.  The
+    service still validates every value, so malformed requests cannot reach the
+    worker as an uncontrolled module selection.
+    """
+    if not isinstance(intensity, str) or intensity not in SCAN_INTENSITIES:
+        raise SourceResearchRejected("Unsupported source-research intensity")
+    profile = _INTENSITY_PROFILES[intensity][_target_family(target_type)]
+    allowed = list(SpiderFootService.INVESTIGATION_PROFILES[profile]["modules"])
+    if expert_module_ids is None:
+        return profile, allowed
+    if not isinstance(expert_module_ids, list) or not expert_module_ids:
+        raise SourceResearchRejected("Expert modules must be a non-empty list")
+    if len(expert_module_ids) > len(allowed) or any(
+        not isinstance(module, str) or module not in allowed for module in expert_module_ids
+    ):
+        raise SourceResearchRejected("Expert modules are not allowed for this target")
+    # Deduplicate while preserving the deliberate expert selection order.
+    modules = list(dict.fromkeys(expert_module_ids))
+    if not modules:
+        raise SourceResearchRejected("Expert modules are required")
+    return profile, modules
+
+
+def expert_module_options() -> list[str]:
+    """Return the bounded module allowlist for the super-admin UI only."""
+    return sorted(
+        {
+            module
+            for profile in _INTENSITY_PROFILES["all"].values()
+            for module in SpiderFootService.INVESTIGATION_PROFILES[profile]["modules"]
+        }
+    )
+
+
+def expert_module_options_by_target() -> dict[str, dict[str, list[str]]]:
+    """Return the exact curated choices for each expert UI combination."""
+    return {
+        target_type: {
+            intensity: resolve_scan_configuration(target_type, intensity)[1]
+            for intensity in SCAN_INTENSITIES
+        }
+        for target_type in TARGET_TYPES
+    }
 
 
 def validate_target(target_type: object, target_value: object) -> tuple[str, str]:
@@ -102,9 +174,17 @@ def spiderfoot_seed_for(target_type: str, target: str) -> tuple[str, str]:
 
 
 def queue_passive_source_research(
-    *, case, investigation=None, actor, target_type: object, target_value: object, subject=None
+    *,
+    case,
+    investigation=None,
+    actor,
+    target_type: object,
+    target_value: object,
+    subject=None,
+    intensity: object = "passive",
+    expert_module_ids: object = None,
 ) -> tuple[WorkflowResearchAction, SpiderFootScan]:
-    """Add one native passive-research action and its pending scan atomically.
+    """Add one native source-research action and its pending scan atomically.
 
     The caller owns the final audit entry and transaction.  Nothing external
     starts until that transaction commits and the separate worker claims the
@@ -113,6 +193,9 @@ def queue_passive_source_research(
     """
     target_type, target = validate_target(target_type, target_value)
     spiderfoot_target, spiderfoot_target_type = spiderfoot_seed_for(target_type, target)
+    profile, module_ids = resolve_scan_configuration(
+        target_type, intensity, expert_module_ids
+    )
 
     if not case or not actor:
         raise SourceResearchRejected("Case and actor are required")
@@ -145,13 +228,16 @@ def queue_passive_source_research(
                 "subject_id": subject.id if subject is not None else None,
                 "target_type": target_type,
                 "target_value": target,
+                "scan_intensity": intensity,
+                "expert_mode": expert_module_ids is not None,
+                "profile": profile,
             }
         ),
         action_type="source_research",
         data_value=target,
         label="Verdiept brononderzoek",
         status="pending",
-        result_summary="Queued for passive source research",
+        result_summary="Queued for deep source research",
         created_by=actor.id,
     )
     db.session.add(action)
@@ -163,16 +249,16 @@ def queue_passive_source_research(
     scan = SpiderFootScan(
         tenant_id=case.tenant_id,
         scan_id=f"queued:{action.id}",
-        scan_name=f"Passive source research: {target}"[:300],
+        scan_name=f"Deep source research: {target}"[:300],
         target_value=spiderfoot_target,
         target_type=spiderfoot_target_type,
         case_id=case.id,
         subject_id=subject.id if subject is not None else None,
         investigation_id=investigation.id if investigation is not None else None,
         research_action_id=action.id,
-        use_case="passive",
-        profile=passive_profile_for(target_type),
-        module_ids=[],
+        use_case=intensity,
+        profile=profile,
+        module_ids=module_ids,
         status="pending",
         created_by=actor.id,
     )

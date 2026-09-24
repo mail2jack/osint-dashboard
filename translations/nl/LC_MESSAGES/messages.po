@@ -4946,3 +4946,33 @@ msgstr "Resultaten beoordelen"
 
 msgid "View progress"
 msgstr "Voortgang bekijken"
+
+msgid "Scan intensity"
+msgstr "Scanintensiteit"
+
+msgid "Passive"
+msgstr "Passief"
+
+msgid "Footprint"
+msgstr "Voetafdruk"
+
+msgid "Investigate"
+msgstr "Onderzoeken"
+
+msgid "Comprehensive"
+msgstr "Uitgebreid"
+
+msgid "Higher intensities can take longer. You can continue working while the scan runs."
+msgstr "Hogere intensiteiten kunnen langer duren. U kunt tijdens de scan gewoon verder werken."
+
+msgid "Expert module selection"
+msgstr "Expertmodule-selectie"
+
+msgid "Deep source research is running"
+msgstr "Verdiept bronnenonderzoek loopt"
+
+msgid "Waiting for the background worker…"
+msgstr "Wachten op de achtergrondworker…"
+
+msgid "Running — you can continue working."
+msgstr "Bezig — u kunt gewoon verder werken."

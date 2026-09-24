@@ -358,7 +358,7 @@ class SpiderFootService:
             )
 
         # Determine which modules to use
-        if profile and profile in self.INVESTIGATION_PROFILES:
+        if module_ids is None and profile and profile in self.INVESTIGATION_PROFILES:
             module_ids = self.INVESTIGATION_PROFILES[profile]["modules"]
         elif module_ids is None:
             # Default to basic modules
