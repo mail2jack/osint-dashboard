@@ -5,6 +5,7 @@ never starts an action automatically.
 """
 
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -56,6 +57,88 @@ _PLAN_ACTIONS = {
 }
 
 
+def _identifier(value, identifier_type, subject, source, platform=None):
+    value = str(value or "").strip()
+    if not value:
+        return None
+    return {
+        "value": value,
+        "type": identifier_type,
+        "subject_id": subject.id,
+        "subject_name": subject.name or "",
+        "source": source,
+        "platform": platform or "",
+    }
+
+
+def _subject_context(subject):
+    """Return safe, decrypted research inputs for one subject.
+
+    These values are planning context only. They are never treated as
+    findings or evidence until an explicit research action produces a result.
+    """
+    subject.decrypt_identifiers()
+    items = []
+    seen = set()
+
+    def add(value, kind, source, platform=None):
+        item = _identifier(value, kind, subject, source, platform)
+        if not item:
+            return
+        key = (kind, item["value"].casefold(), item["platform"].casefold())
+        if key not in seen:
+            seen.add(key)
+            items.append(item)
+
+    add(subject.compute_name(), "name", "subject.name")
+    add(subject.email, "email", "subject.email")
+    add(subject.phone, "phone", "subject.phone")
+
+    for contact in subject.contacts.all():
+        contact.decrypt_fields()
+        kind = contact.contact_type or ""
+        if kind == "social":
+            add(contact.value, "username", "subject.contact", contact.platform)
+        elif kind in {"email", "phone"}:
+            add(contact.value, kind, "subject.contact", contact.platform)
+
+    for account in subject.social_accounts.all():
+        add(account.username, "username", "subject.social_account", account.platform)
+
+    for raw in subject.workflow_social_accounts or []:
+        if isinstance(raw, dict):
+            add(raw.get("username") or raw.get("value"), "username", "subject.social_account", raw.get("platform"))
+        else:
+            add(raw, "username", "subject.social_account")
+
+    for identifier in getattr(subject, "identifiers", []) or []:
+        add(
+            identifier.get_value(),
+            "username" if identifier.identifier_type in {"social", "handle"} else identifier.identifier_type,
+            "subject.identifier",
+        )
+    return items
+
+
+def _deterministic_query_parse(query):
+    """Small offline fallback used when no AI provider is configured."""
+    text = query.strip()
+    lowered = text.casefold()
+    if re.search(r"\b(?:e[- ]?mail|mailadres|email)", lowered):
+        kind = "email"
+    elif re.search(r"\b(?:telefoon|phone|telefoonnummer|nummer)", lowered):
+        kind = "phone"
+    elif re.search(r"\b(?:username|gebruikersnaam|handle|account)", lowered):
+        kind = "username"
+    elif re.search(r"\b(?:ip|ipv4|ipv6)", lowered):
+        kind = "ip"
+    elif re.search(r"\b(?:domein|domain|website)", lowered):
+        kind = "domain"
+    else:
+        kind = "name"
+    return {"type": kind, "query": text, "confidence": 0.35, "source": "offline-rules"}
+
+
 def _investigator_required():
     if not current_user.is_authenticated or current_user.role not in _INVESTIGATOR_ROLES:
         return jsonify({"error": "Investigator access required"}), 403
@@ -70,23 +153,52 @@ def _load_case(case_id):
     return case, None
 
 
-def _build_plan(query, parsed):
+def _build_plan(query, parsed, subjects=None):
     search_type = parsed.get("type") if isinstance(parsed, dict) else None
     normalized_type = search_type if search_type in _PLAN_ACTIONS else "name"
     actions = []
-    for action_type in _PLAN_ACTIONS[normalized_type]:
-        info = ACTION_REGISTRY.get(action_type)
-        if not info or is_paid_action(action_type):
-            continue
-        actions.append(
-            {
-                "action_type": action_type,
-                "label": info["label"],
-                "description": info["description"],
-                "category": info["category"],
-                "cost_label": info.get("cost_label", ""),
-            }
-        )
+    context = []
+    for subject in subjects or []:
+        context.extend(_subject_context(subject))
+    if not context:
+        context = [{
+            "value": parsed.get("query", query) if isinstance(parsed, dict) else query,
+            "type": normalized_type,
+            "subject_id": None,
+            "subject_name": "",
+            "source": "research question",
+            "platform": "",
+        }]
+
+    for index, target in enumerate(context[:40]):
+        target_type = target["type"] if target["type"] in _PLAN_ACTIONS else normalized_type
+        for action_type in _PLAN_ACTIONS[target_type]:
+            info = ACTION_REGISTRY.get(action_type)
+            if not info or is_paid_action(action_type):
+                continue
+            actions.append(
+                {
+                    "proposal_key": f"{index}:{action_type}",
+                    "action_type": action_type,
+                    "label": info["label"],
+                    "description": info["description"],
+                    "category": info["category"],
+                    "cost_label": info.get("cost_label", ""),
+                    "data_value": target["value"],
+                    "target_type": target_type,
+                    "target_subject_id": target["subject_id"],
+                    "target_subject_name": target["subject_name"],
+                    "target_source": target["source"],
+                    "platform": target["platform"],
+                    "rationale": (
+                        "Bestaande identifier uit het dossier; zoek dit exacte gegeven."
+                    ),
+                }
+            )
+    related = []
+    for subject in subjects or []:
+        for related_subject in subject.related_subjects:
+            related.append({"id": related_subject.id, "name": related_subject.name, "type": related_subject.subject_type})
     return {
         "id": str(uuid.uuid4()),
         "query": query,
@@ -94,12 +206,21 @@ def _build_plan(query, parsed):
             "type": normalized_type,
             "value": parsed.get("query", query) if isinstance(parsed, dict) else query,
             "confidence": parsed.get("confidence", 0) if isinstance(parsed, dict) else 0,
+            "source": parsed.get("source", "ai") if isinstance(parsed, dict) else "ai",
         },
         "actions": actions,
+        "known_identifiers": context,
+        "relationship_expansion": {
+            "status": "suggested",
+            "candidates": related,
+            "rule": "Explore relationships only when supported by a concrete public source; do not treat suggestions as facts.",
+        },
         "policy": {
             "execution": "approval_required",
             "paid_channels": "not_proposed",
             "automatic_verification": False,
+            "exclude_instruction_pages": True,
+            "relations_require_evidence": True,
         },
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -158,12 +279,15 @@ def create_ai_plan(case_id):
     if len(query) > 2000:
         return jsonify({"error": "Research question is too long"}), 400
 
+    subjects = case.subjects.all()
     config = get_ai_config()
-    if not config.get("available") or not check_ai_available():
-        return jsonify({"error": "No AI provider is configured or available"}), 503
-
-    parsed = analyze_natural_language(query, list(_PLAN_ACTIONS))
-    plan = _build_plan(query, parsed)
+    if config.get("available") and check_ai_available():
+        parsed = analyze_natural_language(query, list(_PLAN_ACTIONS))
+    else:
+        parsed = _deterministic_query_parse(query)
+    selected_subject_id = body.get("subject_id") or None
+    selected_subjects = [s for s in subjects if not selected_subject_id or s.id == str(selected_subject_id)]
+    plan = _build_plan(query, parsed, selected_subjects)
     AuditLog.log(
         user_id=current_user.id,
         action="create",
@@ -177,7 +301,11 @@ def create_ai_plan(case_id):
         ),
     )
     db.session.commit()
-    return jsonify({"plan": plan, "provider": config.get("provider"), "model": config.get("model")})
+    return jsonify({
+        "plan": plan,
+        "provider": config.get("provider") if config.get("available") else "offline-rules",
+        "model": config.get("model") if config.get("available") else None,
+    })
 
 
 @workflow_bp.route("/api/case/<case_id>/ai-research/approve", methods=["POST"])
@@ -196,23 +324,32 @@ def approve_ai_plan(case_id):
     if not query or not isinstance(selected, list) or not selected:
         return jsonify({"error": "A plan and at least one selected action are required"}), 400
 
-    allowed = set(_PLAN_ACTIONS.get((plan.get("interpretation") or {}).get("type"), []))
     selected = [str(item) for item in selected]
-    if any(item not in allowed or item not in ACTION_REGISTRY for item in selected):
+    plan_actions = plan.get("actions") if isinstance(plan.get("actions"), list) else []
+    specs_by_key = {
+        str(item.get("proposal_key")): item
+        for item in plan_actions
+        if isinstance(item, dict) and item.get("action_type") in ACTION_REGISTRY
+    }
+    specs = []
+    for item in selected:
+        if item in specs_by_key:
+            specs.append(specs_by_key[item])
+        elif item in ACTION_REGISTRY:
+            # Backward compatibility for older plans and API clients.
+            spec = next((a for a in plan_actions if a.get("action_type") == item), None)
+            specs.append(spec or {"action_type": item, "data_value": query, "target_subject_id": None})
+    if not specs or len(specs) != len(selected):
         return jsonify({"error": "The plan contains an action outside the MVP allowlist"}), 400
-    if any(is_paid_action(item) for item in selected) or any(
-        not paid_channels_enabled(current_user.tenant_id) and is_paid_action(item)
-        for item in selected
+    if any(is_paid_action(spec["action_type"]) for spec in specs) or any(
+        not paid_channels_enabled(current_user.tenant_id) and is_paid_action(spec["action_type"])
+        for spec in specs
     ):
         return jsonify({"error": "Paid actions require separate tenant approval"}), 409
 
     subject_id = body.get("subject_id") or None
     investigation_id = body.get("investigation_id") or None
     subject = None
-    if subject_id:
-        subject = db.session.get(WorkflowSubject, subject_id)
-        if not subject or not case.subjects.filter_by(id=subject_id).first():
-            return jsonify({"error": "Subject is not linked to this case"}), 400
     _, err, err_status = get_linkable_investigation(
         investigation_id, case=case, tenant_id=current_user.tenant_id
     )
@@ -220,21 +357,29 @@ def approve_ai_plan(case_id):
         return jsonify({"error": err}), err_status
 
     created = []
-    for action_type in selected:
+    for spec in specs:
+        action_type = spec["action_type"]
+        target_subject_id = spec.get("target_subject_id") or subject_id
+        subject = None
+        if target_subject_id:
+            subject = db.session.get(WorkflowSubject, target_subject_id)
+            if not subject or not case.subjects.filter_by(id=target_subject_id).first():
+                return jsonify({"error": "Subject is not linked to this case"}), 400
+        data_value = str(spec.get("data_value") or query).strip()
         action = WorkflowResearchAction(
             id=str(uuid.uuid4()),
             case_id=case_id,
-            subject_id=subject_id,
+            subject_id=target_subject_id,
             investigation_id=investigation_id,
-            target_kind="subject" if subject_id else "case",
+            target_kind="subject" if target_subject_id else "case",
             action_type=action_type,
-            data_value=query,
+            data_value=data_value,
             label=ACTION_REGISTRY[action_type]["label"],
             status="proposal",
             tenant_id=current_user.tenant_id,
             created_by=current_user.id,
         )
-        action.target_snapshot = json.dumps(action.build_target_snapshot(subject, query))
+        action.target_snapshot = json.dumps(action.build_target_snapshot(subject, data_value))
         db.session.add(action)
         db.session.flush()
         log_scope_audit(

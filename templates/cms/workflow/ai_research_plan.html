@@ -14,7 +14,7 @@
     {% if ai_config.get('available') %}
     ✅ AI-provider {{ ai_config.get('provider') }} is beschikbaar. Er wordt nog steeds niets gestart zonder jouw goedkeuring.
     {% else %}
-    ⚠️ AI-planning is nog niet beschikbaar: provider {{ ai_config.get('provider') }} is niet bereikbaar of niet geconfigureerd. Er wordt niets gestart.
+    ⚠️ Externe AI is niet beschikbaar. Joost maakt daarom een veilig, identifier-gestuurd basisplan uit de gegevens die al in het dossier staan. Er wordt niets gestart zonder jouw goedkeuring.
     {% endif %}
   </div>
   <div class="card" style="padding:1rem;margin:1rem 0;">
@@ -52,15 +52,21 @@
   document.getElementById('makePlan').addEventListener('click', function() {
     status.textContent = 'AI maakt een voorstel...';
     planBox.style.display = 'none';
-    api('{{ url_for("workflow.create_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({query:document.getElementById('question').value})})
+    api('{{ url_for("workflow.create_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({query:document.getElementById('question').value, subject_id:document.getElementById('subject').value || null})})
       .then(function(data) {
         planData = data.plan;
         var interp = planData.interpretation || {};
         var actions = (planData.actions || []).map(function(a) {
-          return '<label style="display:block;padding:.5rem 0;"><input type="checkbox" class="plan-action" value="'+esc(a.action_type)+'" checked> <strong>'+esc(a.label)+'</strong> — '+esc(a.description)+'</label>';
+          var target = a.target_subject_name ? ' voor '+a.target_subject_name : '';
+          var platform = a.platform ? ' ('+a.platform+')' : '';
+          return '<label style="display:block;padding:.5rem 0;"><input type="checkbox" class="plan-action" value="'+esc(a.proposal_key || a.action_type)+'" checked> <strong>'+esc(a.label)+'</strong>'+esc(target)+esc(platform)+' — exact: <code>'+esc(a.data_value)+'</code><br><small>'+esc(a.rationale || a.description)+'</small></label>';
         }).join('');
+        var ids = (planData.known_identifiers || []).map(function(i) { return esc(i.type+': '+i.value+(i.platform ? ' ('+i.platform+')' : '')); }).join(', ');
+        var relations = (planData.relationship_expansion || {}).candidates || [];
         planBox.innerHTML = '<h2>Voorgesteld plan</h2>' +
           '<p><strong>Interpretatie:</strong> '+esc(interp.type)+' — '+esc(interp.value)+' (zekerheid '+esc(interp.confidence)+')</p>' +
+          '<p><strong>Bestaande identifiers:</strong> '+(ids || 'geen gevonden')+'</p>' +
+          '<p><strong>Relaties:</strong> '+(relations.length ? relations.map(function(r){return esc(r.name);}).join(', ') : 'geen bestaande relaties gevonden; nieuwe relaties worden alleen met bronbewijs toegevoegd')+'</p>' +
           '<p><strong>Beleid:</strong> menselijke goedkeuring vereist; betaalde acties worden niet voorgesteld.</p>' +
           '<h3>Acties</h3><div>'+actions+'</div>' +
           '<button id="approvePlan" class="btn-cms primary">Plan goedkeuren en voorstellen aanmaken</button>' +
