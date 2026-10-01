@@ -8,3 +8,4 @@ workflow_bp = Blueprint(
 )
 
 from . import models, routes  # noqa: E402, F811, F401
+from . import ai_plan_routes  # noqa: E402, F401

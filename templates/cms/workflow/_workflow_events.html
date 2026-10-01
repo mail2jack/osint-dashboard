@@ -30,12 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
       showActionPicker(btn.getAttribute('data-action-key'));
       return;
     }
-    var sourceReview = e.target.closest('[data-review-case-source-research]');
-    if (sourceReview) {
-      e.preventDefault();
-      showSourceResearchPicker(sourceReview.getAttribute('data-review-case-source-research'));
-      return;
-    }
     var propose = e.target.closest('[data-action="propose-action"]');
     if (propose) {
       e.preventDefault();
@@ -57,6 +51,35 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (data.error) { showToast(data.error, 'error'); }
       })
       .catch(function() {});
+      return;
+    }
+    var startAll = e.target.closest('[data-action="start-all-proposals"]');
+    if (startAll) {
+      e.preventDefault();
+      var allIds = [];
+      try { allIds = JSON.parse(startAll.getAttribute('data-action-ids') || '[]'); } catch (_) {}
+      if (!allIds.length) return;
+      if (!confirm('Start all ' + allIds.length + ' proposals now?')) return;
+      startAll.disabled = true;
+      startAll.textContent = '⏳ Starten...';
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/ai-research/start-proposals', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({action_ids: allIds}),
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+          document.getElementById('actionsStatus').textContent = '▶️ ' + data.started + ' voorstellen gestart';
+          pollStatus();
+        } else {
+          showToast(data.error || 'Could not start proposals', 'error');
+          startAll.disabled = false;
+          startAll.textContent = '▶ Alles starten';
+        }
+      }).catch(function() {
+        showToast('Could not start proposals', 'error');
+        startAll.disabled = false;
+        startAll.textContent = '▶ Alles starten';
+      });
       return;
     }
     var delProp = e.target.closest('[data-action="delete-proposal"]');
@@ -430,11 +453,10 @@ document.addEventListener('DOMContentLoaded', function() {
   var scopeFilterSel = document.getElementById('scopeFilter');
   if (scopeFilterSel) {
     scopeFilterSel.addEventListener('change', function(e) {
-      var url = new URL(window.location.href);
-      if (e.target.value) url.searchParams.set('finding_scope', e.target.value);
-      else url.searchParams.delete('finding_scope');
-      url.searchParams.delete('findings_page');
-      window.location.assign(url.toString());
+      scopeFilter = e.target.value || '';
+      _forceFindingsUpdate = true;
+      _lastFindingsHash = '';
+      pollStatus();
     });
   }
 
@@ -465,5 +487,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof pollStatus === 'function') pollStatus();
       }
     }).catch(function() {});
+  });
+
+  var finalizeCandidatesBtn = document.getElementById('finalizeFindingCandidates');
+  if (finalizeCandidatesBtn) finalizeCandidatesBtn.addEventListener('click', function() {
+    if (!confirm('{{ _('This will remove all remaining unverified candidates from the active case. Verified findings are kept. Continue?') }}')) return;
+    finalizeCandidatesBtn.disabled = true;
+    finalizeCandidatesBtn.textContent = '⏳ {{ _('Finishing...') }}';
+    fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/finalize-candidates', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}', 'Accept': 'application/json'},
+      body: JSON.stringify({}),
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.ok) {
+        showToast(data.removed + ' {{ _('unverified candidates removed') }}', 'success');
+        _forceFindingsUpdate = true;
+        _lastFindingsHash = '';
+        pollStatus();
+      } else {
+        showToast(data.error || '{{ _('Could not finish validation') }}', 'error');
+        finalizeCandidatesBtn.disabled = false;
+      }
+    }).catch(function() {
+      showToast('{{ _('Network error — please try again') }}', 'error');
+      finalizeCandidatesBtn.disabled = false;
+    });
   });
 });

@@ -19,11 +19,6 @@ from ..models import (
     report_visible_finding_filter,
 )
 from ..services.report_evidence import report_screenshots, safe_source_url
-from ..services.investigation_workspace import (
-    source_research_display_title,
-    source_research_display_type,
-)
-from ..services.legacy_workflow_redirect import redirect_legacy_case_get
 from . import cms_bp
 
 logger = logging.getLogger(__name__)
@@ -44,22 +39,29 @@ def export_case_json(case_id: str) -> flask.Response:
     ]
     export_data["findings"] = [
         f.to_dict()
-        for f in Finding.query.filter_by(case_id=case_id)
-        .filter(Finding.is_deleted == False, Finding.archived_at.is_(None))
-        .all()
+        for f in apply_tenant_filter(
+            Finding.query.filter_by(case_id=case_id)
+            .filter(Finding.is_deleted == False, Finding.archived_at.is_(None)),
+            Finding,
+        ).all()
     ]
     export_data["documents"] = [
         d.to_dict()
-        for d in Document.query.filter_by(case_id=case_id, is_deleted=False).all()
+        for d in apply_tenant_filter(
+            Document.query.filter_by(case_id=case_id, is_deleted=False), Document
+        ).all()
     ]
     export_data["comments"] = [
         c.to_dict()
-        for c in Comment.query.filter_by(case_id=case_id, is_deleted=False).all()
+        for c in apply_tenant_filter(
+            Comment.query.filter_by(case_id=case_id, is_deleted=False), Comment
+        ).all()
     ]
     export_data["financials"] = [
         r.to_dict()
-        for r in FinancialRecord.query.filter_by(
-            case_id=case_id, is_deleted=False
+        for r in apply_tenant_filter(
+            FinancialRecord.query.filter_by(case_id=case_id, is_deleted=False),
+            FinancialRecord,
         ).all()
     ]
     return flask.Response(
@@ -77,11 +79,6 @@ def export_case_json(case_id: str) -> flask.Response:
 @audit_read("case")
 def view_case(case_id: str) -> str:
     """View case details with subjects, findings, and financials."""
-    workflow_redirect = redirect_legacy_case_get(
-        "workflow.case_detail", case_id=case_id
-    )
-    if workflow_redirect:
-        return workflow_redirect
     case = db.session.get(Case, case_id) or abort(404)
     subjects = case.subjects.filter(Subject.is_deleted == False).all()
     child_cases = case.child_cases.filter_by(is_deleted=False).all()
@@ -229,12 +226,10 @@ def case_timeline(case_id: str) -> flask.Response:
                 "type": "finding",
                 "icon": "🔍",
                 "title": "Finding Added",
-                "description": source_research_display_title(
-                    finding.title, finding.source_type
-                )[:100]
+                "description": finding.title[:100]
                 + ("..." if len(finding.title) > 100 else ""),
                 "user": finding.author,
-                "details": f"Source: {source_research_display_type(finding.source_type) or 'manual'}",
+                "details": f"Source: {finding.source_type or 'manual'}",
             }
         )
 
@@ -336,11 +331,6 @@ def case_timeline(case_id: str) -> flask.Response:
 @case_access_required
 def case_report(case_id: str) -> str:
     """Chronological report merging Findings + Comments for a case."""
-    workflow_redirect = redirect_legacy_case_get(
-        "workflow.case_report_hub", case_id=case_id
-    )
-    if workflow_redirect:
-        return workflow_redirect
     case = db.session.get(Case, case_id) or abort(404)
     from_date = request.args.get("from")
     to_date = request.args.get("to")
@@ -405,10 +395,10 @@ def case_report(case_id: str) -> str:
                 "type": "finding",
                 "icon": "🔍",
                 "timestamp": f.created_at,
-                "title": source_research_display_title(f.title, f.source_type),
+                "title": f.title,
                 "content": f.content,
                 "comment": f.comment,
-                "source_type": source_research_display_type(f.source_type),
+                "source_type": f.source_type,
                 "confidence": f.confidence_level,
                 "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
@@ -514,10 +504,10 @@ def case_report_pdf(case_id: str) -> flask.Response:
                 "type": "finding",
                 "icon": "🔍",
                 "timestamp": f.created_at,
-                "title": source_research_display_title(f.title, f.source_type),
+                "title": f.title,
                 "content": f.content,
                 "comment": f.comment,
-                "source_type": source_research_display_type(f.source_type),
+                "source_type": f.source_type,
                 "source_url": safe_source_url(f.source_url),
                 "author": f.author.full_name if f.author else "-",
                 "subject_name": subject.name if subject else "-",

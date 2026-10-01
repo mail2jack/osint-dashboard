@@ -29,6 +29,7 @@ static/uploads/
 venv/
 .venv/
 backups/
+audit_archive_*.tar.gz
 static/dist/
 
 # License server runtime files (never commit — contains the private signing key)

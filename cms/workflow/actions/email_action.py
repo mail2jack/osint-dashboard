@@ -151,8 +151,18 @@ def _email_check(action):
         try:
             from cms.services.search_service import brave_search
 
-            ctx_results = brave_search(email, api_key=brave_key)
+            # Search for the complete address, not independent tokens such as
+            # the provider/domain.  Results are filtered again below because
+            # a search engine can still return broad matches.
+            exact_email = email.strip().lower()
+            ctx_results = brave_search(f'"{exact_email}"', api_key=brave_key)
             for res in ctx_results[:10]:
+                searchable = " ".join(
+                    str(res.get(key) or "")
+                    for key in ("title", "description", "url")
+                ).lower()
+                if not exact_email or exact_email not in searchable:
+                    continue
                 findings.append(
                     {
                         "title": f"Mentioned on: {res.get('title', 'unknown')[:200]}",

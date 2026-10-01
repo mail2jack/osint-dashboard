@@ -91,10 +91,10 @@ input:-webkit-autofill:focus {
 
   <div class="form-section">
     <div class="subject-collapse-header" data-action="toggle-client" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;cursor:pointer;user-select:none;">
-      <span style="font-size:0.8rem;color:var(--text-muted);transition:transform 0.2s;" class="client-chevron">▶</span>
+      <span style="font-size:0.8rem;color:var(--text-muted);transition:transform 0.2s;transform:rotate(90deg);" class="client-chevron">▶</span>
       <h2 style="margin:0;">🧑 Client</h2>
     </div>
-    <div class="client-section-body" style="display:none;">
+    <div class="client-section-body" style="display:block;">
     <div id="client-lookup-wrap" style="position:relative;">
       <div style="margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-secondary);">
         <em>Type a company name or contact person — existing clients will be suggested.</em>
@@ -1065,6 +1065,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function selectClient(c) {
+    var clientBody = document.querySelector('.client-section-body');
+    var clientChevron = document.querySelector('.client-chevron');
     selectedClientId = c.id;
     existingId.value = c.id;
     suggestions.style.display = 'none';
@@ -1087,6 +1089,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setFieldValue('client_contract_number', c.contract_number || '');
     setFieldValue('client_contract_info', c.contract_info || '');
     setFieldValue('client_notes', c.financial_notes || '');
+    // Keep the selected client available, but move focus back to the subjects.
+    if (clientBody) {
+      clientBody.style.display = 'none';
+      if (clientChevron) clientChevron.style.transform = '';
+    }
     var anyEmpty = false;
     var fields = lookupWrap.querySelectorAll('input, textarea');
     fields.forEach(function(f) {

@@ -715,6 +715,80 @@ class TestWebActions:
         assert row["ip_check"] is None
         assert cache_count == 0
 
+    def test_purge_marks_install_inactive_after_heartbeat_gap(self):
+        old = (datetime.now(timezone.utc) - timedelta(days=100)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "INSERT INTO installs (install_id, token_hash, last_seen) VALUES (?, ?, ?)",
+                ("stale-install", "hash", old),
+            )
+            counts = ls_app.purge_sensitive_data(conn)
+            row = conn.execute(
+                "SELECT inactive_since FROM installs WHERE install_id = ?",
+                ("stale-install",),
+            ).fetchone()
+        assert counts["installs_marked_inactive"] == 1
+        assert row["inactive_since"] == old
+
+    def test_heartbeat_clears_inactive_marker(self, client):
+        assert _register(client, install_id="recovering-install").status_code == 200
+        old = (datetime.now(timezone.utc) - timedelta(days=100)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE installs SET last_seen = ?, inactive_since = ? WHERE install_id = ?",
+                (old, old, "recovering-install"),
+            )
+        response = client.post(
+            "/api/telemetry",
+            json={"install_id": "recovering-install", "info": {}},
+            headers={"Authorization": "Bearer tok"},
+        )
+        assert response.status_code == 200
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT inactive_since FROM installs WHERE install_id = ?",
+                ("recovering-install",),
+            ).fetchone()
+        assert row["inactive_since"] is None
+
+    def test_purge_deletes_long_inactive_install_without_active_license(self):
+        old = (datetime.now(timezone.utc) - timedelta(days=400)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "INSERT INTO installs (install_id, token_hash, last_seen, inactive_since) "
+                "VALUES (?, ?, ?, ?)",
+                ("retired-install", "hash", old, old),
+            )
+            counts = ls_app.purge_sensitive_data(conn)
+            row = conn.execute(
+                "SELECT 1 FROM installs WHERE install_id = ?", ("retired-install",)
+            ).fetchone()
+        assert counts["installs_deleted"] == 1
+        assert row is None
+
+    def test_purge_keeps_long_inactive_install_with_active_license(self, client):
+        assert _register(client, install_id="licensed-install").status_code == 200
+        old = (datetime.now(timezone.utc) - timedelta(days=400)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE installs SET last_seen = ?, inactive_since = ? WHERE install_id = ?",
+                (old, old, "licensed-install"),
+            )
+            counts = ls_app.purge_sensitive_data(conn)
+            row = conn.execute(
+                "SELECT 1 FROM installs WHERE install_id = ?", ("licensed-install",)
+            ).fetchone()
+        assert counts["installs_deleted"] == 0
+        assert row is not None
+
     def test_cli_privacy_purge(self):
         result = _run_cli("privacy:purge")
         assert result.returncode == 0, result.stderr

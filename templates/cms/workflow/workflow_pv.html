@@ -128,6 +128,17 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
 </table>
 {% endif %}
 
+{% set narrative_investigations = investigations|selectattr('ai_narrative')|list %}
+{% if narrative_investigations %}
+<hr>
+<h2>AI-onderzoeksverhalen</h2>
+<p style="font-size:10pt;color:#555;"><em>Deze teksten zijn interpretatieve samenvattingen van onderzoeksbevindingen en vormen geen zelfstandig bewijs.</em></p>
+{% for investigation in narrative_investigations %}
+<h3>{{ investigation.human_number }} — {{ investigation.title }}</h3>
+<p style="white-space:pre-wrap;">{{ investigation.ai_narrative }}</p>
+{% endfor %}
+{% endif %}
+
 <div class="footer">
   <p>Prepared digitally in {{ client.city if client and client.city else '[location]' }} on {{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else case.created_at.strftime('%d-%m-%Y') }}.</p>
   <div class="signature">

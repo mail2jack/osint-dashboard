@@ -15,6 +15,7 @@
 #
 
 set -euo pipefail
+umask 077
 
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
@@ -22,65 +23,31 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 ENV_FILE="$SCRIPT_DIR/.env"
 
-# Always load the backup-specific PostgreSQL service settings from .env.  The
-# update flow may invoke this script with DATABASE_URL already in its
-# environment; skipping .env in that case used to leave PGSERVICE without its
-# matching PGSERVICEFILE/PGPASSFILE, making pg_dump fail closed.
-#
-# Preserve an explicitly supplied DATABASE_URL for callers that intentionally
-# override the database target, while still importing the backup configuration.
-CALLER_DATABASE_URL="${DATABASE_URL:-}"
-if [ -f "$ENV_FILE" ]; then
+# Source .env if it exists and DATABASE_URL is not already set
+if [ -f "$ENV_FILE" ] && [ -z "${DATABASE_URL:-}" ]; then
     set -a; source "$ENV_FILE"; set +a
-    if [ -n "$CALLER_DATABASE_URL" ]; then
-        export DATABASE_URL="$CALLER_DATABASE_URL"
-    fi
 fi
 
 BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
+mkdir -p "$BACKUP_DIR"
+BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="$BACKUP_DIR/iveras_backup_$TIMESTAMP"
 ARCHIVE_FILE="$BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz"
 ENCRYPTED_FILE="$ARCHIVE_FILE.gpg"
 
 KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"
+SPIDERFOOT_PASSWD_FILE="${SPIDERFOOT_PASSWD_FILE:-/opt/spiderfoot/.spiderfoot/passwd}"
+# Production retention tiers are configurable for the scheduler/environment.
+BACKUP_RETENTION_DAILY="${BACKUP_RETENTION_DAILY:-14}"
+BACKUP_RETENTION_WEEKLY="${BACKUP_RETENTION_WEEKLY:-8}"
+BACKUP_RETENTION_MONTHLY="${BACKUP_RETENTION_MONTHLY:-12}"
 BACKUP_PGSERVICE="${BACKUP_PGSERVICE:-}"
 BACKUP_PGPASSFILE="${BACKUP_PGPASSFILE:-}"
 BACKUP_PGSERVICEFILE="${BACKUP_PGSERVICEFILE:-}"
-BACKUP_NOTIFY_SCRIPT="$SCRIPT_DIR/scripts/backup_completion_email.py"
-BACKUP_NOTIFY_PYTHON="$SCRIPT_DIR/venv/bin/python3"
 ERRORS=0
 WARNINGS=0
 DB_DUMP_OK=false
-
-if [ ! -x "$BACKUP_NOTIFY_PYTHON" ]; then
-    BACKUP_NOTIFY_PYTHON="$(command -v python3)"
-fi
-
-_notify_completion() {
-    local exit_code="$1"
-    local status="failed"
-    if [ "$exit_code" -eq 0 ] && [ "$ERRORS" -eq 0 ]; then
-        status="success"
-    fi
-    if [ -f "$BACKUP_NOTIFY_SCRIPT" ]; then
-        "$BACKUP_NOTIFY_PYTHON" "$BACKUP_NOTIFY_SCRIPT" \
-            --dir "$SCRIPT_DIR" --status "$status" --archive "$ENCRYPTED_FILE" \
-            --errors "$ERRORS" --warnings "$WARNINGS" \
-            || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
-    fi
-}
-
-_on_exit() {
-    local exit_code="$?"
-    trap - EXIT
-    _notify_completion "$exit_code"
-    exit "$exit_code"
-}
-
-# A notification is best-effort and covers both successful completion and
-# fail-closed exits after the backup metadata has been initialised.
-trap _on_exit EXIT
 
 mkdir -p "$BACKUP_PATH"
 
@@ -136,12 +103,7 @@ if docker compose ps -q postgres 2>/dev/null | grep -q .; then
 
 elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (local)..."
-    # FORCE ROW LEVEL SECURITY rejects pg_dump's default attempt to disable RLS.
-    # Keep RLS enabled and provide the application's explicitly authorised
-    # backup context instead, so policy-protected tables are exported in full.
-    if PGOPTIONS="${PGOPTIONS:+$PGOPTIONS }-c app.bypass_rls=true" \
-        pg_dump --enable-row-security "$DATABASE_URL" --clean --if-exists --no-owner --no-acl \
-        > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+    if pg_dump "$DATABASE_URL" --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else
@@ -153,9 +115,7 @@ elif command -v pg_dump &>/dev/null && [ -n "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (PGSERVICE: $BACKUP_PGSERVICE)..."
     if PGSERVICE="$BACKUP_PGSERVICE" PGPASSFILE="$BACKUP_PGPASSFILE" \
         PGSERVICEFILE="$BACKUP_PGSERVICEFILE" \
-        PGOPTIONS="${PGOPTIONS:+$PGOPTIONS }-c app.bypass_rls=true" \
-        pg_dump --enable-row-security --clean --if-exists --no-owner --no-acl \
-        > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        pg_dump --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else
@@ -239,9 +199,8 @@ for svc in osint-dashboard spiderfoot; do
 done
 
 # SpiderFoot passwd
-SF_PASSWD="/home/osint/.spiderfoot/passwd"
-if [ -f "$SF_PASSWD" ]; then
-    cp "$SF_PASSWD" "$BACKUP_PATH/spiderfoot-passwd.txt"
+if [ -f "$SPIDERFOOT_PASSWD_FILE" ]; then
+    cp "$SPIDERFOOT_PASSWD_FILE" "$BACKUP_PATH/spiderfoot-passwd.txt"
     _log_ok "spiderfoot-passwd.txt (will be encrypted)"
 fi
 
@@ -357,24 +316,17 @@ tar tzf "$DECRYPTED" > /dev/null 2>&1 && echo "✅" || { _log_error "tar corrupt
 rm -f "$DECRYPTED"
 
 # ------------------------------------------------------------------
-# 9. Cleanup old backups (keep last 30 days)
+# 9. Apply tiered retention policy
 # ------------------------------------------------------------------
 echo ""
 echo "--- 9. Cleanup ---"
 
-OLD_BACKUPS=$(find "$BACKUP_DIR" -name "iveras_backup_*.tar.gz.gpg" -type f -mtime +30 2>/dev/null | sort || true)
-if [ -n "$OLD_BACKUPS" ]; then
-    echo "  Removing backups older than 30 days:"
-    echo "$OLD_BACKUPS" | while read -r old; do
-        if rm -f "$old"; then
-            echo "    🗑️  $(basename "$old")"
-        else
-            _log_warn "oud backup niet verwijderd: $(basename "$old")"
-        fi
-    done
-    _log_ok "Old backups cleaned"
+if python3 "$SCRIPT_DIR/scripts/prune_backup_retention.py" \
+    --directory "$BACKUP_DIR" --daily "$BACKUP_RETENTION_DAILY" \
+    --weekly "$BACKUP_RETENTION_WEEKLY" --monthly "$BACKUP_RETENTION_MONTHLY" --apply; then
+    _log_ok "Tiered retention applied"
 else
-    _log_ok "No backups older than 30 days"
+    _log_warn "Tiered retention could not be applied"
 fi
 
 # ------------------------------------------------------------------

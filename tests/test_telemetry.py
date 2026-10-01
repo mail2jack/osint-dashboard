@@ -52,6 +52,20 @@ def test_telemetry_defaults_seeded(app):
 def test_collect_system_info_shape(app):
     with app.app_context():
         info = telemetry.collect_system_info()
+        assert set(info) == {
+            "hostname",
+            "os_name",
+            "os_version",
+            "kernel",
+            "platform",
+            "app_version",
+            "cpu_model",
+            "cpu_count",
+            "ram_gb",
+            "disk_gb",
+            "local_ips",
+            "public_ip",
+        }
         for key in (
             "hostname",
             "os_name",
@@ -71,6 +85,21 @@ def test_collect_system_info_shape(app):
         assert info["platform"] in ("docker", "bare-metal")
         assert isinstance(info["local_ips"], list)
         assert info["public_ip"] == "1.2.3.4"
+
+
+def test_telemetry_payload_uses_explicit_allowed_keys(app, monkeypatch):
+    monkeypatch.setenv("INSTALL_ID", "install-abc")
+    monkeypatch.setenv("INSTALL_TOKEN", "token-xyz")
+    monkeypatch.setattr(telemetry, "collect_system_info", lambda: {"hostname": "test"})
+    fake = FakePost(200)
+    monkeypatch.setattr(telemetry, "_post", fake)
+
+    with app.app_context():
+        response = telemetry._send("telemetry", "install-abc")
+
+    assert response is not None
+    assert set(fake.calls[0][1]) == {"install_id", "info"}
+    assert set(fake.calls[0][1]["info"]) == {"hostname"}
 
 
 def test_public_ip_best_effort_on_failure(app, monkeypatch):

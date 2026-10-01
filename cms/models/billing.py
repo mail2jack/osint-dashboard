@@ -24,6 +24,9 @@ class Invoice(db.Model):
         db.UniqueConstraint(
             "tenant_id", "invoice_number", name="uq_tenant_invoice_number"
         ),
+        db.Index("ix_invoices_client_status", "client_id", "status"),
+        db.Index("ix_invoices_due_date_status", "due_date", "status"),
+        db.Index("ix_invoices_status", "status"),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -38,9 +41,11 @@ class Invoice(db.Model):
 
     issue_date = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(20), default=InvoiceStatus.DRAFT.value)
+    status = db.Column(
+        db.String(20), nullable=False, default=InvoiceStatus.DRAFT.value
+    )
 
-    currency = db.Column(db.String(3), default="EUR")
+    currency = db.Column(db.String(3), nullable=False, default="EUR")
 
     subtotal = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     vat_amount = db.Column(db.Numeric(15, 2), nullable=False, default=0)
@@ -56,11 +61,13 @@ class Invoice(db.Model):
     cancelled_at = db.Column(db.DateTime)
     cancelled_reason = db.Column(db.Text)
 
-    is_deleted = db.Column(db.Boolean, default=False, index=True)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = db.Column(
-        db.DateTime,
+        db.DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
@@ -152,9 +159,11 @@ class InvoiceItem(db.Model):
     vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=21.00)
     total = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     vat_total = db.Column(db.Numeric(15, 2), nullable=False, default=0)
-    sort_order = db.Column(db.Integer, default=0)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
     def recalculate(self) -> None:
         self.total = self.quantity * self.unit_price
@@ -192,7 +201,9 @@ class Payment(db.Model):
     notes = db.Column(db.Text)
 
     created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
     creator = db.relationship("User", foreign_keys=[created_by])
 

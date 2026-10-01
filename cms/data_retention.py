@@ -5,6 +5,8 @@ Data retention — hard-delete tenant data after grace period expires.
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import inspect
+
 from .models import db, Tenant
 
 logger = logging.getLogger(__name__)
@@ -12,6 +14,20 @@ logger = logging.getLogger(__name__)
 # Models that hold per-tenant data, ordered so leaf tables come first
 # (no other tenant-scoped table depends on them).
 _PURGE_ORDER = [
+    "finding_capture_jobs",
+    "background_tasks",
+    "finding_screenshots",
+    "action_findings",
+    "subject_identifiers",
+    "subject_facts",
+    "research_actions",
+    "investigations",
+    "case_number_counters",
+    "investigation_seq_counters",
+    "invoice_number_counters",
+    "service_rates",
+    "proration_logs",
+    "audit_logs",
     "phone_lookups",
     "login_logs",
     "notification_preferences",
@@ -73,6 +89,20 @@ def purge_expired_tenants(dry_run: bool = False) -> int:
 
 
 _ALLOWED_PURGE_TABLES = {
+    "finding_capture_jobs",
+    "background_tasks",
+    "finding_screenshots",
+    "action_findings",
+    "subject_identifiers",
+    "subject_facts",
+    "research_actions",
+    "investigations",
+    "case_number_counters",
+    "investigation_seq_counters",
+    "invoice_number_counters",
+    "service_rates",
+    "proration_logs",
+    "audit_logs",
     "finding",
     "subject_note",
     "subject_relation",
@@ -138,13 +168,42 @@ _ALLOWED_PURGE_TABLES = {
 def _purge_single_tenant(tenant: Tenant, dry_run: bool) -> None:
     """Delete all rows belonging to *tenant* in the configured order."""
     tid = tenant.id
+    inspector = inspect(db.engine)
     for table_name in _PURGE_ORDER:
         if table_name not in _ALLOWED_PURGE_TABLES:
             raise ValueError(f"Invalid table name: {table_name}")
-        db.session.execute(
-            db.text(f"DELETE FROM {table_name} WHERE tenant_id = :tid"),
-            {"tid": tid},
-        )
+        if not inspector.has_table(table_name):
+            logger.warning("Purge table %s does not exist; skipping", table_name)
+            continue
+        if table_name == "action_findings":
+            db.session.execute(
+                db.text(
+                    "DELETE FROM action_findings "
+                    "WHERE action_id IN "
+                    "(SELECT id FROM research_actions WHERE tenant_id = :tid)"
+                ),
+                {"tid": tid},
+            )
+        elif table_name == "notification_preferences":
+            db.session.execute(
+                db.text(
+                    "DELETE FROM notification_preferences "
+                    "WHERE user_id IN (SELECT id FROM users WHERE tenant_id = :tid)"
+                ),
+                {"tid": tid},
+            )
+        else:
+            columns = {column["name"] for column in inspector.get_columns(table_name)}
+            if "tenant_id" not in columns:
+                logger.warning(
+                    "Purge table %s has no tenant_id; relation-specific purge is required",
+                    table_name,
+                )
+                continue
+            db.session.execute(
+                db.text(f"DELETE FROM {table_name} WHERE tenant_id = :tid"),
+                {"tid": tid},
+            )
         logger.debug("Purged %s for tenant %s", table_name, tid)
 
     if dry_run:

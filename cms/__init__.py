@@ -226,22 +226,6 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"theme_style": "classic", "app_logo": ""}
 
-    @app.context_processor
-    def inject_investigator_navigation():
-        """Keep the old navigation unless both rollout gates are enabled."""
-        from flask_login import current_user
-
-        if not current_user.is_authenticated or not current_user.tenant_id:
-            return {"investigator_primary_navigation": False}
-        from .tier_limits import check_feature
-
-        return {
-            "investigator_primary_navigation": check_feature(
-                "investigator_primary_navigation"
-            )
-            and check_feature("investigation_workspace")
-        }
-
     # Inject license banner state into all templates (only when license is not
     # fully active, e.g. trial / expired / revoked / invalid).
     @app.context_processor
@@ -306,11 +290,26 @@ def create_cms_module(app: Flask):
                         subject_id=s.id, content=s.notes, comment_type="note"
                     ).first()
                     if not existing:
+                        # Subject is the source record for the tenant boundary.
+                        # Comment requires both tenant_id and author_id, so do
+                        # not rely on the ambient tenant context during startup.
+                        author = User.query.filter_by(
+                            role="admin", tenant_id=s.tenant_id
+                        ).first()
+                        if not author:
+                            app.logger.warning(
+                                "Subject.notes migration skipped for subject %s: "
+                                "no admin author exists in tenant %s",
+                                s.id,
+                                s.tenant_id,
+                            )
+                            continue
                         comment = Comment(
+                            tenant_id=s.tenant_id,
                             subject_id=s.id,
                             content=s.notes,
                             comment_type="note",
-                            author_id=User.query.filter_by(role="admin").first().id,
+                            author_id=author.id,
                             created_at=s.created_at or datetime.now(timezone.utc),
                             updated_at=s.updated_at or datetime.now(timezone.utc),
                         )
@@ -340,15 +339,6 @@ def create_cms_module(app: Flask):
                 app.logger.debug(f"Session timeout fallback: {e}")
             app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
             app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(seconds=timeout_seconds)
-    
-            # Seed default service rates for auto-invoicing
-            try:
-                from .services.invoice_service import seed_service_rates
-    
-                seed_service_rates()
-            except Exception as e:
-                app.logger.debug(f"Service rate seed note: {e}")
-                db.session.rollback()
     
             # Purge old audit logs on startup
             try:
@@ -521,6 +511,18 @@ def create_cms_module(app: Flask):
                         "Seed: linked %d existing non-admin users to default tenant",
                         linked,
                     )
+
+            # Seed default service rates only after a tenant and admin exist.
+            # ServiceRate.tenant_id is required; running this earlier during
+            # first boot silently rolled back the seed because no tenant
+            # context was available yet.
+            try:
+                from .services.invoice_service import seed_service_rates
+
+                seed_service_rates()
+            except Exception as e:
+                app.logger.debug(f"Service rate seed note: {e}")
+                db.session.rollback()
 
     app.extensions["cms_module_initialized"] = True
     init_telemetry(app)

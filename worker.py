@@ -25,16 +25,15 @@ if not REDIS_URL:
 
 try:
     import redis
-    from rq import Connection, Worker as RQWorker
+    from rq import Worker as RQWorker
 
     redis_conn = redis.from_url(REDIS_URL)
     queues = sys.argv[1:] if len(sys.argv) > 1 else ["default"]
 
     logger.info("Starting RQ worker — queues: %s, redis: %s", queues, REDIS_URL)
 
-    with Connection(redis_conn):
-        worker = RQWorker(queues)
-        worker.work()
+    worker = RQWorker(queues, connection=redis_conn)
+    worker.work()
 
 except ImportError as e:
     logger.error("Missing dependency: %s — run `pip install rq redis`", e)

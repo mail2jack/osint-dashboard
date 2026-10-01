@@ -10,32 +10,69 @@ from unittest.mock import patch, MagicMock
 
 
 class TestWebhookDispatch:
+    @staticmethod
+    def _tenant_settings():
+        from flask import g
+        from cms.models import TenantSetting, User
+
+        tenant_id = User.query.filter_by(username="admin").first().tenant_id
+        g.tenant_id = tenant_id
+        return TenantSetting, tenant_id
+
     def test_dispatch_no_urls(self, app):
         from cms.webhooks import dispatch
 
         with app.app_context():
-            from cms.models import Setting
+            TenantSetting, tenant_id = self._tenant_settings()
 
-            Setting.set("webhook_urls", [], category="system", encrypt=False)
-            Setting.set("webhook_secret", "", category="system", encrypt=False)
+            TenantSetting.set("webhook_urls", [], tenant_id=tenant_id, category="system", encrypt=False)
+            TenantSetting.set("webhook_secret", "", tenant_id=tenant_id, category="system", encrypt=False)
 
             results = dispatch("subject.create", {"id": "1"})
             assert results == []
+
+    def test_dispatch_uses_requested_tenant_configuration(self, app):
+        from cms.models import Tenant, TenantSetting, User, db
+        from cms.webhooks import dispatch
+
+        with app.app_context():
+            tenant_a = User.query.filter_by(username="admin").first().tenant_id
+            tenant_b = Tenant(
+                name="Webhook tenant B",
+                slug="webhook-tenant-b",
+                join_code="webhook-tenant-b-code",
+            )
+            db.session.add(tenant_b)
+            db.session.flush()
+            TenantSetting.set(
+                "webhook_urls", ["https://tenant-a.example/"], tenant_id=tenant_a
+            )
+            TenantSetting.set(
+                "webhook_urls", ["https://tenant-b.example/"], tenant_id=tenant_b.id
+            )
+
+            with patch("httpx.post") as mock_post:
+                response = MagicMock(is_success=True, status_code=200)
+                mock_post.return_value = response
+                dispatch("subject.created", {"id": "1"}, tenant_id=tenant_a)
+
+            assert mock_post.call_args.args[0] == "https://tenant-a.example/"
 
     def test_dispatch_with_hmac(self, app):
         from cms.webhooks import dispatch
 
         with app.app_context():
-            from cms.models import Setting
+            TenantSetting, tenant_id = self._tenant_settings()
 
-            Setting.set(
+            TenantSetting.set(
                 "webhook_urls",
                 ["https://hooks.example.com/"],
+                tenant_id=tenant_id,
                 category="system",
                 encrypt=False,
             )
-            Setting.set(
-                "webhook_secret", "test-secret", category="system", encrypt=False
+            TenantSetting.set(
+                "webhook_secret", "test-secret", tenant_id=tenant_id, category="system", encrypt=False
             )
 
             with patch("httpx.post") as mock_post:
@@ -59,11 +96,12 @@ class TestWebhookDispatch:
         from cms.webhooks import dispatch
 
         with app.app_context():
-            from cms.models import Setting
+            TenantSetting, tenant_id = self._tenant_settings()
 
-            Setting.set(
+            TenantSetting.set(
                 "webhook_urls",
                 ["https://hooks.example.com/"],
+                tenant_id=tenant_id,
                 category="system",
                 encrypt=False,
             )
@@ -80,11 +118,12 @@ class TestWebhookDispatch:
         from cms.webhooks import dispatch
 
         with app.app_context():
-            from cms.models import Setting
+            TenantSetting, tenant_id = self._tenant_settings()
 
-            Setting.set(
+            TenantSetting.set(
                 "webhook_urls",
                 ["https://h1.example.com/", "https://h2.example.com/"],
+                tenant_id=tenant_id,
                 category="system",
                 encrypt=False,
             )
@@ -103,15 +142,16 @@ class TestWebhookDispatch:
         from cms.webhooks import dispatch
 
         with app.app_context():
-            from cms.models import Setting
+            TenantSetting, tenant_id = self._tenant_settings()
 
-            Setting.set(
+            TenantSetting.set(
                 "webhook_urls",
                 ["https://hooks.example.com/"],
+                tenant_id=tenant_id,
                 category="system",
                 encrypt=False,
             )
-            Setting.set("webhook_secret", "", category="system", encrypt=False)
+            TenantSetting.set("webhook_secret", "", tenant_id=tenant_id, category="system", encrypt=False)
 
             with patch("httpx.post") as mock_post:
                 mock_response = MagicMock()
@@ -126,6 +166,65 @@ class TestWebhookDispatch:
                 assert body["payload"]["id"] == "1"
                 assert body["payload"]["name"] == "test"
                 assert "timestamp" in body
+
+    def test_dispatch_does_not_place_webhook_secret_in_body(self, app):
+        from cms.webhooks import dispatch
+
+        with app.app_context():
+            TenantSetting, tenant_id = self._tenant_settings()
+
+            TenantSetting.set(
+                "webhook_urls",
+                ["https://hooks.example.com/"],
+                tenant_id=tenant_id,
+                category="system",
+                encrypt=False,
+            )
+            TenantSetting.set(
+                "webhook_secret", "secret-must-stay-in-header", tenant_id=tenant_id, category="system", encrypt=False
+            )
+
+            with patch("httpx.post") as mock_post:
+                mock_response = MagicMock()
+                mock_response.is_success = True
+                mock_response.status_code = 200
+                mock_post.return_value = mock_response
+
+                dispatch("subject.create", {"id": "1"})
+                body = mock_post.call_args.kwargs["content"]
+                headers = mock_post.call_args.kwargs["headers"]
+                assert "secret-must-stay-in-header" not in body
+                assert "X-Webhook-Signature" in headers
+
+    def test_dispatch_ignores_invalid_or_credential_bearing_destinations(self, app):
+        from cms.webhooks import dispatch
+
+        with app.app_context():
+            TenantSetting, tenant_id = self._tenant_settings()
+            TenantSetting.set(
+                "webhook_urls",
+                [
+                    "ftp://unsupported.example/",
+                    "https://127.0.0.1/",
+                    "https://10.0.0.8/",
+                    "https://localhost/",
+                    "not-a-url",
+                    "https://user:password@example.com/",
+                    "https://valid.example/",
+                    "https://valid.example/",
+                ],
+                tenant_id=tenant_id,
+                category="system",
+                encrypt=False,
+            )
+
+            with patch("httpx.post") as mock_post:
+                response = MagicMock(is_success=True, status_code=200)
+                mock_post.return_value = response
+                results = dispatch("subject.created", {"id": "1"})
+
+            assert len(results) == 1
+            assert mock_post.call_args.args[0] == "https://valid.example/"
 
 
 # =============================================================================
@@ -222,6 +321,87 @@ class TestApiKeys:
 
 
 class TestBackgroundTasks:
+    def test_rq_enqueue_contract(self, monkeypatch):
+        import sys
+        import types
+
+        import cms.background as background
+
+        captured = {}
+
+        class FakeConnection:
+            def close(self):
+                captured["closed"] = True
+
+        class FakeQueue:
+            def __init__(self, name, connection):
+                captured["queue"] = (name, connection)
+
+            def enqueue(self, path, **kwargs):
+                captured["enqueue"] = (path, kwargs)
+
+        fake_redis = types.SimpleNamespace(
+            from_url=lambda url, socket_connect_timeout: (
+                captured.update({"url": url, "timeout": socket_connect_timeout})
+                or FakeConnection()
+            )
+        )
+        fake_rq = types.SimpleNamespace(Queue=FakeQueue)
+        monkeypatch.setitem(sys.modules, "redis", fake_redis)
+        monkeypatch.setitem(sys.modules, "rq", fake_rq)
+        monkeypatch.setattr(background, "_use_rq", True)
+        monkeypatch.setattr(background, "_RQ_URL", "redis://rq.example/0")
+
+        def sample_task(value):
+            return value
+
+        assert background._enqueue_rq("task-1", sample_task, 42, flag=True)
+        assert captured["url"] == "redis://rq.example/0"
+        assert captured["timeout"] == 3
+        assert captured["queue"][0] == "default"
+        path, kwargs = captured["enqueue"]
+        assert path == "cms.tasks.run_background_task"
+        assert kwargs == {
+            "task_id": "task-1",
+            "func_module": __name__,
+            "func_name": "TestBackgroundTasks.test_rq_enqueue_contract.<locals>.sample_task",
+            "args": (42,),
+            "kwargs": {"flag": True},
+        }
+        assert captured["closed"] is True
+
+    def test_thread_task_restores_persisted_tenant_context(self, app):
+        from flask import g
+
+        from cms.background import get_task_status, run_in_background
+        from cms.models import User
+
+        with app.app_context():
+            admin = User.query.filter_by(username="admin").first()
+            assert admin is not None
+            observed = []
+
+            def capture_context():
+                observed.append(getattr(g, "tenant_id", None))
+                return "ok"
+
+            task_id = "test-task-tenant-context"
+            with app.test_request_context():
+                g.tenant_id = admin.tenant_id
+                run_in_background(task_id, capture_context)
+
+            import time
+
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                status = get_task_status(task_id)
+                if observed and status and status["status"] == "completed":
+                    break
+                time.sleep(0.05)
+
+            assert observed == [admin.tenant_id]
+            assert get_task_status(task_id)["status"] == "completed"
+
     def test_run_and_get_status(self, app):
         from cms.background import run_in_background, get_task_status
 

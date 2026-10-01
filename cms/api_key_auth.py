@@ -50,6 +50,15 @@ def api_key_required(f):
             logger.debug("API key hash mismatch")
             return jsonify({"error": "Invalid API key"}), 401
 
+        user = db.session.get(User, key_record.user_id)
+        if (
+            user is None
+            or not user.is_active
+            or key_record.tenant_id != user.tenant_id
+        ):
+            logger.debug("API key owner is missing, inactive, or in another tenant")
+            return jsonify({"error": "Invalid API key"}), 401
+
         key_record.last_used_at = datetime.now(timezone.utc)
         db.session.commit()
 
@@ -58,10 +67,8 @@ def api_key_required(f):
         g.api_key_scopes = key_record.scopes or ["read"]
 
         # Log in via Flask-Login so @login_required wrappers pass
-        user = db.session.get(User, key_record.user_id)
-        if user:
-            logger.debug("Login user via API key (active=%s)", user.is_active)
-            login_user(user)
+        logger.debug("Login user via API key (active=%s)", user.is_active)
+        login_user(user)
 
         return f(*args, **kwargs)
 

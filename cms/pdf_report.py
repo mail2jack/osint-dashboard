@@ -7,6 +7,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
+from werkzeug.utils import secure_filename
 
 
 def _add_watermark(canvas, doc):
@@ -23,7 +24,9 @@ def _add_watermark(canvas, doc):
 
 def generate_results_pdf(data, search_type, query, watermark_text=None):
     os.makedirs("reports", exist_ok=True)
-    filename = f"reports/{search_type}_{query}_{uuid.uuid4().hex[:8]}.pdf"
+    safe_type = secure_filename(str(search_type)) or "unknown"
+    safe_query = secure_filename(str(query)) or "query"
+    filename = f"reports/{safe_type}_{safe_query}_{uuid.uuid4().hex[:8]}.pdf"
 
     doc = SimpleDocTemplate(filename, pagesize=letter)
     doc.watermark_text = watermark_text or "OSINT Dashboard"

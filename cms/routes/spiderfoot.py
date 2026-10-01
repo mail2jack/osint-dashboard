@@ -7,7 +7,6 @@ SpiderFoot scan management, status, results, import, and settings.
 """
 
 import logging
-from functools import wraps
 from datetime import datetime, timezone
 import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
@@ -29,7 +28,6 @@ from ..auth import (
     apply_tenant_filter,
     ensure_tenant_access,
 )
-from ..tier_limits import check_feature
 from .subjects_list import _search_subjects_by_name
 
 try:
@@ -42,28 +40,6 @@ except ImportError:
     ScanTarget = None
 
 logger = logging.getLogger(__name__)
-
-
-def legacy_spiderfoot_console_required(view):
-    """Allow the raw SpiderFoot console only as an explicit super-admin tool.
-
-    Native workflow source research never calls these UI endpoints.  Returning
-    404 rather than 403 keeps the retired console undiscoverable to ordinary
-    tenant users, including senior investigators and tenant admins.
-    """
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if (
-            not current_user.is_authenticated
-            or not current_user.is_super_admin
-            or not current_user.tenant_id
-            or not check_feature("legacy_spiderfoot_ui", current_user.tenant_id)
-        ):
-            abort(404)
-        return view(*args, **kwargs)
-
-    wrapped._legacy_spiderfoot_console_protected = True
-    return wrapped
 
 
 def get_spiderfoot_config() -> dict:
@@ -90,7 +66,6 @@ def get_spiderfoot_service() -> object | None:
 
 @cms_bp.route("/spiderfoot")
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_index() -> str:
     """SpiderFoot integration dashboard."""
@@ -258,7 +233,6 @@ def spiderfoot_index() -> str:
 
 @cms_bp.route("/spiderfoot/scan", methods=["GET", "POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 @validate(SpiderFootScanSchema)
 def spiderfoot_scan() -> str | flask.Response:
@@ -429,7 +403,6 @@ def _start_spiderfoot_scan() -> str | flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>")
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_scan_status(scan_id: str) -> flask.Response:
     """View SpiderFoot scan status and results."""
@@ -526,7 +499,6 @@ def spiderfoot_scan_status(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/refresh", methods=["POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
     """Refresh SpiderFoot scan status."""
@@ -565,7 +537,6 @@ def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/stop", methods=["POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
     """Stop a running SpiderFoot scan."""
@@ -598,7 +569,6 @@ def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/delete", methods=["POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @admin_required
 def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
     """Delete a SpiderFoot scan record."""
@@ -635,7 +605,6 @@ def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/results")
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_scan_results(scan_id: str) -> flask.Response:
     """Get full SpiderFoot scan results as JSON."""
@@ -667,7 +636,6 @@ def spiderfoot_scan_results(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/import", methods=["POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 @validate(SpiderFootImportSchema)
 def spiderfoot_import_results(scan_id: str) -> flask.Response:
@@ -759,7 +727,6 @@ def spiderfoot_import_results(scan_id: str) -> flask.Response:
 
 @cms_bp.route("/spiderfoot/scans")
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def spiderfoot_scans() -> str:
     """List all SpiderFoot scans."""
@@ -797,7 +764,6 @@ def spiderfoot_scans() -> str:
 
 @cms_bp.route("/spiderfoot/settings", methods=["GET", "POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @admin_required
 @validate(SpiderFootSettingsSchema)
 def spiderfoot_settings() -> str:
@@ -871,7 +837,6 @@ def spiderfoot_settings() -> str:
 
 @cms_bp.route("/spiderfoot/settings/test", methods=["POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @admin_required
 @validate(SpiderFootTestSchema)
 def spiderfoot_test_connection() -> flask.Response:
@@ -900,7 +865,6 @@ def spiderfoot_test_connection() -> flask.Response:
 
 @cms_bp.route("/api/spiderfoot/status")
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 def api_spiderfoot_status() -> flask.Response:
     """Get SpiderFoot server status."""
@@ -930,7 +894,6 @@ def api_spiderfoot_status() -> flask.Response:
 
 @cms_bp.route("/spiderfoot/subject/<subject_id>/scan", methods=["GET", "POST"])
 @login_required
-@legacy_spiderfoot_console_required
 @roles_required("admin", "owner", "senior_investigator")
 @validate(SpiderFootScanSubjectSchema)
 def spiderfoot_scan_subject(subject_id: str) -> str:

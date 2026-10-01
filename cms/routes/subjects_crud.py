@@ -189,6 +189,7 @@ def create_subject() -> flask.Response:
                     "name": subject.name,
                     "subject_type": subject.subject_type,
                 },
+                tenant_id=subject.tenant_id,
             )
         except Exception:
             logger.debug("Webhook dispatch failed for subject.created", exc_info=True)

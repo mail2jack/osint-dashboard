@@ -6,6 +6,7 @@ This file is an index. Detailed documentation is split into focused files below.
 ## Quick Links
 | Topic | File |
 |---|---|
+| Joost project context, decisions and roadmap | [docs/JOOST_PROJECT_CONTEXT.md](./docs/JOOST_PROJECT_CONTEXT.md) |
 | Testing & conftest.py | [AGENTS_TESTING.md](./AGENTS_TESTING.md) |
 | External integrations (SF, Phone, Vessel, AI, Telegram, etc.) | [AGENTS_INTEGRATIONS.md](./AGENTS_INTEGRATIONS.md) |
 | Database, setup, deploy, encryption, git | [AGENTS_OPERATIONS.md](./AGENTS_OPERATIONS.md) |

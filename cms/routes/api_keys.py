@@ -1,11 +1,11 @@
 import logging
 
 import flask
-from flask import request, jsonify
+from flask import request, jsonify, g
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, ApiKey
+from ..models import db, ApiKey, User
 from ..auth import admin_required, apply_tenant_filter, ensure_tenant_access
 
 from .response import api_success, api_error
@@ -62,11 +62,24 @@ def generate_api_key() -> flask.Response:
     raw_scopes = data.get("scopes", ["read"])
     scopes = [s for s in raw_scopes if s in valid_scopes] or ["read"]
 
+    target_user_id = data.get("user_id") or current_user.id
+    effective_tenant_id = g.get("tenant_id") or current_user.tenant_id
+    target_user = User.query.filter_by(
+        id=target_user_id,
+        tenant_id=effective_tenant_id,
+        is_active=True,
+    ).first()
+    if target_user is None:
+        return api_error(
+            "The API key user must be an active user in the current tenant.", 400
+        )
+
     key = ApiKey(
         name=name,
         key_hash=key_hash,
         key_prefix=prefix,
-        user_id=data.get("user_id", current_user.id),
+        tenant_id=target_user.tenant_id,
+        user_id=target_user.id,
         scopes=scopes,
         is_active=True,
     )

@@ -50,6 +50,76 @@ from .response import api_success, api_error
 logger = logging.getLogger(__name__)
 
 
+_TENANT_INTEGRATION_SETTING_DEFAULTS = (
+    {
+        "key": "webhook_urls",
+        "category": "integrations",
+        "description": "JSON list of tenant-specific webhook URLs.",
+        "is_encrypted": False,
+    },
+    {
+        "key": "webhook_secret",
+        "category": "integrations",
+        "description": "Secret used to sign tenant webhook requests.",
+        "is_encrypted": True,
+    },
+    {
+        "key": "webhook_url",
+        "category": "integrations",
+        "description": "Legacy tenant-specific webhook URL.",
+        "is_encrypted": False,
+    },
+    {
+        "key": "twilio_account_sid",
+        "category": "integrations",
+        "description": "Tenant-specific Twilio account SID.",
+        "is_encrypted": False,
+    },
+    {
+        "key": "twilio_auth_token",
+        "category": "integrations",
+        "description": "Tenant-specific Twilio authentication token.",
+        "is_encrypted": True,
+    },
+    {
+        "key": "twilio_from_number",
+        "category": "integrations",
+        "description": "Tenant-specific Twilio sender number.",
+        "is_encrypted": False,
+    },
+    {
+        "key": "twilio_whatsapp_from",
+        "category": "integrations",
+        "description": "Tenant-specific Twilio WhatsApp sender.",
+        "is_encrypted": False,
+    },
+)
+
+
+def _ensure_tenant_integration_settings(tenant_id: str) -> bool:
+    """Create empty, tenant-scoped integration fields without copying globals."""
+    existing = {
+        row.key
+        for row in TenantSetting.query.filter_by(tenant_id=tenant_id).all()
+    }
+    created = False
+    for definition in _TENANT_INTEGRATION_SETTING_DEFAULTS:
+        if definition["key"] in existing:
+            continue
+        db.session.add(
+            TenantSetting(
+                tenant_id=tenant_id,
+                key=definition["key"],
+                value=None,
+                category=definition["category"],
+                description=definition["description"],
+                is_encrypted=definition["is_encrypted"],
+            )
+        )
+        created = True
+    return created
+
+
 @cms_bp.route("/settings")
 @login_required
 def settings() -> str:
@@ -147,6 +217,8 @@ def tenant_settings():
     """Per-tenant settings page (tenant owner / admin)."""
     if not current_user.is_admin:
         abort(403)
+    if _ensure_tenant_integration_settings(current_user.tenant_id):
+        db.session.commit()
     settings_list = (
         TenantSetting.query.filter_by(tenant_id=current_user.tenant_id)
         .order_by(TenantSetting.category, TenantSetting.key)
@@ -398,8 +470,36 @@ def save_tenant_settings() -> flask.Response:
         if setting_id:
             setting = db.session.get(TenantSetting, setting_id)
             if setting and setting.tenant_id == tid:
-                setting.value = new_value
+                if setting.is_encrypted and not new_value:
+                    # The UI intentionally leaves encrypted inputs blank so
+                    # ciphertext is never rendered back to the browser. A
+                    # blank submission therefore means "keep existing secret".
+                    continue
+                old_value = "***MASKED***" if setting.is_encrypted else setting.value
+                if setting.is_encrypted and new_value:
+                    from ..encryption_utils import encryptor
+
+                    setting.value = encryptor.encrypt(new_value)
+                else:
+                    setting.value = new_value
                 setting.updated_at = datetime.now(timezone.utc)
+                AuditLog.log(
+                    user_id=current_user.id,
+                    action="tenant_setting_updated",
+                    entity_type="tenant_setting",
+                    entity_id=setting.id,
+                    tenant_id=tid,
+                    changes={
+                        "value": {
+                            "old": old_value,
+                            "new": "***MASKED***"
+                            if setting.is_encrypted
+                            else new_value,
+                        }
+                    },
+                    ip_address=request.remote_addr,
+                    description=f"Updated tenant setting: {setting.key}",
+                )
                 saved_count += 1
     try:
         db.session.commit()
@@ -943,6 +1043,8 @@ def create_tenant() -> flask.Response:
     db.session.add(tenant)
     try:
         db.session.commit()
+        _ensure_tenant_integration_settings(tenant.id)
+        db.session.commit()
     except Exception:
         db.session.rollback()
         logger.exception("Failed to create tenant")
@@ -994,12 +1096,14 @@ def update_tenant(tenant_id: str) -> flask.Response:
 @login_required
 @super_admin_required
 def delete_tenant(tenant_id: str) -> flask.Response:
-    """Delete a tenant (super admin only)."""
+    """Delete a tenant through the same dependency-aware purge as GDPR deletion."""
     try:
         tenant = db.session.get(Tenant, tenant_id) or abort(404)
         if not tenant:
             return api_error("Tenant not found", 404)
-        db.session.delete(tenant)
+        from ..data_retention import _purge_single_tenant
+
+        _purge_single_tenant(tenant, dry_run=False)
         db.session.commit()
         return api_success({}, f"Tenant '{tenant.name}' deleted")
     except Exception as e:

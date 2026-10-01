@@ -152,21 +152,25 @@ async def check_email_site(client, site_name, site_info, email):
             finding["matched_pattern"] = "false_positive"
             return finding
 
-        email_lower = email.lower()
-        email_local = email_lower.split("@")[0]
+        # Prefer the complete address. For services that expose only a
+        # username, the local part before '@' is also an allowed match. The
+        # provider/domain after '@' is deliberately never matched on its own.
+        email_lower = email.strip().lower()
+        email_local = email_lower.split("@", 1)[0]
 
-        if email_lower in text_lower:
+        if email_lower and email_lower in text_lower:
             finding["exists"] = True
             finding["status"] = "confirmed"
             finding["verified"] = True
-        elif email_local in text_lower:
+        elif email_local and email_local in text_lower:
             finding["exists"] = True
             finding["status"] = "confirmed"
             finding["verified"] = True
+            finding["verification"] = "local_part_match"
         else:
             finding["exists"] = None
             finding["status"] = "unverified"
-            finding["verification"] = "no_content_match"
+            finding["verification"] = "no_email_or_local_part_match"
     except CurlError as e:
         if "timeout" in str(e).lower() or "timed out" in str(e).lower():
             finding["status"] = "timeout"
@@ -187,7 +191,11 @@ async def search_email_async(email, progress_callback=None, limit=30):
         get_rate_limit_status,
     )
 
-    cache_key = f"email_sherlock_{limit}"
+    # Bump the cache namespace because the matching policy is explicit: the
+    # complete address is preferred, while the local part may also be used for
+    # services that identify accounts by username. The provider/domain is
+    # never used as an independent search term.
+    cache_key = f"email_sherlock_localpart_v3_{limit}"
     cached = get_cached_result(cache_key, email)
     if cached:
         cached["from_cache"] = True

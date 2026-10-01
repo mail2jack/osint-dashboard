@@ -11,15 +11,22 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
-def _get_webhook_url() -> str | None:
-    from .models import Setting
+def _get_webhook_url(tenant_id: str | None = None) -> str | None:
+    from flask import g
+    from flask_login import current_user
+    from .models import TenantSetting
 
-    return Setting.get("webhook_url") or None
+    scoped_tenant_id = tenant_id or getattr(g, "tenant_id", None)
+    if not scoped_tenant_id and current_user.is_authenticated:
+        scoped_tenant_id = current_user.tenant_id
+    if not scoped_tenant_id:
+        return None
+    return TenantSetting.get("webhook_url", tenant_id=scoped_tenant_id) or None
 
 
-def send_webhook(event: str, payload: dict) -> bool:
+def send_webhook(event: str, payload: dict, tenant_id: str | None = None) -> bool:
     """Send a webhook POST for a system event. Returns True on success."""
-    url = _get_webhook_url()
+    url = _get_webhook_url(tenant_id)
     if not url:
         return False
     try:

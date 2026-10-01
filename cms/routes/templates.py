@@ -20,6 +20,10 @@ from ..models import (
     DocumentTemplate,
     Document,
     AuditLog,
+    Finding,
+    FinancialRecord,
+    Subject,
+    case_subjects,
     report_visible_finding_filter,
 )
 from ..services.report_evidence import report_screenshots, safe_source_url
@@ -174,11 +178,6 @@ def generate_case_report(case_id: str) -> flask.Response:
     tmpl_query = DocumentTemplate.query.filter_by(is_active=True)
     tmpl_query = apply_tenant_filter(tmpl_query, DocumentTemplate)
     templates = tmpl_query.order_by(DocumentTemplate.name).all()
-    selected_template_id = request.args.get("template_id", "")
-    # A report-hub link may preselect a tenant-visible template.  Never render
-    # a cross-tenant or inactive ID back into the form.
-    if selected_template_id not in {template.id for template in templates}:
-        selected_template_id = ""
 
     if request.method == "POST":
         vd = request.validated_data
@@ -195,10 +194,7 @@ def generate_case_report(case_id: str) -> flask.Response:
                 ), 400
             flash("Please select a template.", "danger")
             return render_template(
-                "cms/templates/generate_report.html",
-                case=case,
-                templates=templates,
-                selected_template_id=selected_template_id,
+                "cms/templates/generate_report.html", case=case, templates=templates
             )
 
         custom_fields = {
@@ -253,10 +249,7 @@ def generate_case_report(case_id: str) -> flask.Response:
         return redirect(url_for("cms.view_case", case_id=case.id))
 
     return render_template(
-        "cms/templates/generate_report.html",
-        case=case,
-        templates=templates,
-        selected_template_id=selected_template_id,
+        "cms/templates/generate_report.html", case=case, templates=templates
     )
 
 
@@ -288,7 +281,13 @@ def _build_report_context(case: Case) -> dict:
         }
 
         context["subjects"] = []
-        for subject in case.subjects.all():
+        subjects = (
+            Subject.query.filter(Subject.tenant_id == case.tenant_id)
+            .join(case_subjects, case_subjects.c.subject_id == Subject.id)
+            .filter(case_subjects.c.case_id == case.id, Subject.is_deleted.is_(False))
+            .all()
+        )
+        for subject in subjects:
             subject.decrypt_identifiers()
             context["subjects"].append(
                 {
@@ -302,10 +301,13 @@ def _build_report_context(case: Case) -> dict:
             )
 
         context["findings"] = []
-        for finding in (
-            case.findings.filter(report_visible_finding_filter())
+        findings = (
+            Finding.query.filter(Finding.tenant_id == case.tenant_id)
+            .filter(Finding.case_id == case.id, Finding.is_deleted.is_(False))
+            .filter(report_visible_finding_filter())
             .all()
-        ):
+        )
+        for finding in findings:
             context["findings"].append(
                 {
                     "title": finding.title,
@@ -321,7 +323,16 @@ def _build_report_context(case: Case) -> dict:
             )
 
         # Financial summary
-        fin_records = case.financial_records.filter_by(is_deleted=False).all()
+        fin_records = (
+            FinancialRecord.query.filter(
+                FinancialRecord.tenant_id == case.tenant_id
+            )
+            .filter(
+                FinancialRecord.case_id == case.id,
+                FinancialRecord.is_deleted.is_(False),
+            )
+            .all()
+        )
         total = sum(r.amount for r in fin_records)
         by_type = {}
         for r in fin_records:

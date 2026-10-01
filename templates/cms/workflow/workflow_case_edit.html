@@ -684,18 +684,31 @@ function wfToggleContactPlatform(el) {
 }
 
 function wfSerializeAllContacts() {
+  var invalidPlatform = null;
   document.querySelectorAll('.contacts-container').forEach(function(container) {
     var idx = container.getAttribute('data-sid') || container.getAttribute('data-newidx');
     if (!idx) return;
     var prefix = container.hasAttribute('data-newidx') ? 'subj_new_' + idx : 'subj_' + idx;
     var emailVal = '', phoneVal = '', contactsArr = [];
     container.querySelectorAll('.contact-entry').forEach(function(entry) {
+      var previousError = entry.querySelector('.wf-contact-error');
+      if (previousError) previousError.remove();
       var val = (entry.querySelector('.contact-value') || {}).value || '';
       val = val.trim();
       var type = (entry.querySelector('.contact-type') || {}).value || 'email';
       if (!val) return;
       var platformEl = entry.querySelector('.contact-platform');
-      contactsArr.push({ contact_type: type, value: val, platform: type === 'social' ? ((platformEl && platformEl.value.trim()) || null) : null, is_primary: !!(entry.querySelector('.contact-primary') || {}).checked });
+      var platform = type === 'social' ? ((platformEl && platformEl.value.trim()) || '') : null;
+      if (type === 'social' && !platform) {
+        invalidPlatform = platformEl || entry;
+        var error = document.createElement('div');
+        error.className = 'wf-contact-error';
+        error.style.cssText = 'color:#b91c1c;font-size:0.85rem;margin-top:0.4rem;font-weight:600;';
+        error.textContent = {{ _('Koppel eerst een platform aan deze sociale contactwaarde.')|tojson }};
+        entry.appendChild(error);
+        return;
+      }
+      contactsArr.push({ contact_type: type, value: val, platform: platform, is_primary: !!(entry.querySelector('.contact-primary') || {}).checked });
       if (type === 'email' && !emailVal) emailVal = val;
       if (type === 'phone' && !phoneVal) phoneVal = val;
     });
@@ -706,11 +719,19 @@ function wfSerializeAllContacts() {
     if (phoneInput) phoneInput.value = phoneVal;
     if (contactsInput) contactsInput.value = JSON.stringify(contactsArr);
   });
+  if (invalidPlatform) {
+    invalidPlatform.focus();
+    return false;
+  }
+  return true;
 }
 
-document.querySelector('form[method="POST"]').addEventListener('submit', function() {
+document.querySelector('form[method="POST"]').addEventListener('submit', function(event) {
   wfSerializeAllAddresses();
-  wfSerializeAllContacts();
+  if (!wfSerializeAllContacts()) {
+    event.preventDefault();
+    return;
+  }
   var btn = document.getElementById('wfSaveBtn');
   if (btn && !btn.disabled) {
     btn.disabled = true;

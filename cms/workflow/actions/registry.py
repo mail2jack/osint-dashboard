@@ -307,6 +307,7 @@ def run_action(action_id):
                 source_type=fd.get("source_type", action.action_type),
                 icon=fd.get("icon", entry["icon"]),
                 verified=fd.get("verified", False),
+                status=fd.get("status") or "candidate",
                 raw_data=fd.get("raw_data"),
                 created_by=action_creator_id,
                 created_at=datetime.now(),

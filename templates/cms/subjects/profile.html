@@ -402,7 +402,7 @@
             <option value="social">Social media</option>
           </select>
         </div>
-        <div class="form-group" data-contact-platform-row style="display:none;"><label>Platform</label><input type="text" name="platform" list="social-platforms"></div>
+        <div class="form-group" data-contact-platform-row style="display:block;"><label>{{ _('Platform (required for Social media)') }}</label><input type="text" name="platform" list="social-platforms"><small style="display:block;margin-top:0.25rem;color:var(--text-muted);">{{ _('For example: Twitter / X, Instagram or LinkedIn.') }}</small></div>
         <div class="form-group"><label>Value</label><input type="text" name="value" required></div>
         <div class="form-group"><label>Primary</label><input type="checkbox" name="is_primary" style="width:auto;"></div>
         <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
@@ -1376,9 +1376,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = el.closest('form[data-item-form]') || el.form;
     if (!form) { return; }
     var row = form.querySelector('[data-contact-platform-row]');
-    if (row) { row.style.display = el.value === 'social' ? '' : 'none'; }
+    var platform = form.querySelector('[name="platform"]');
+    var isSocial = el.value === 'social';
+    if (row) { row.style.display = ''; }
+    if (platform) { platform.required = isSocial; }
   }
   window.toggleContactPlatform = toggleContactPlatform;
+
+  document.querySelectorAll('select[name="contact_type"]').forEach(function (select) {
+    toggleContactPlatform(select);
+  });
 
   function serializeForm(form) {
     var body = {};

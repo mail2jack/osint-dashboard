@@ -18,19 +18,19 @@ class BreachRecord(db.Model):
     data_affected = db.Column(db.Text)
     affected_count = db.Column(db.Integer, nullable=True)
     risk_level = db.Column(
-        db.String(20), default="unknown"
+        db.String(20), nullable=False, default="unknown"
     )  # low, medium, high, critical
     status = db.Column(
-        db.String(20), default="open", index=True
+        db.String(20), nullable=False, default="open", index=True
     )  # open, investigating, mitigated, closed
 
     # Art. 33 — notification to supervisory authority (72h)
-    authority_notified = db.Column(db.Boolean, default=False)
+    authority_notified = db.Column(db.Boolean, nullable=False, default=False)
     authority_notified_at = db.Column(db.DateTime, nullable=True)
     authority_notes = db.Column(db.Text)
 
     # Art. 34 — communication to data subjects
-    subjects_notified = db.Column(db.Boolean, default=False)
+    subjects_notified = db.Column(db.Boolean, nullable=False, default=False)
     subjects_notified_at = db.Column(db.DateTime, nullable=True)
     subject_communication = db.Column(db.Text)
 

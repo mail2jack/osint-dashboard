@@ -8,14 +8,8 @@ FEATURE_FLAG_NAMES = {
     "paid_channels": "💰 Paid Channels",
     "subject_first_investigations": "👤 Subject-First Investigations",
     "investigation_workspace": "🔬 Investigation Workspace",
-    "investigator_primary_navigation": "🧭 Investigator Primary Navigation",
     "finding_screenshot_capture": "📷 Finding Screenshot Capture",
     "local_browser_screenshot_capture": "🧩 Local Browser Screenshot Capture",
-    "workflow_spiderfoot": "🕷️ Verdiept brononderzoek",
-    "workflow_source_research_intensity": "🕷️ Verdiept brononderzoek: scanintensiteit",
-    "workflow_source_research_expert": "🕷️ Verdiept brononderzoek: expertmodus",
-    "legacy_spiderfoot_ui": "🕷️ Legacy SpiderFoot beheerinterface",
-    "workflow_legacy_case_redirect": "🧭 Oude zaakschermen doorsturen naar workflow",
 }
 
 FEATURE_FLAG_ORDER = tuple(FEATURE_FLAG_NAMES)
@@ -25,14 +19,8 @@ OFF_BY_DEFAULT = frozenset(
         "paid_channels",
         "subject_first_investigations",
         "investigation_workspace",
-        "investigator_primary_navigation",
         "finding_screenshot_capture",
         "local_browser_screenshot_capture",
-        "workflow_spiderfoot",
-        "workflow_source_research_intensity",
-        "workflow_source_research_expert",
-        "legacy_spiderfoot_ui",
-        "workflow_legacy_case_redirect",
     }
 )
 

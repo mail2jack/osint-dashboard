@@ -14,6 +14,9 @@ from datetime import UTC, datetime
 from cms.models import (
     Case,
     Client,
+    Comment,
+    Document,
+    FinancialRecord,
     Finding,
     SocialAccount,
     Subject,
@@ -491,6 +494,63 @@ class TestViewerCannotMutate:
 
 
 class TestCaseExportJsonFiltersFindings:
+    def test_export_json_excludes_inconsistent_cross_tenant_relations(
+        self, app, auth_client
+    ):
+        user = _make_user(
+            f"export_owner_{uuid.uuid4().hex[:8]}", role="senior_investigator"
+        )
+        client = _login_as(app.test_client(), user)
+        case = _make_case(owner=user)
+        other_tenant = _make_tenant_b()
+
+        foreign_finding = Finding(
+            tenant_id=other_tenant.id,
+            case_id=case.id,
+            title="Foreign relation",
+            content="must not be exported",
+            source_type="osint",
+            finding_type="identity",
+            created_by=user.id,
+        )
+        foreign_document = Document(
+            tenant_id=other_tenant.id,
+            case_id=case.id,
+            filename="foreign.pdf",
+            original_filename="foreign.pdf",
+            storage_path="/tmp/foreign.pdf",
+        )
+        foreign_comment = Comment(
+            tenant_id=other_tenant.id,
+            case_id=case.id,
+            content="foreign comment",
+            author_id=user.id,
+        )
+        foreign_financial = FinancialRecord(
+            tenant_id=other_tenant.id,
+            case_id=case.id,
+            transaction_date=datetime.now(UTC).date(),
+            amount=9999,
+            counterparty_name="foreign counterparty",
+            description="foreign financial record",
+        )
+        db.session.add_all(
+            [foreign_finding, foreign_document, foreign_comment, foreign_financial]
+        )
+        db.session.commit()
+
+        resp = client.get(f"/cms/cases/{case.id}/export-json")
+
+        assert resp.status_code == 200
+        assert all(
+            finding["title"] != "Foreign relation"
+            for finding in resp.get_json()["findings"]
+        )
+        data = resp.get_json()
+        assert data["documents"] == []
+        assert data["comments"] == []
+        assert data["financials"] == []
+
     def test_export_json_excludes_deleted_and_archived_findings(self, app, auth_client):
         user = _make_user(f"senior_{uuid.uuid4().hex[:8]}", role="senior_investigator")
         client = _login_as(app.test_client(), user)
@@ -537,6 +597,45 @@ class TestCaseExportJsonFiltersFindings:
         assert resp.status_code == 200
         data = resp.get_json()
         assert [f["title"] for f in data["findings"]] == ["Active"]
+
+    def test_export_csv_excludes_inconsistent_cross_tenant_relations(
+        self, app, auth_client
+    ):
+        user = _make_user(
+            f"csv_export_owner_{uuid.uuid4().hex[:8]}", role="senior_investigator"
+        )
+        client = _login_as(app.test_client(), user)
+        case = _make_case(owner=user)
+        other_tenant = _make_tenant_b()
+
+        db.session.add_all(
+            [
+                Finding(
+                    tenant_id=other_tenant.id,
+                    case_id=case.id,
+                    title="Foreign CSV finding",
+                    content="must not be exported",
+                    source_type="osint",
+                    finding_type="identity",
+                    created_by=user.id,
+                ),
+                FinancialRecord(
+                    tenant_id=other_tenant.id,
+                    case_id=case.id,
+                    transaction_date=datetime.now(UTC).date(),
+                    amount=9999,
+                    counterparty_name="foreign CSV counterparty",
+                ),
+            ]
+        )
+        db.session.commit()
+
+        resp = client.get(f"/cms/cases/{case.id}/export?format=csv")
+
+        assert resp.status_code == 200
+        csv_data = resp.get_data(as_text=True)
+        assert "Foreign CSV finding" not in csv_data
+        assert "foreign CSV counterparty" not in csv_data
 
 
 class TestCaseMembershipDeletedSubject:

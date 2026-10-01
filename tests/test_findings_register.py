@@ -37,7 +37,7 @@ def _orm_case(title="Register Case"):
     return case
 
 
-def _orm_finding(case, user, title, include_in_report=None):
+def _orm_finding(case, user, title, include_in_report=None, status="verified"):
     finding = Finding(
         case_id=case.id,
         tenant_id=case.tenant_id,
@@ -47,6 +47,7 @@ def _orm_finding(case, user, title, include_in_report=None):
         source_type="osint",
         confidence_level="medium",
         include_in_report=include_in_report,
+        status=status,
     )
     db.session.add(finding)
     db.session.commit()
@@ -130,7 +131,7 @@ class TestFindingsApi:
 
     def test_api_status_filter(self, auth_client, db_session):
         case = _orm_case()
-        _orm_finding(case, _admin_user(), "draft")
+        _orm_finding(case, _admin_user(), "draft", status="candidate")
         verified = _orm_finding(case, _admin_user(), "verified one")
         verified.promote_to_verified(_admin_user())
         db.session.commit()
@@ -178,6 +179,29 @@ class TestReportFlagEndpoint:
 
 
 class TestReportRoutesRespectFlag:
+    def test_official_reports_exclude_candidate_findings(self, auth_client, db_session):
+        case = _orm_case("Candidate Report Gate")
+        _orm_finding(
+            case,
+            _admin_user(),
+            "candidate-only",
+            status="candidate",
+            include_in_report=True,
+        )
+        verified = _orm_finding(
+            case,
+            _admin_user(),
+            "verified-report-finding",
+            status="verified",
+            include_in_report=True,
+        )
+
+        response = auth_client.get(f"/cms/cases/{case.id}/report")
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "candidate-only" not in body
+        assert verified.title in body
+
     def test_reports_include_finding_comment_when_flagged_in(
         self, app, auth_client, db_session
     ):

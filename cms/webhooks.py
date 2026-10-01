@@ -8,7 +8,9 @@ import json
 import logging
 import hmac
 import hashlib
+import ipaddress
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import httpx
 
@@ -37,6 +39,41 @@ def _build_headers(secret: str, body: str) -> dict:
     return headers
 
 
+def _valid_urls(urls: object) -> list[str]:
+    """Keep webhook delivery limited to explicit HTTP(S) destinations."""
+    if not isinstance(urls, list):
+        return []
+    valid = []
+    for candidate in urls[:50]:
+        if not isinstance(candidate, str):
+            continue
+        url = candidate.strip()
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            continue
+        if parsed.username or parsed.password:
+            continue
+        hostname = parsed.hostname
+        if not hostname or hostname.lower() in {"localhost", "localhost.localdomain"}:
+            continue
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            address = None
+        if address and (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            continue
+        if url not in valid:
+            valid.append(url)
+    return valid
+
+
 def _send_one(url: str, body: str, headers: dict) -> dict:
     try:
         r = httpx.post(url, content=body, headers=headers, timeout=10)
@@ -46,15 +83,28 @@ def _send_one(url: str, body: str, headers: dict) -> dict:
         return {"url": url, "error": str(e), "ok": False}
 
 
-def dispatch(event: str, payload: dict) -> list[dict]:
+def dispatch(event: str, payload: dict, *, tenant_id: str | None = None) -> list[dict]:
     """Dispatch an event to all configured webhook URLs (parallel via thread pool)."""
     try:
-        from .models import Setting
+        from flask import g
+        from flask_login import current_user
+        from .models import TenantSetting
 
-        urls = Setting.get("webhook_urls", [])
-        secret = Setting.get("webhook_secret", "")
+        scoped_tenant_id = tenant_id or getattr(g, "tenant_id", None)
+        if not scoped_tenant_id and current_user.is_authenticated:
+            scoped_tenant_id = current_user.tenant_id
+        if not scoped_tenant_id:
+            return []
+        urls = TenantSetting.get("webhook_urls", [], tenant_id=scoped_tenant_id)
+        secret = TenantSetting.get("webhook_secret", "", tenant_id=scoped_tenant_id)
+        if isinstance(urls, str):
+            try:
+                urls = json.loads(urls)
+            except (TypeError, ValueError):
+                urls = []
     except Exception:
         return []
+    urls = _valid_urls(urls)
     if not urls:
         return []
 

@@ -18,6 +18,18 @@ class FindingCaptureJob(db.Model):
             "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
             name="ck_finding_capture_job_status",
         ),
+        db.Index(
+            "uq_finding_capture_job_global_active",
+            db.text("(1)"),
+            unique=True,
+            postgresql_where=db.text("status IN ('queued', 'running')"),
+        ),
+        db.Index(
+            "uq_finding_capture_job_tenant_active",
+            "tenant_id",
+            unique=True,
+            postgresql_where=db.text("status IN ('queued', 'running')"),
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

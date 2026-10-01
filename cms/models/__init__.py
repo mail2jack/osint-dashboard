@@ -211,7 +211,9 @@ class AuditAction(PyEnum):
 case_assignments = db.Table(
     "case_assignments",
     db.Column("case_id", db.String(36), db.ForeignKey("cases.id"), primary_key=True),
-    db.Column("user_id", db.String(36), db.ForeignKey("users.id"), primary_key=True),
+    db.Column(
+        "user_id", db.String(36), db.ForeignKey("users.id"), primary_key=True, index=True
+    ),
     db.Column("assigned_at", db.DateTime, default=lambda: datetime.now(timezone.utc)),
     db.Column("assigned_by", db.String(36), db.ForeignKey("users.id"), index=True),
 )
@@ -229,9 +231,10 @@ case_subjects = db.Table(
         db.String(36),
         db.ForeignKey("subjects.id", ondelete="CASCADE"),
         primary_key=True,
+        index=True,
     ),
     db.Column("role_in_case", db.String(50)),
-    db.Column("status", db.String(20), default="active"),
+    db.Column("status", db.String(20), nullable=False, default="active"),
     db.Column("note", db.Text),
 )
 
@@ -251,7 +254,7 @@ subject_relations = db.Table(
     ),
     db.Column("relation_type", db.String(100)),  # family | business | other
     db.Column(
-        "direction", db.String(20), default="mutual"
+        "direction", db.String(20), nullable=False, default="mutual"
     ),  # outgoing | incoming | mutual
     db.Column("source", db.String(200)),
     db.Column("reliability", db.String(20)),
@@ -280,6 +283,7 @@ class User(UserMixin, db.Model):
     """
 
     __tablename__ = "users"
+    __table_args__ = (db.UniqueConstraint("id", "tenant_id", name="uq_users_id_tenant_id"),)
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
@@ -445,6 +449,9 @@ class Client(db.Model):
     """
 
     __tablename__ = "clients"
+    __table_args__ = (
+        db.Index("ix_clients_tenant_id_is_deleted", "tenant_id", "is_deleted"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -493,6 +500,7 @@ class Client(db.Model):
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete
+    deleted_at = db.Column(db.DateTime)
     created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -634,6 +642,10 @@ class Case(db.Model):
         # enforces investigation.tenant_id == case.tenant_id at DB level
         # (ADR-0002 D8), even under an RLS bypass.
         db.UniqueConstraint("id", "tenant_id", name="uq_cases_id_tenant"),
+        db.Index("ix_cases_priority", "priority"),
+        db.Index("ix_cases_status", "status"),
+        db.Index("ix_cases_tenant_id_is_deleted", "tenant_id", "is_deleted"),
+        db.Index("ix_cases_updated_at", "updated_at"),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -646,8 +658,8 @@ class Case(db.Model):
     )
     title = db.Column(db.String(300), nullable=False, index=True)
     description = db.Column(db.Text)
-    priority = db.Column(db.String(20), default=CasePriority.MEDIUM.value)
-    status = db.Column(db.String(20), default=CaseStatus.OPEN.value)
+    priority = db.Column(db.String(20), default=CasePriority.MEDIUM.value, index=True)
+    status = db.Column(db.String(20), default=CaseStatus.OPEN.value, index=True)
     start_date = db.Column(db.Date, nullable=False)
     target_end_date = db.Column(db.Date)
     actual_end_date = db.Column(db.Date)
@@ -958,6 +970,10 @@ class Subject(db.Model):
     """
 
     __tablename__ = "subjects"
+    __table_args__ = (
+        db.Index("ix_subjects_tenant_id_is_deleted", "tenant_id", "is_deleted"),
+        db.Index("ix_subjects_tenant_id_name", "tenant_id", "name"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -1679,6 +1695,7 @@ class Finding(db.Model):
     """
 
     __tablename__ = "findings"
+    __table_args__ = (db.Index("ix_findings_content_hash", "content_hash"),)
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -1692,9 +1709,7 @@ class Finding(db.Model):
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
     detail = db.Column(db.Text)  # Optional extended detail from workflow findings
-    # A queued capture target accepts up to 2000 characters.  Preserve that
-    # exact original reference with its evidence instead of truncating it.
-    source_url = db.Column(db.String(2000))
+    source_url = db.Column(db.String(500))
     source_type = db.Column(db.String(50))  # osint, interview, document, etc.
 
     # Integrity stamp — SHA-256 hash computed at creation for chain-of-custody
@@ -1716,9 +1731,9 @@ class Finding(db.Model):
     raw_data = db.Column(SafeJSON)
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
 
-    # Report selection (ADR-0001): NULL/True = included in official reports,
-    # False = excluded. Generic across workflow PV, case report, PDF and
-    # template-generated reports.
+    # Report selection: NULL/True keeps a verified finding eligible for an
+    # official report; False excludes it. Candidate/rejected/superseded
+    # findings are gated by report_visible_finding_filter().
     include_in_report = db.Column(db.Boolean, nullable=True, default=None)
 
     # Verification lifecycle (ADR-0001 PR5): status is the source of truth
@@ -1883,13 +1898,15 @@ def report_visible_finding_filter():
     """One visibility rule for findings in every official report format.
 
     Raw exports and operational finding lists deliberately do not use this
-    predicate. Verification status is independent of report inclusion.
+    predicate. Official reports require verified findings; the explicit report
+    flag can further exclude an otherwise verified finding.
     """
     from sqlalchemy import and_
 
     return and_(
         Finding.is_deleted.is_(False),
         Finding.archived_at.is_(None),
+        Finding.status == "verified",
         report_include_filter(),
     )
 
@@ -1975,6 +1992,20 @@ class ResearchAction(db.Model):
             ["investigation_id", "case_id", "tenant_id"],
             ["investigations.id", "investigations.case_id", "investigations.tenant_id"],
             name="fk_research_actions_investigation_case_tenant",
+        ),
+        db.Index("ix_research_actions_action_type", "action_type"),
+        db.Index("ix_research_actions_status", "status"),
+        db.Index(
+            "uq_research_actions_active_photo_analysis",
+            "tenant_id",
+            "case_id",
+            db.text("COALESCE(subject_id, '')"),
+            unique=True,
+            postgresql_where=db.text(
+                "action_type = 'photo_analysis' "
+                "AND status IN ('pending', 'running') "
+                "AND archived_at IS NULL"
+            ),
         ),
     )
 
@@ -2145,6 +2176,13 @@ class Investigation(db.Model):
     title = db.Column(db.String(300), nullable=False)
     instructions = db.Column(db.Text)
     notes = db.Column(db.Text)
+    # Latest source-bound AI interpretation for this investigation.  The
+    # narrative is explicitly not evidence; source findings remain the
+    # authoritative record.
+    ai_narrative = db.Column(db.Text, nullable=True)
+    ai_narrative_generated_at = db.Column(db.DateTime, nullable=True)
+    ai_narrative_generated_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    ai_narrative_finding_count = db.Column(db.Integer, nullable=True)
     status = db.Column(
         db.String(20), nullable=False, default=InvestigationStatus.OPEN.value
     )
@@ -2182,6 +2220,12 @@ class Investigation(db.Model):
             "title": self.title,
             "instructions": self.instructions,
             "notes": self.notes,
+            "ai_narrative": self.ai_narrative,
+            "ai_narrative_generated_at": self.ai_narrative_generated_at.isoformat()
+            if self.ai_narrative_generated_at
+            else None,
+            "ai_narrative_generated_by": self.ai_narrative_generated_by,
+            "ai_narrative_finding_count": self.ai_narrative_finding_count,
             "status": self.status,
             "archived_at": self.archived_at.isoformat() if self.archived_at else None,
             "created_by": self.created_by,
@@ -2285,7 +2329,8 @@ class FindingScreenshot(db.Model):
         db.String(36), db.ForeignKey("findings.id"), nullable=False, index=True
     )
     url = db.Column(db.String(500))
-    source_url = db.Column(db.String(500))
+    # Capture provenance can contain long signed/provider URLs.
+    source_url = db.Column(db.String(2000))
     file_path = db.Column(db.String(500))
     # Evidence metadata for automated captures.  Legacy/manual screenshots
     # intentionally keep these nullable; a capture worker will populate both
@@ -2351,6 +2396,10 @@ class AuditLog(db.Model):
     """
 
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        db.Index("ix_audit_logs_case_id", "case_id"),
+        db.Index("ix_audit_logs_case_id_entity_type", "case_id", "entity_type"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -2664,6 +2713,11 @@ class Reminder(db.Model):
     """
 
     __tablename__ = "reminders"
+    __table_args__ = (
+        db.Index(
+            "ix_reminders_assigned_to_is_completed", "assigned_to", "is_completed"
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -2790,6 +2844,7 @@ class Reminder(db.Model):
 
 class SocialAccount(db.Model):
     __tablename__ = "social_accounts"
+    __table_args__ = (db.Index("ix_social_accounts_action_id", "action_id"),)
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -3850,22 +3905,6 @@ class SpiderFootScan(db.Model):
     target_type = db.Column(db.String(50))
     case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
     subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
-    # Workflow-native scans retain their case scope but also point to the
-    # action that owns the lifecycle and, optionally, its investigation.
-    # Legacy SpiderFoot records leave both references NULL.
-    investigation_id = db.Column(
-        db.String(36),
-        db.ForeignKey("investigations.id", ondelete="SET NULL"),
-        index=True,
-        nullable=True,
-    )
-    research_action_id = db.Column(
-        db.String(36),
-        db.ForeignKey("research_actions.id", ondelete="SET NULL"),
-        index=True,
-        unique=True,
-        nullable=True,
-    )
     use_case = db.Column(db.String(50), default="passive")
     profile = db.Column(db.String(50))
     module_ids = db.Column(SafeJSON)
@@ -3892,12 +3931,6 @@ class SpiderFootScan(db.Model):
     subject = db.relationship(
         "Subject", backref="spiderfoot_scans", foreign_keys=[subject_id]
     )
-    investigation = db.relationship(
-        "Investigation", backref="spiderfoot_scans", foreign_keys=[investigation_id]
-    )
-    research_action = db.relationship(
-        "ResearchAction", backref="spiderfoot_scan", foreign_keys=[research_action_id]
-    )
 
     def update_status(self, status: str, progress: int = None) -> None:
         self.status = status
@@ -3922,8 +3955,6 @@ class SpiderFootScan(db.Model):
             "target_type": self.target_type,
             "case_id": self.case_id,
             "subject_id": self.subject_id,
-            "investigation_id": self.investigation_id,
-            "research_action_id": self.research_action_id,
             "use_case": self.use_case,
             "profile": self.profile,
             "module_ids": self.module_ids,
@@ -4052,6 +4083,13 @@ class ApiKey(db.Model):
     """API key for programmatic access to OSINT endpoints."""
 
     __tablename__ = "api_keys"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["user_id", "tenant_id"],
+            ["users.id", "users.tenant_id"],
+            name="fk_api_keys_user_tenant",
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -4090,6 +4128,9 @@ class Notification(db.Model):
     """In-app notification for users (alerts, restricted search matches, etc.)."""
 
     __tablename__ = "notifications"
+    __table_args__ = (
+        db.Index("ix_notifications_user_id_is_read", "user_id", "is_read"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
@@ -4126,7 +4167,6 @@ NOTIFICATION_CATEGORIES = [
     ("usage_alerts", "Usage Alerts"),
     ("search_restricted", "Search Restrictions"),
     ("case_updates", "Case Updates"),
-    ("source_research", "Deep Source Research"),
     ("system", "System Notifications"),
     ("general", "General"),
 ]

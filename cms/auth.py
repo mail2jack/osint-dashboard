@@ -84,13 +84,19 @@ def load_user_from_request(request: flask.Request) -> User | None:
     key_record = ApiKey.query.filter_by(key_prefix=prefix, is_active=True).first()
     if not key_record or not key_record.verify_key(api_key):
         return None
+    user = db.session.get(User, key_record.user_id)
+    if (
+        user is None
+        or not user.is_active
+        or key_record.tenant_id != user.tenant_id
+    ):
+        return None
+
     key_record.last_used_at = datetime.now(UTC)
     db.session.commit()
-    user = db.session.get(User, key_record.user_id)
-    if user:
-        # Store API key scopes in flask.g for scope checking
-        g.api_key_scopes = key_record.scopes or ["read"]
-        g.authenticated_via_api_key = True
+    # Store API key scopes in flask.g for scope checking
+    g.api_key_scopes = key_record.scopes or ["read"]
+    g.authenticated_via_api_key = True
     return user
 
 

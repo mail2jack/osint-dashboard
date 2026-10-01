@@ -208,12 +208,6 @@
   border-radius: 4px;
   margin-left: auto;
 }
-.subject-profile-link {
-  font-size: 0.78rem;
-  font-weight: 600;
-  margin-left: 0.25rem;
-  white-space: nowrap;
-}
 .findings-counter {
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
@@ -253,7 +247,7 @@ input:-webkit-autofill:focus {
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
-    <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary small">📄 {{ _('Report') }}</a>
+    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
   </div>
 </div>
@@ -332,7 +326,9 @@ input:-webkit-autofill:focus {
         <span class="subject-card-nr">{{ loop.index }}</span>
         <span class="subject-card-name">{{ sd.display_name }}</span>
         <span class="subject-card-type">{{ sd.subject_type }}</span>
-        <a class="subject-profile-link" href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}">{{ _('Open subject profile') }}</a>
+        {% if can_write %}
+        <a href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}" target="_blank" rel="noopener" class="btn-cms small" style="white-space:nowrap;">{{ _('✏️ Bewerken') }}</a>
+        {% endif %}
       </div>
       <div class="subject-info-grid">
         {# ── Common fields ── #}
@@ -349,7 +345,7 @@ input:-webkit-autofill:focus {
         {# ── Contacts ── #}
         {% for c in sd.contacts %}
         <div class="subject-info-item">
-          <div class="lbl">{% if c.contact_type == 'email' %}📧 Email{% else %}📞 Phone{% endif %}</div>
+          <div class="lbl">{% if c.contact_type == 'email' %}📧 Email{% elif c.contact_type == 'phone' %}📞 Phone{% elif c.contact_type == 'social' %}🔗 {{ c.platform or 'Social media' }}{% else %}{{ c.contact_type|capitalize }}{% endif %}</div>
           <div class="val">{{ c.value }}{% if c.is_primary %} <small style="color:var(--text-muted);">(primary)</small>{% endif %}</div>
         </div>
         {% endfor %}
@@ -518,14 +514,15 @@ input:-webkit-autofill:focus {
   {% include "cms/workflow/_investigations_section.html" %}
 </div>
 
-<div class="workflow-step">
-  <div class="workflow-step-header">
+<details class="workflow-step workflow-activity">
+  <summary class="workflow-step-header">
     <span class="step-nr">4</span>
     {{ _('Case-wide research actions') }}
     <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">{{ _('Actions run at case level. Findings appear in the findings section.') }}</span>
     <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Click an action to start</span>
-  </div>
+  </summary>
   <div class="workflow-step-body">
+    <p style="margin:0 0 1rem;"><a href="{{ url_for('workflow.ai_research_page', case_id=case.id) }}" class="btn-cms primary">🤖 Maak AI-onderzoeksplan</a> <span style="color:var(--text-muted);font-size:.85rem;">AI maakt eerst alleen een voorstel; er start niets automatisch.</span></p>
     <div class="action-grid">
       {% for key, info in action_types.items() %}
       {% set rem = action_credits.get(key, 0) if action_credits else 0 %}
@@ -561,27 +558,22 @@ input:-webkit-autofill:focus {
       </div>
       {% endif %}
       {% endfor %}
-      {% if source_research_enabled %}
-      <div class="action-btn" data-action="run-action" data-action-key="source_research" data-icon="🕷️" data-label="{{ _('Deep source research') }}" data-category="open" title="{{ _('Run passive background research through the configured source-research service.') }}">
-        <div class="icon">🕷️</div>
-        <div class="label">{{ _('Deep source research') }}</div>
-        <span class="cat-badge cat-open">🌐</span>
-        <div class="desc">{{ _('Passive background research') }}</div>
-      </div>
-      {% endif %}
     </div>
     <div id="proposalsSection" class="proposals-section" style="display:none;">
-      <div class="proposals-header">📌 Proposals <span id="proposalsCount"></span></div>
+      <div class="proposals-header" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <span>📌 Proposals <span id="proposalsCount"></span></span>
+        <button type="button" id="startAllProposals" class="proposal-start-all" data-action="start-all-proposals" style="display:none;">▶ Alles starten</button>
+      </div>
       <div id="proposalsList"></div>
     </div>
   </div>
-</div>
+</details>
 
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">5</span>
     Findings
-    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} {{ _('of') }} {{ findings_total }} {{ _('findings') }}</span>
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} findings</span>
     <span id="findingsToggleAll" style="font-size:0.78rem;margin-left:0.5rem;">
       <button type="button" id="collapseAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬛ Collapse all</button>
       <button type="button" id="expandAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬜ Expand all</button>
@@ -590,31 +582,23 @@ input:-webkit-autofill:focus {
       <input type="checkbox" id="selectAllFindings" title="Select all">
       <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Delete selected</button>
     </span>
-    <a href="{{ url_for('workflow.case_detail', case_id=case.id, show_archived='0' if show_archived else '1', finding_scope=finding_scope) }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
+    {% if can_write and candidate_count > 0 %}
+    <button type="button" id="finalizeFindingCandidates" data-case-id="{{ case.id }}" data-candidate-count="{{ candidate_count }}" style="background:#b45309;color:#fff;border:none;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;margin-left:0.5rem;" title="{{ _('Remove all remaining unverified candidates after validation') }}">✅ {{ _('Finish validation') }} ({{ candidate_count }} {{ _('candidates left') }})</button>
+    {% endif %}
+    <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
     {% if investigations_meta %}
     <span class="scope-filter-wrap">
       <select id="scopeFilter" title="{{ _('Filter by scope') }}">
-        <option value=""{% if not finding_scope %} selected{% endif %}>{{ _('All scopes') }}</option>
-        <option value="__wide"{% if finding_scope == '__wide' %} selected{% endif %}>🌐 {{ _('Case-wide') }}</option>
+        <option value="">{{ _('All scopes') }}</option>
+        <option value="__wide">🌐 {{ _('Case-wide') }}</option>
         {% for i in investigations_meta %}
-        <option value="{{ i.id }}"{% if finding_scope == i.id %} selected{% endif %}>🔗 {{ i.human_number }}{% if i.archived %} ({{ _('Archived') }}){% endif %}</option>
+        <option value="{{ i.id }}">🔗 {{ i.human_number }}{% if i.archived %} ({{ _('Archived') }}){% endif %}</option>
         {% endfor %}
       </select>
     </span>
     {% endif %}
   </div>
   <div class="workflow-step-body">
-    {% if findings_pages > 1 %}
-    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
-      {% if findings_page > 1 %}
-      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page-1, show_archived='1' if show_archived else '', finding_scope=finding_scope) }}">← {{ _('Previous') }}</a>
-      {% endif %}
-      <span>{{ _('Page') }} {{ findings_page }} / {{ findings_pages }}</span>
-      {% if findings_page < findings_pages %}
-      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page+1, show_archived='1' if show_archived else '', finding_scope=finding_scope) }}">{{ _('Next') }} →</a>
-      {% endif %}
-    </nav>
-    {% endif %}
     <div id="findingsContainer">
       {% if findings %}
 
@@ -647,7 +631,7 @@ input:-webkit-autofill:focus {
 
       <div id="findings-list">
         {% for aid, group in action_groups|dictsort %}
-          {% if group.findings or group.action.action_type == 'source_research' %}
+          {% if group.findings %}
           {% set act = group.action %}
           {% set type_info = action_types.get(act.action_type, {}) %}
            <div class="finding-group">
@@ -672,9 +656,6 @@ input:-webkit-autofill:focus {
                 {% endif %}
                 {% endif %}
                 <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
-               {% if act.action_type == 'source_research' %}
-               <button type="button" class="btn-cms small" data-review-case-source-research="{{ act.id }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ _('Review results') }}</button>
-               {% endif %}
                <span class="fg-count">{{ group.findings|length }}</span>
                {% if act.completed_at %}
                <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
@@ -725,17 +706,6 @@ input:-webkit-autofill:focus {
       </div>
       {% endif %}
     </div>
-    {% if findings_pages > 1 %}
-    <nav class="findings-pager" aria-label="{{ _('Findings') }}">
-      {% if findings_page > 1 %}
-      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page-1, show_archived='1' if show_archived else '', finding_scope=finding_scope) }}">← {{ _('Previous') }}</a>
-      {% endif %}
-      <span>{{ _('Page') }} {{ findings_page }} / {{ findings_pages }}</span>
-      {% if findings_page < findings_pages %}
-      <a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page+1, show_archived='1' if show_archived else '', finding_scope=finding_scope) }}">{{ _('Next') }} →</a>
-      {% endif %}
-    </nav>
-    {% endif %}
   </div>
 </div>
 
@@ -747,8 +717,8 @@ input:-webkit-autofill:focus {
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-      <a href="{{ url_for('workflow.case_report_hub', case_id=case.id) }}" class="btn-cms primary">📄 {{ _('Open report centre') }}</a>
-      <span style="font-size:0.85rem;color:var(--text-muted);">{{ _('View the live report, download a PDF, or create a document from a template.') }}</span>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
+      <span style="font-size:0.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
     </div>
   </div>
 </div>
@@ -805,7 +775,6 @@ input:-webkit-autofill:focus {
 .picker-item > *{min-width:0;}
 .pi-subject,.pi-label,.pi-value{min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:normal;}
 #findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
-.findings-pager{display:flex;align-items:center;gap:.5rem;justify-content:center;margin:.5rem 0;font-size:.82rem;color:var(--text-muted);}
 
 /* ── RDW card ── */
 .rdw-card {

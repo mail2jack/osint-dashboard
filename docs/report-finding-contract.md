@@ -2,10 +2,10 @@
 
 The workflow PV, case HTML/PDF reports, and generated template reports use
 `report_visible_finding_filter()`. A finding is eligible when it belongs to
-the requested case, is neither soft-deleted nor archived, and its
-`include_in_report` value is `NULL` or `True`. An explicit `False` excludes
-it. Verification status is independent of inclusion; a report can therefore
-include an unverified finding. The UI should show these as separate states.
+the requested case, is neither soft-deleted nor archived, has lifecycle status
+`verified`, and its `include_in_report` value is `NULL` or `True`. An explicit
+`False` excludes it. Candidate, rejected and superseded findings are not
+eligible for official reports.
 
 An included finding carries its title, content and investigator comment.
 HTML/PV/PDF render eligible local screenshot evidence; the generated template

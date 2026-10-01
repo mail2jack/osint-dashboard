@@ -15,6 +15,7 @@ from ..models import (
     Case,
     Client,
     Finding,
+    FinancialRecord,
     Subject,
     case_subjects,
     db,
@@ -82,7 +83,16 @@ def export_case_csv(case: Case) -> Response:
     # Subjects
     writer.writerow(["Subjects"])
     writer.writerow(["Name", "Type", "Risk Score", "Email", "Phone", "Address"])
-    for subject in case.subjects.filter_by(is_deleted=False).all():
+    subjects = (
+        apply_tenant_filter(Subject.query, Subject)
+        .join(case_subjects, case_subjects.c.subject_id == Subject.id)
+        .filter(
+            case_subjects.c.case_id == case.id,
+            Subject.is_deleted.is_(False),
+        )
+        .all()
+    )
+    for subject in subjects:
         subject.decrypt_identifiers()
         writer.writerow(
             [
@@ -99,7 +109,12 @@ def export_case_csv(case: Case) -> Response:
     # Findings
     writer.writerow(["Findings"])
     writer.writerow(["Title", "Type", "Reliability", "Created", "Content"])
-    for finding in case.findings.filter_by(is_deleted=False).all():
+    findings = (
+        apply_tenant_filter(Finding.query, Finding)
+        .filter(Finding.case_id == case.id, Finding.is_deleted.is_(False))
+        .all()
+    )
+    for finding in findings:
         writer.writerow(
             [
                 finding.title,
@@ -114,7 +129,15 @@ def export_case_csv(case: Case) -> Response:
     # Financial Records
     writer.writerow(["Financial Records"])
     writer.writerow(["Date", "Amount", "Type", "Counterparty", "Description"])
-    for record in case.financial_records.filter_by(is_deleted=False).all():
+    records = (
+        apply_tenant_filter(FinancialRecord.query, FinancialRecord)
+        .filter(
+            FinancialRecord.case_id == case.id,
+            FinancialRecord.is_deleted.is_(False),
+        )
+        .all()
+    )
+    for record in records:
         writer.writerow(
             [
                 record.transaction_date.strftime("%Y-%m-%d"),

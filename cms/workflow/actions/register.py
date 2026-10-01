@@ -120,10 +120,10 @@ register_action(
 )
 register_action(
     "osint",
-    "Webonderzoek",
+    "OSINT Deep Search",
     "🌍",
     _osint_deep_search,
-    "Searches the public web via Brave Search, with a DuckDuckGo/dork fallback. Searches for traces of a person, organisation or other search term.",
+    "Performs in-depth open-source research via Brave Search and SpiderFoot. Searches the entire web for traces of the person or entity.",
 )
 register_action(
     "financial",

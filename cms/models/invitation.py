@@ -18,7 +18,9 @@ class Invitation(db.Model):
     token = db.Column(db.String(128), unique=True, nullable=False, index=True)
     expires_at = db.Column(db.DateTime, nullable=False)
     accepted_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
     tenant = db.relationship("Tenant", backref="invitations")
     invited_by = db.relationship("User", backref="invitations_sent")

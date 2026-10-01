@@ -175,7 +175,7 @@ function scopeLinkSelectHtml(a) {
 }
 
 // ── PR-C/ADR-0005: client-side scope filter (All / Case-wide / investigation) ──
-var scopeFilter = {{ finding_scope|default('')|tojson }};
+var scopeFilter = '';
 function scopeMatches(a) {
   if (!scopeFilter) return true;
   if (scopeFilter === '__wide') return !a.investigation_id;
@@ -186,11 +186,20 @@ function updateProposals(actions) {
   const section = document.getElementById('proposalsSection');
   const listEl = document.getElementById('proposalsList');
   const countEl = document.getElementById('proposalsCount');
+  const startAll = document.getElementById('startAllProposals');
   if (!section || !listEl) return;
   var proposals = actions.filter(function(a) { return a.status === 'proposal' && scopeMatches(a); });
-  if (!proposals.length) { section.style.display = 'none'; return; }
+  if (!proposals.length) {
+    section.style.display = 'none';
+    if (startAll) startAll.style.display = 'none';
+    return;
+  }
   section.style.display = 'block';
   if (countEl) countEl.textContent = '(' + proposals.length + ')';
+  if (startAll) {
+    startAll.style.display = CAN_WRITE ? 'inline-block' : 'none';
+    startAll.dataset.actionIds = JSON.stringify(proposals.map(function(a) { return a.id; }));
+  }
   listEl.innerHTML = proposals.map(proposalHtml).join('');
 }
 
@@ -325,7 +334,7 @@ function findingHtml(f) {
     '</div>' +
     (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
     (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
-    (f.source_type === 'rdw' && f.raw_data ? rdwCardHtml(f.raw_data) : '') +
+    (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
     ssHtml +
     '<div style="margin-top:0.4rem;">' +
       '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Note / comment..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +

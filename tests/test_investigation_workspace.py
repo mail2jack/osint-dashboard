@@ -23,6 +23,7 @@ from cms.models import (
     AuditLog,
     Case,
     Client,
+    Contact,
     FeatureFlag,
     Finding,
     FindingScreenshot,
@@ -1444,6 +1445,48 @@ class TestWorkspaceStartAction:
         options = _modal_subject_select(body)
         assert f'value="{subject.id}"' in options
         assert "Anna Visser" in options
+
+    def test_subject_action_form_exposes_decrypted_phone_for_autofill(
+        self, auth_client
+    ):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Swart", phone="+31612345678")
+        case.subjects.append(subject)
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "+31612345678" in body
+        assert "function subjectActionValue" in body
+        assert "typeSel.addEventListener('change', autofillDataValue)" in body
+        assert "subjectSel.addEventListener('change', autofillDataValue)" in body
+
+    def test_subject_action_form_uses_phone_contact_for_autofill(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Swart", phone=None)
+        case.subjects.append(subject)
+        db.session.add(
+            Contact(
+                tenant_id=case.tenant_id,
+                subject_id=subject.id,
+                contact_type="phone",
+                value="+31687654321",
+                is_primary=True,
+            )
+        )
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "+31687654321" in body
+
+    def test_investigation_page_polls_running_actions(self, auth_client):
+        case, inv = self._admin_case_inv()
+        subject = _make_subject(case, name="Polling Subject")
+        case.subjects.append(subject)
+        _make_action(case, investigation=inv, subject=subject, status="running")
+        db.session.commit()
+        body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
+        assert "INITIAL_ACTION_STATES" in body
+        assert "setInterval(pollStatus, 2500)" in body
+        assert "/cms/workflow/api/case/" in body
+        assert "window.location.reload()" in body
 
     def test_page_load_leaves_encrypted_subject_fields_unchanged(
         self, app, auth_client

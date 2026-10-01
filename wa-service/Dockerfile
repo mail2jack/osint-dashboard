@@ -20,7 +20,7 @@ ENV AUTH_DIR=/app/auth
 ENV LOG_LEVEL=info
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost:3001/health || exit 1
+    CMD wget -qO- http://127.0.0.1:3001/health || exit 1
 
 EXPOSE 3001
 

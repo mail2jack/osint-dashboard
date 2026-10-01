@@ -1,0 +1,87 @@
+{% extends "cms/base.html" %}
+
+{% block content %}
+{% set return_url = url_for('workflow.investigation_detail', case_id=case.id, investigation_id=investigation.id) if investigation else url_for('workflow.case_detail', case_id=case.id) %}
+<div class="container" style="max-width:1100px;margin:2rem auto;padding:0 1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <h1>🤖 AI onderzoeksplan</h1>
+    <a href="{{ return_url }}" class="btn-cms">{% if investigation %}← Terug naar onderzoek{% else %}← Terug naar case{% endif %}</a>
+  </div>
+  <p style="color:var(--text-secondary);">
+    Joost maakt eerst alleen een voorstel. Er wordt niets gestart voordat je het plan goedkeurt.
+  </p>
+  <div class="alert {% if ai_config.get('available') %}alert-success{% else %}alert-warning{% endif %}" role="status" style="margin:1rem 0;padding:.8rem 1rem;">
+    {% if ai_config.get('available') %}
+    ✅ AI-provider {{ ai_config.get('provider') }} is beschikbaar. Er wordt nog steeds niets gestart zonder jouw goedkeuring.
+    {% else %}
+    ⚠️ AI-planning is nog niet beschikbaar: provider {{ ai_config.get('provider') }} is niet bereikbaar of niet geconfigureerd. Er wordt niets gestart.
+    {% endif %}
+  </div>
+  <div class="card" style="padding:1rem;margin:1rem 0;">
+    <p><strong>Case:</strong> {{ case.case_number }} — {{ case.title }}</p>
+    {% if investigation %}
+    <p><strong>Onderzoek:</strong> {{ investigation.human_number }} — {{ investigation.title }}</p>
+    {% endif %}
+    <label for="subject">Subject (optioneel)</label>
+    <select id="subject" style="display:block;width:100%;max-width:600px;margin:.35rem 0 1rem;padding:.6rem;">
+      <option value="">Case-breed onderzoek</option>
+      {% for subject in subjects %}
+      <option value="{{ subject.id }}">{{ subject.name }}{% if subject.subject_type %} ({{ subject.subject_type }}){% endif %}</option>
+      {% endfor %}
+    </select>
+    <label for="question">Onderzoeksvraag</label>
+    <textarea id="question" rows="5" style="display:block;width:100%;padding:.7rem;margin:.35rem 0 1rem;" placeholder="Bijvoorbeeld: onderzoek de openbare online aanwezigheid van de gebruikersnaam voorbeeld_onderzoek2026"></textarea>
+    <button id="makePlan" class="btn-cms primary">Maak onderzoeksplan</button>
+    <span id="status" style="margin-left:.75rem;"></span>
+  </div>
+  <div id="plan" class="card" style="display:none;padding:1rem;"></div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+  var planData = null;
+  var status = document.getElementById('status');
+  var planBox = document.getElementById('plan');
+  var csrf = '{{ csrf_token() }}';
+  function esc(value) { var d=document.createElement('div'); d.textContent=value == null ? '' : value; return d.innerHTML; }
+  function api(url, options) {
+    options = options || {};
+    options.headers = Object.assign({'Content-Type':'application/json','X-CSRFToken':csrf}, options.headers || {});
+    return fetch(url, options).then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Request failed'); return d; }); });
+  }
+  document.getElementById('makePlan').addEventListener('click', function() {
+    status.textContent = 'AI maakt een voorstel...';
+    planBox.style.display = 'none';
+    api('{{ url_for("workflow.create_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({query:document.getElementById('question').value})})
+      .then(function(data) {
+        planData = data.plan;
+        var interp = planData.interpretation || {};
+        var actions = (planData.actions || []).map(function(a) {
+          return '<label style="display:block;padding:.5rem 0;"><input type="checkbox" class="plan-action" value="'+esc(a.action_type)+'" checked> <strong>'+esc(a.label)+'</strong> — '+esc(a.description)+'</label>';
+        }).join('');
+        planBox.innerHTML = '<h2>Voorgesteld plan</h2>' +
+          '<p><strong>Interpretatie:</strong> '+esc(interp.type)+' — '+esc(interp.value)+' (zekerheid '+esc(interp.confidence)+')</p>' +
+          '<p><strong>Beleid:</strong> menselijke goedkeuring vereist; betaalde acties worden niet voorgesteld.</p>' +
+          '<h3>Acties</h3><div>'+actions+'</div>' +
+          '<button id="approvePlan" class="btn-cms primary">Plan goedkeuren en voorstellen aanmaken</button>' +
+          '<span id="approveStatus" style="margin-left:.75rem;"></span>';
+        planBox.style.display = 'block';
+        status.textContent = 'Plan gereed; er is nog niets gestart.';
+        document.getElementById('approvePlan').addEventListener('click', approve);
+      })
+      .catch(function(e) { status.textContent = '❌ ' + e.message; });
+  });
+  function approve() {
+    var selected = Array.from(document.querySelectorAll('.plan-action:checked')).map(function(x){return x.value;});
+    var approveStatus = document.getElementById('approveStatus');
+    approveStatus.textContent = 'Opslaan...';
+    api('{{ url_for("workflow.approve_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({plan:planData, selected_actions:selected, subject_id:document.getElementById('subject').value || null, investigation_id:{{ investigation.id|tojson if investigation else 'null' }}})})
+      .then(function(data) {
+        approveStatus.innerHTML = '✅ '+data.proposal_ids.length+' voorstellen aangemaakt. Er is niets gestart. ' +
+          '<a href="{{ return_url }}">Ga terug naar het {% if investigation %}onderzoek{% else %}case-overzicht{% endif %} om ze gezamenlijk te starten.</a>';
+      })
+      .catch(function(e) { approveStatus.textContent = '❌ '+e.message; });
+  }
+})();
+</script>
+{% endblock %}

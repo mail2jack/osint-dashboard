@@ -17,6 +17,10 @@ Runtime config (env vars):
     LICENSE_ENV          development | production (default development)
     LICENSE_ADMIN_SECRET REQUIRED in production — Flask session/CSRF secret
     LICENSE_DB_PATH      sqlite file path (default ./data/license.db)
+    LICENSE_INSTALL_INACTIVE_DAYS  days without a heartbeat before an install is
+                                  marked inactive (default 90)
+    LICENSE_INSTALL_RETENTION_DAYS days an inactive install is retained before
+                                   cleanup (default 365)
     ADMIN_USER           basic-auth user for the dashboard
     ADMIN_PASSWORD       basic-auth password for the dashboard
     TRIAL_DAYS           trial license length in days for new installs (default 30)
@@ -129,7 +133,8 @@ def _init_db() -> None:
                 ip_intel_at     TEXT,
                 last_http       TEXT,
                 last_http_at    TEXT,
-                ip_check_at     TEXT
+                ip_check_at     TEXT,
+                inactive_since  TEXT
             )
             """
         )
@@ -175,6 +180,7 @@ def _init_db() -> None:
         _ensure_column(conn, "installs", "last_http_at", "TEXT")
         _ensure_column(conn, "installs", "ip_check", "TEXT")
         _ensure_column(conn, "installs", "ip_check_at", "TEXT")
+        _ensure_column(conn, "installs", "inactive_since", "TEXT")
 
 
 def _retention_days(name: str, default: int) -> int:
@@ -185,7 +191,12 @@ def _retention_days(name: str, default: int) -> int:
 
 
 def purge_sensitive_data(conn) -> dict[str, int]:
-    """Purge IP-derived fields and cache rows according to configured retention."""
+    """Apply telemetry retention and purge expired privacy-sensitive data.
+
+    An install is marked inactive after the configured heartbeat gap.  It is
+    removed after the longer retention period only when it has no active
+    license, so an active license remains recoverable and usable.
+    """
     counts = {}
     for column, env_name, default in (
         ("ip_intel", "LICENSE_IP_INTEL_RETENTION_DAYS", 30),
@@ -212,6 +223,29 @@ def purge_sensitive_data(conn) -> dict[str, int]:
         (f"-{audit_days} days",),
     )
     counts["admin_audit"] = cursor.rowcount
+
+    inactive_days = _retention_days("LICENSE_INSTALL_INACTIVE_DAYS", 90)
+    cursor = conn.execute(
+        "UPDATE installs SET inactive_since = last_seen "
+        "WHERE inactive_since IS NULL AND last_seen IS NOT NULL "
+        "AND datetime(last_seen) < datetime('now', ?)",
+        (f"-{inactive_days} days",),
+    )
+    counts["installs_marked_inactive"] = cursor.rowcount
+
+    retention_days = _retention_days("LICENSE_INSTALL_RETENTION_DAYS", 365)
+    cursor = conn.execute(
+        "DELETE FROM installs WHERE inactive_since IS NOT NULL "
+        "AND datetime(inactive_since) < datetime('now', ?) "
+        "AND NOT EXISTS ("
+        "SELECT 1 FROM licenses "
+        "WHERE licenses.install_id = installs.install_id "
+        "AND licenses.status = 'active' "
+        "AND (licenses.expires_at IS NULL OR datetime(licenses.expires_at) >= datetime('now'))"
+        ")",
+        (f"-{retention_days} days",),
+    )
+    counts["installs_deleted"] = cursor.rowcount
     return counts
 
 
@@ -267,6 +301,7 @@ def _row_to_dict(row) -> dict:
         "platform": row["platform"],
         "registered_at": row["registered_at"],
         "last_seen": row["last_seen"],
+        "inactive_since": row["inactive_since"],
         "last_ip": row["last_ip"],
         "ip_intel": json.loads(intel) if intel else None,
         "last_http": json.loads(http) if http else None,
@@ -550,6 +585,8 @@ def _update_install(conn, install_id, token_hash, fields, is_new):
     data["last_http_at"] = now
     data["ip_check"] = _ip_check(client_ip, data.get("public_ip"))
     data["ip_check_at"] = now
+    # A successful register/heartbeat makes the installation active again.
+    data["inactive_since"] = None
     if is_new:
         data["registered_at"] = now
         data["token_hash"] = token_hash

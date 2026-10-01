@@ -34,10 +34,13 @@ data-processing agreement, and customer notice before enabling it.
 Default retention is 30 days for `ip_intel`, 7 days for `last_http`, 30 days for
 `ip_check`, 30 days for the IP-intelligence cache, and 365 days for
 `admin_audit`. Each datatype has its own capture timestamp, so active heartbeat
-traffic cannot make older metadata appear newly collected. Purge runs during
-requests and through a scheduled CLI job. Operators may shorten these periods
-through the documented environment variables; they should not lengthen them
-without a privacy review.
+traffic cannot make older metadata appear newly collected. An install without
+a heartbeat for 90 days is marked inactive. After 365 days of inactivity, the
+install record and its expired/revoked license records are deleted. An install
+with an active license is retained. A new heartbeat clears the inactive marker.
+Purge runs during requests and through a scheduled CLI job. Operators may
+shorten these periods through the documented environment variables; they should
+not lengthen them without a privacy review.
 
 ## Access and Audit
 

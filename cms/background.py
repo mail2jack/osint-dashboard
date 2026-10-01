@@ -104,16 +104,23 @@ def run_in_background(task_id: str, func: Callable, *args, **kwargs) -> None:
 
 def _run_task(task_id: str, func: Callable, *args, **kwargs) -> None:
     db = _get_db()
+    BackgroundTask = _get_model()
     ctx = _app.app_context() if _app else None
     if ctx:
         ctx.push()
     try:
         from cms.tenant_context import set_tenant_context
 
-        # Worker threads run outside any request/tenant context; open the
-        # RLS bypass so status updates reach the task row regardless of the
-        # tenant that enqueued it (mirrors the RQ worker path in tasks.py).
-        set_tenant_context(db, None, bypass_rls=True)
+        # Worker threads run outside any request/tenant context. Read the
+        # persisted tenant before the status update, then establish that
+        # tenant for the actual task as well. Tenant-less maintenance tasks
+        # retain the explicit bypass behaviour.
+        task = db.session.get(BackgroundTask, task_id)
+        tenant_id = task.tenant_id if task else None
+        set_tenant_context(db, tenant_id, bypass_rls=tenant_id is None)
+        from flask import g
+
+        g.tenant_id = tenant_id
         _update_status(task_id, "running")
         result = func(*args, **kwargs)
         _update_status(task_id, "completed", result=result)

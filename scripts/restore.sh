@@ -20,6 +20,7 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
 KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"
+SPIDERFOOT_PASSWD_FILE="${SPIDERFOOT_PASSWD_FILE:-/opt/spiderfoot/.spiderfoot/passwd}"
 WORK_DIR="/tmp/iveras_restore_$$"
 
 RED='\033[0;31m'
@@ -316,7 +317,7 @@ if [ "$HAS_ENV" = true ]; then
     fi
 fi
 
-restore_with_backup "$EXTRACT_DIR/spiderfoot-passwd.txt" "/home/osint/.spiderfoot/passwd" "SpiderFoot passwd"
+restore_with_backup "$EXTRACT_DIR/spiderfoot-passwd.txt" "$SPIDERFOOT_PASSWD_FILE" "SpiderFoot passwd"
 restore_with_backup "$EXTRACT_DIR/nginx-default.conf" "/etc/nginx/sites-available/default" "nginx config"
 
 for svc in osint-dashboard spiderfoot; do

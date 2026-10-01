@@ -68,7 +68,7 @@ def check_openrouter_available() -> bool:
         return False
 
 
-def openrouter_generate(prompt, system_prompt=None, timeout=60) -> str | None:
+def openrouter_generate(prompt, system_prompt=None, timeout=60, max_tokens=4096) -> str | None:
     """Generate response from OpenRouter chat completions API."""
     global _last_openrouter_error
     config = get_openrouter_config()
@@ -94,7 +94,9 @@ def openrouter_generate(prompt, system_prompt=None, timeout=60) -> str | None:
                 "model": config["model"],
                 "messages": messages,
                 "temperature": 0.3,
-                "max_tokens": 512,
+                # openrouter/auto may select a reasoning model. It needs room
+                # for its internal reasoning before it can return final text.
+                "max_tokens": max_tokens,
                 "stream": False,
             },
             timeout=timeout,
@@ -102,12 +104,25 @@ def openrouter_generate(prompt, system_prompt=None, timeout=60) -> str | None:
         if r.status_code == 200:
             _last_openrouter_error = None
             data = r.json()
-            return (
-                data.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-                .strip()
-            )
+            message = data.get("choices", [{}])[0].get("message", {}) or {}
+            content = message.get("content")
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
+            elif isinstance(content, dict):
+                content = content.get("text", "")
+            content = str(content or "").strip()
+            if not content:
+                finish_reason = data.get("choices", [{}])[0].get("finish_reason")
+                _last_openrouter_error = (
+                    "OpenRouter returned HTTP 200 without text content"
+                    + (f" (finish_reason={finish_reason})" if finish_reason else "")
+                )
+                logger.warning("OpenRouter returned no text content: finish_reason=%s", finish_reason)
+                return None
+            return content
         _last_openrouter_error = _parse_openrouter_error(r.status_code, r.text)
         logger.warning("OpenRouter returned %s: %s", r.status_code, r.text[:200])
         return None
@@ -276,7 +291,7 @@ def check_ai_available() -> bool:
     return check_ollama_available()
 
 
-def _generate(prompt, system_prompt=None, timeout=60) -> str | None:
+def _generate(prompt, system_prompt=None, timeout=60, max_tokens=4096) -> str | None:
     """Try OpenRouter first, fall back to Ollama."""
     try:
         from cms.services import license as license_service
@@ -287,7 +302,7 @@ def _generate(prompt, system_prompt=None, timeout=60) -> str | None:
     except Exception:
         pass
     if get_openrouter_config()["api_key"]:
-        result = openrouter_generate(prompt, system_prompt, timeout)
+        result = openrouter_generate(prompt, system_prompt, timeout, max_tokens)
         if result is not None:
             return result
         logger.info("OpenRouter failed, falling back to Ollama")

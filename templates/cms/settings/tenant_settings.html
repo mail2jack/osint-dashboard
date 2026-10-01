@@ -104,7 +104,7 @@
             {% endif %}
             <div class="input-row">
                 {% if s.is_encrypted %}
-                <input type="password" id="ts-{{ s.id }}" name="{{ s.key }}" value="{{ s.value or '' }}" placeholder="{{ _('Enter value') }}" class="setting-input" data-setting-id="{{ s.id }}">
+                <input type="password" id="ts-{{ s.id }}" name="{{ s.key }}" value="" placeholder="{{ _('Enter value') }}" class="setting-input" data-setting-id="{{ s.id }}">
                 <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" data-click="togglePasswordBtn">{{ _('Show') }}</button>
                 {% if s.value %}
                 <span class="badge badge-configured">{{ _('Configured') }}</span>

@@ -16,6 +16,7 @@ env/
 .idea/
 .vscode/
 .DS_Store
+._*
 Thumbs.db
 *.log
 .env

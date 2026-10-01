@@ -54,10 +54,12 @@
                 <td><strong>{{ client.name }}</strong>{% if not client.is_active %} <span class="badge" style="background:#6b7280;color:white;">Gearchiveerd</span>{% endif %}</td>
                 <td>{{ client.contact_person if client.contact_person else '-' }}</td>
                 <td>
-                    {% if client.address_street or client.address_city %}
-                        {{ client.address_street if client.address_street else '' }}
+                    {% if client.list_address_text %}
+                        {{ client.list_address_text }}
+                    {% elif client.address_street or client.address_city %}
+                        {{ client.address_street or '' }}{% if client.address_number %} {{ client.address_number }}{% endif %}
                         {% if client.address_postal %}{{ client.address_postal }}{% endif %}
-                        {{ client.address_city if client.address_city else '' }}
+                        {{ client.address_city or '' }}
                     {% else %}
                         -
                     {% endif %}

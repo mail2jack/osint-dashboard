@@ -82,11 +82,19 @@ LICENSE_HTTP_RETENTION_DAYS=7
 LICENSE_IP_CHECK_RETENTION_DAYS=30
 LICENSE_IP_CACHE_RETENTION_DAYS=30
 LICENSE_ADMIN_AUDIT_RETENTION_DAYS=365
+LICENSE_INSTALL_INACTIVE_DAYS=90
+LICENSE_INSTALL_RETENTION_DAYS=365
 LICENSE_PURGE_INTERVAL_SECONDS=3600
 ```
 
 Automatische purge draait tijdens requests en via `privacy:purge` in de
 periodieke systemd-timer. Daardoor blijft retentie actief bij weinig verkeer.
+
+Een installatie zonder heartbeat wordt na 90 dagen als inactief gemarkeerd.
+Na 365 dagen inactiviteit wordt de installatie verwijderd, tenzij er nog een
+actieve licentie aan gekoppeld is. Een nieuwe heartbeat maakt een installatie
+weer actief. Deze standaardwaarden kunnen alleen bewust en na privacyreview
+worden aangepast.
 
 > **Privacy**: externe IP-verrijking staat standaard uit. `LICENSE_GEO_SOURCE=ip-api`,
 > `LICENSE_PTR_SOURCE=local` en `LICENSE_RDAP_SOURCE=rdap.org` zijn afzonderlijke
