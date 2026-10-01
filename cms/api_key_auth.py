@@ -28,11 +28,13 @@ def api_key_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip if already authenticated via session
-        if current_user.is_authenticated:
+        api_key = request.headers.get("X-API-Key", "")
+        # A supplied API key must always be validated, even when a session is
+        # also present. Otherwise an inactive or cross-tenant key can be
+        # silently accepted because the browser session is authenticated.
+        if not api_key and current_user.is_authenticated:
             return f(*args, **kwargs)
 
-        api_key = request.headers.get("X-API-Key", "")
         if not api_key:
             logger.debug("No X-API-Key header from %s", request.remote_addr)
             return jsonify(

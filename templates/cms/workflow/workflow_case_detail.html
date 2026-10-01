@@ -559,9 +559,9 @@ input:-webkit-autofill:focus {
         {% if paid_locked %}
         <span class="cat-badge cat-paid" title="Paid channels disabled for this tenant — a super-admin must enable them via Feature Flags">🔒</span>
         {% endif %}
-        <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Cancel" style="display:none;">✕</button>
+        <button type="button" class="action-cancel" data-action="cancel-action" title="Cancel" style="display:none;">✕</button>
         {% if not paid_locked %}
-        <button type="button" class="action-propose" data-action="propose-action" data-action-key="{{ key }}" title="Save as proposal (start later)">📌</button>
+        <button type="button" class="action-propose" data-action="propose-action" title="Save as proposal (start later)">📌</button>
         {% endif %}
       </div>
       {% endif %}

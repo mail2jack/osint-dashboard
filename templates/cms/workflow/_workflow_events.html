@@ -20,6 +20,13 @@ document.addEventListener('DOMContentLoaded', function() {
       }).catch(function() {});
       return;
     }
+    var propose = e.target.closest('[data-action="propose-action"]');
+    if (propose) {
+      e.preventDefault();
+      var proposeParent = propose.closest('[data-action-key]');
+      if (proposeParent) showActionPicker(proposeParent.getAttribute('data-action-key'), 'proposal');
+      return;
+    }
     var btn = e.target.closest('[data-action-key]');
     if (btn) {
       e.preventDefault();
@@ -28,12 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       showActionPicker(btn.getAttribute('data-action-key'));
-      return;
-    }
-    var propose = e.target.closest('[data-action="propose-action"]');
-    if (propose) {
-      e.preventDefault();
-      showActionPicker(propose.getAttribute('data-action-key'), 'proposal');
       return;
     }
     var startProp = e.target.closest('[data-action="start-proposal"]');
