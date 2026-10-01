@@ -1157,6 +1157,10 @@ def case_detail(case_id):
             WorkflowFinding.id.in_(scoped_finding_ids)
         )
     findings_total = findings_query.count()
+    candidate_count = findings_query.filter(
+        WorkflowFinding.status == "candidate",
+        WorkflowFinding.verified.is_(False),
+    ).count()
     findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
     findings_page = min(findings_page, findings_pages)
     findings = (
@@ -1278,6 +1282,7 @@ def case_detail(case_id):
             actions=actions,
             findings=findings,
             findings_total=findings_total,
+            candidate_count=candidate_count,
             findings_page=findings_page,
             findings_pages=findings_pages,
             findings_per_page=findings_per_page,
@@ -1395,6 +1400,11 @@ def investigation_detail(case_id, investigation_id):
     )
     investigation_findings_per_page = 25
     investigation_findings_total = len(ws.findings)
+    investigation_candidate_count = sum(
+        1
+        for finding in ws.findings
+        if finding.status == "candidate" and not finding.verified
+    )
     investigation_findings_pages = max(
         1,
         (investigation_findings_total + investigation_findings_per_page - 1)
@@ -1477,6 +1487,7 @@ def investigation_detail(case_id, investigation_id):
         investigation_findings_page=investigation_findings_page,
         investigation_findings_pages=investigation_findings_pages,
         investigation_findings_total=investigation_findings_total,
+        investigation_candidate_count=investigation_candidate_count,
         action_types=action_types,
         subjects_cfg=subjects_cfg,
         paid_enabled=paid_channels_enabled(),
