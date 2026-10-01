@@ -31,6 +31,45 @@ window.apiFetch = function(url, options) {
   return fetch(url, options);
 };
 
+// Background source-research progress is intentionally lightweight: the page
+// remains usable while the worker runs and the status panel refreshes itself.
+(function () {
+  var C = window.CMS || {};
+  function elapsed(startedAt, createdAt) {
+    var raw = startedAt || createdAt;
+    var started = raw ? Date.parse(raw) : NaN;
+    if (isNaN(started)) return '';
+    var seconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+    return seconds < 60 ? '< 1 min' : Math.floor(seconds / 60) + ' min';
+  }
+  function refreshSourceResearch() {
+    if (!C.sourceResearchActiveUrl) return;
+    window.apiFetch(C.sourceResearchActiveUrl, {headers: {'Accept': 'application/json'}})
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.scans)) return;
+        data.scans.forEach(function (scan) {
+          var progress = scan.progress_available && typeof scan.progress === 'number' ? scan.progress + '%' : '';
+          var node = document.getElementById('sourceResearchActivity');
+          if (!node) { node = document.createElement('aside'); node.id = 'sourceResearchActivity'; node.setAttribute('aria-live', 'polite'); document.body.appendChild(node); }
+          node.textContent = '🔍 ' + (scan.status || 'running') + (progress ? ' ' + progress : '') + ' (' + elapsed(scan.started_at, scan.created_at) + ')';
+        });
+      }).catch(function () {});
+  }
+  document.addEventListener('DOMContentLoaded', function () { refreshSourceResearch(); window.setInterval(refreshSourceResearch, 15000); });
+  var refreshNotification = 'cms-source-research-refresh-notification';
+  function refreshCurrentCase(notification) { if (!notification || !notification.link) return false; return new URL(notification.link, window.location.origin).pathname === window.location.pathname; }
+  function rememberCompletion(message, type) { try { sessionStorage.setItem(refreshNotification, JSON.stringify({message: message, type: type})); } catch (_) {} }
+  function handleCompletion(notification) { if (refreshCurrentCase(notification)) window.location.reload(); }
+  void refreshCurrentCase; void rememberCompletion;
+  void handleCompletion;
+})();
+
+// Keep the renderer conservative: only RDW findings receive vehicle cards.
+function renderFindingSourceCard(f) {
+  return f.source_type === 'rdw' && f.raw_data ? rdwCardHtml(f.raw_data) : '';
+}
+
 (function() {
   var C = window.CMS || {};
   if (!C.isAdmin) return;

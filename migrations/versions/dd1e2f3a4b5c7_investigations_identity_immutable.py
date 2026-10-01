@@ -127,6 +127,20 @@ def _drop_identity_triggers() -> None:
         bind.execute(
             sa.text("DROP TRIGGER IF EXISTS trg_investigations_tenant_id_immutable")
         )
+        # The merge downgrade can traverse the earlier investigation branch;
+        # explicitly preserve the PR2 sequence-number guard at the PR2 head.
+        bind.execute(
+            sa.text(
+                """
+                CREATE TRIGGER IF NOT EXISTS trg_investigations_sequence_no_immutable
+                BEFORE UPDATE OF sequence_no ON investigations
+                FOR EACH ROW WHEN NEW.sequence_no IS NOT OLD.sequence_no
+                BEGIN
+                    SELECT RAISE(ABORT, 'investigation.sequence_no is immutable after issuance');
+                END;
+                """
+            )
+        )
 
 
 def upgrade() -> None:

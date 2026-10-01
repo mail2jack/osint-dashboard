@@ -21,6 +21,7 @@ from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
 from cms.auth import ensure_case_access, ensure_tenant_access
+from cms.encryption_utils import encryptor
 from cms.models import (
     AuditLog,
     DocumentTemplate,
@@ -1470,8 +1471,40 @@ def investigation_detail(case_id, investigation_id):
         _display_name = subject_display_name(s)
         _candidates.append((_display_name, s))
     _candidates.sort(key=lambda item: (item[0].lower(), item[1].id))
+    def _read_identifier(value):
+        if not value:
+            return value
+        try:
+            return encryptor.decrypt(value)
+        except Exception:
+            return value
+
+    def _first_contact_value(subject, contact_type):
+        contacts = [c for c in subject.contacts.all() if c.contact_type == contact_type]
+        contacts.sort(key=lambda c: (not bool(c.is_primary), str(c.id)))
+        return _read_identifier(contacts[0].value) if contacts else None
+
     subjects_cfg = [
-        {"id": s.id, "display_name": display_name, "subject_type": s.subject_type}
+        {
+            "id": s.id,
+            "display_name": display_name,
+            "subject_type": s.subject_type,
+            "name": s.name,
+            "email": _read_identifier(s.email) or _first_contact_value(s, "email"),
+            "phone": _read_identifier(s.phone) or _first_contact_value(s, "phone"),
+            "street": _read_identifier(s.street),
+            "house_number": _read_identifier(s.house_number),
+            "house_number_addition": _read_identifier(s.house_number_addition),
+            "postal_code": _read_identifier(s.postal_code),
+            "city": _read_identifier(s.city),
+            "registration_number": s.registration_number,
+            "license_plate": _read_identifier(s.license_plate),
+            "rdw_data": s.rdw_data or {},
+            "imo_number": _read_identifier(s.imo_number),
+            "mmsi": _read_identifier(s.mmsi),
+            "eni_number": _read_identifier(s.eni_number),
+            "workflow_social_accounts": s.workflow_social_accounts or [],
+        }
         for display_name, s in _candidates
     ]
 
@@ -3042,6 +3075,14 @@ def pv_view(case_id):
     ensure_case_access(case)
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
+    investigations = list(
+        Investigation.query.filter_by(
+            case_id=case_id, tenant_id=current_user.tenant_id
+        )
+        .filter(Investigation.archived_at.is_(None))
+        .order_by(Investigation.created_at.asc())
+        .all()
+    )
     findings = (
         case.findings.filter(report_visible_finding_filter())
         .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
@@ -3103,6 +3144,7 @@ def pv_view(case_id):
         case=case,
         client=client,
         subjects=subjects,
+        investigations=investigations,
         findings=findings,
         screenshot_evidence=screenshot_evidence,
         body_html=body_html,

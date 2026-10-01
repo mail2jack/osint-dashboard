@@ -64,4 +64,11 @@ input:-webkit-autofill:focus {
   <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ {{ _('New case') }}</a>
 </div>
 {% endif %}
+{% if cases_pages > 1 %}
+<div style="display:flex;justify-content:center;align-items:center;gap:.75rem;margin:1rem 0;">
+  {% if cases_page > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page-1) }}">← {{ _('Previous') }}</a>{% endif %}
+  <span style="font-size:.8rem;color:var(--text-muted);">{{ _('Page') }} {{ cases_page }} / {{ cases_pages }}</span>
+  {% if cases_page < cases_pages %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">{{ _('Next') }} →</a>{% endif %}
+</div>
+{% endif %}
 {% endblock %}

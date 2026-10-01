@@ -29,7 +29,7 @@ def api_key_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Skip if already authenticated via session
-        if current_user and current_user.is_authenticated:
+        if current_user.is_authenticated:
             return f(*args, **kwargs)
 
         api_key = request.headers.get("X-API-Key", "")

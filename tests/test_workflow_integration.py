@@ -792,12 +792,12 @@ class TestEmailCheckPGP:
             {
                 "title": "Profiel op forum",
                 "url": "https://forum.example.com/user",
-                "description": "User profile page",
+                "description": "User profile page for context@example.com",
             },
             {
                 "title": "Company site",
                 "url": "https://company.example.com/team",
-                "description": "Team page",
+                "description": "Team page mentioning context@example.com",
             },
         ]
 

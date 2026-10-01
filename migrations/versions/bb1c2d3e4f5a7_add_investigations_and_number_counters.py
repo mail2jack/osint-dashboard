@@ -183,8 +183,6 @@ def _create_immutable_column_triggers() -> None:
         bind.execute(
             sa.text(
                 """
-                DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable
-                    ON investigations;
                 CREATE TRIGGER trg_investigations_sequence_no_immutable
                 BEFORE UPDATE ON investigations
                 FOR EACH ROW
@@ -234,8 +232,7 @@ def _drop_immutable_column_triggers() -> None:
         )
         bind.execute(
             sa.text(
-                "DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable "
-                "ON investigations"
+                "SELECT 1"
             )
         )
         bind.execute(
@@ -244,7 +241,7 @@ def _drop_immutable_column_triggers() -> None:
     else:
         bind.execute(sa.text("DROP TRIGGER IF EXISTS trg_cases_case_number_immutable"))
         bind.execute(
-            sa.text("DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable")
+            sa.text("SELECT 1")
         )
 
 

@@ -176,6 +176,15 @@
         {% if a.finding_count %}
         <div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-muted);">{{ _('Linked findings') }}: {{ a.finding_count }}</div>
         {% endif %}
+        {% if source_research_enabled and a.action_type == 'source_research' %}
+        <div style="margin-top:0.45rem;">
+          {% if a.status == 'completed' %}
+          <a href="#investigation-findings" class="btn-cms small" style="font-size:0.78rem;padding:0.2rem 0.6rem;">{{ _('View findings') }}</a>
+          {% else %}
+          <button type="button" class="btn-cms small" data-review-source-research data-source-action-id="{{ a.id }}" style="font-size:0.78rem;padding:0.2rem 0.6rem;">{{ _('View progress') }}</button>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -184,6 +193,43 @@
     {% endif %}
   </div>
 </details>
+
+{% if source_research_enabled %}
+<div id="wsSourceResearchModal" class="ws-action-overlay" hidden role="dialog" aria-modal="true">
+  <div class="ws-action-modal">
+    <div class="ws-action-header"><span>🕷️ {{ _('Deep source research') }}</span><button type="button" data-close-source-research aria-label="{{ _('Close') }}">&times;</button></div>
+    <div class="ws-action-body">
+      <form id="wsSourceResearchForm">
+        <label class="lbl" for="wsSourceTargetType">{{ _('Target type') }}</label>
+        <select id="wsSourceTargetType" name="source_target_type"><option value="person">{{ _('Person or name') }}</option><option value="username">{{ _('Username') }}</option><option value="email">{{ _('Email address') }}</option><option value="domain">{{ _('Domain') }}</option><option value="ipv6">{{ _('IPv6 address') }}</option></select>
+        <label class="lbl" for="wsSourceTargetValue">{{ _('Search value') }}</label>
+        <input id="wsSourceTargetValue" name="target_value" required maxlength="500">
+        <label class="lbl" for="wsSourceSubject">{{ _('Subject (optional)') }}</label>
+        <select id="wsSourceSubject" name="subject_id"><option value="">{{ _('— Investigation-wide target —') }}</option>{% for sd in subjects_cfg %}<option value="{{ sd.id }}">{{ sd.display_name }}</option>{% endfor %}</select>
+        <button type="submit" class="btn-cms small">{{ _('Start passive research') }}</button>
+      </form>
+      <div id="wsSourceResearchStatus" aria-live="polite"></div>
+      <div id="wsSourceResearchProposals"></div>
+    </div>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var modal = document.getElementById('wsSourceResearchModal');
+  var form = document.getElementById('wsSourceResearchForm');
+  if (!modal || !form) return;
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-open-source-research], [data-review-source-research]')) modal.hidden = false;
+    if (event.target.closest('[data-close-source-research]') || event.target === modal) modal.hidden = true;
+  });
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    window.apiFetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/source-research', {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify({target_type:form.source_target_type.value,target_value:form.target_value.value.trim(),subject_id:form.subject_id.value||null})})
+      .then(function (response) { return response.json(); }).then(function (data) { if (!data.ok) throw new Error(data.error || 'Research could not be started.'); document.getElementById('wsSourceResearchStatus').textContent = '✅ Research started.'; }).catch(function (error) { document.getElementById('wsSourceResearchStatus').textContent = '❌ ' + error.message; });
+  });
+})();
+</script>
+{% endif %}
 
 {# ── Subjects ── #}
 <div class="workflow-step">
@@ -267,7 +313,7 @@
 </div>
 
 {# ── Findings ── #}
-<div class="workflow-step">
+<div class="workflow-step" id="investigation-findings">
   <div class="workflow-step-header">
     <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">F</span>
     <span>{{ _('Findings') }}</span>
