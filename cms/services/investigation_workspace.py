@@ -193,6 +193,19 @@ def _is_linkable_url(raw: str | None) -> bool:
         return False
 
 
+def source_research_display_title(title: str | None, source_type: str | None) -> str:
+    """Hide historic vendor prefixes without changing evidence stored in the DB."""
+    value = title or ""
+    if source_type == "spiderfoot" and value.startswith("[SpiderFoot] "):
+        return "Verdiept bronnenonderzoek · " + value[len("[SpiderFoot] "):]
+    return value
+
+
+def source_research_display_type(source_type: str | None) -> str | None:
+    """Return the workflow label for legacy and new source-research findings."""
+    return "Verdiept bronnenonderzoek" if source_type == "spiderfoot" else source_type
+
+
 def _is_same_origin_screenshot(raw: str | None, finding_id: str) -> bool:
     """True only for the trusted same-origin screenshot route.
 
@@ -399,11 +412,11 @@ def load_inv_findings(
     dtos = [
         FindingDTO(
             id=f.id,
-            title=f.title,
+            title=source_research_display_title(f.title, f.source_type),
             detail=f.detail,
             source_url=f.source_url,
             source_url_is_linkable=_is_linkable_url(f.source_url),
-            source_type=f.source_type,
+            source_type=source_research_display_type(f.source_type),
             status=f.status,
             verified=f.verified,
             comment=f.comment,
@@ -745,11 +758,11 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
     finding_dtos = [
         FindingDTO(
             id=f.id,
-            title=f.title,
+            title=source_research_display_title(f.title, f.source_type),
             detail=f.detail,
             source_url=f.source_url,
             source_url_is_linkable=_is_linkable_url(f.source_url),
-            source_type=f.source_type,
+            source_type=source_research_display_type(f.source_type),
             status=f.status,
             verified=f.verified,
             comment=f.comment,
