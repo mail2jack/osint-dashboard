@@ -62,7 +62,8 @@ class TestPostgreSQLIntegration:
         # d5e6f7a8b9c0 increases invoice item description length to 2000.
         # e1f2a3b4c5d7 adds workflow screenshot evidence metadata.
         # f3a4b5c6d9e0 preserves full capture source URLs as evidence.
-        assert revision == "f3a4b5c6d9e0"
+        # c0d1e2f3a4b5 merges the parallel migration paths.
+        assert revision == "c0d1e2f3a4b5"
 
         protected = db.session.execute(
             text(
@@ -1226,7 +1227,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f3a4b5c6d9e0"
+        assert revision == "c0d1e2f3a4b5"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
