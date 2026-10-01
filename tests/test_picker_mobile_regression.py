@@ -299,6 +299,7 @@ def test_real_route_email_picker_no_overflow_390(app, live_case):
                     )
                     assert response is not None and response.status == 200
                     _assert_header_and_dropdown(page, 390)
+                    page.locator("details.workflow-activity > summary").click()
                     page.wait_for_selector('[data-action-key="email"]')
                     page.click('[data-action-key="email"]')
                     page.wait_for_selector(".picker-modal")
@@ -367,6 +368,7 @@ def test_real_route_email_picker_desktop_cap(app, live_case):
                     )
                     assert response is not None and response.status == 200
                     _assert_header_and_dropdown(page, 1280)
+                    page.locator("details.workflow-activity > summary").click()
                     page.wait_for_selector('[data-action-key="email"]')
                     page.click('[data-action-key="email"]')
                     page.wait_for_selector(".picker-modal")
