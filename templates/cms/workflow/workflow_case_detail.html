@@ -327,7 +327,7 @@ input:-webkit-autofill:focus {
         <span class="subject-card-name">{{ sd.display_name }}</span>
         <span class="subject-card-type">{{ sd.subject_type }}</span>
         {% if can_write %}
-        <a href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}" target="_blank" rel="noopener" class="btn-cms small" style="white-space:nowrap;">{{ _('✏️ Bewerken') }}</a>
+        <a href="{{ url_for('cms.subject_profile', subject_id=sd.id) }}" target="_blank" rel="noopener" class="btn-cms small subject-profile-link" style="white-space:nowrap;">{{ _('✏️ Bewerken') }}</a>
         {% endif %}
       </div>
       <div class="subject-info-grid">

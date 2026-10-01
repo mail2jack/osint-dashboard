@@ -21,13 +21,13 @@ from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
 from cms.auth import ensure_case_access, ensure_tenant_access
-from cms.encryption_utils import encryptor
 from cms.models import (
     AuditLog,
-    Address,
+    DocumentTemplate,
     FindingCaptureJob,
     Investigation,
     InvestigationStatus,
+    SpiderFootScan,
     Subject,
     User,
     UserRole,
@@ -54,7 +54,17 @@ from cms.services.finding_capture_queue import (
     CaptureRequestRejected,
     enqueue_finding_capture,
 )
-from cms.services.investigation_workspace import build_inv_workspace
+from cms.services.investigation_workspace import (
+    build_inv_workspace,
+    source_research_display_title,
+    source_research_display_type,
+)
+from cms.services.workflow_source_research import (
+    SCAN_INTENSITIES,
+    SourceResearchRejected,
+    expert_module_options_by_target,
+    queue_passive_source_research,
+)
 from cms.services.sequence_service import (
     create_investigation as sequence_create_investigation,
 )
@@ -90,11 +100,49 @@ _INVESTIGATOR_ROLES = (
     UserRole.ADMIN.value,
     UserRole.OWNER.value,
 )
+_ADVANCED_SOURCE_RESEARCH_ROLES = (
+    UserRole.SENIOR_INVESTIGATOR.value,
+    UserRole.ADMIN.value,
+)
 
 
 def _current_user_is_investigator() -> bool:
     """Writer check for the investigations section (role-based, matches scope)."""
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def _workflow_source_research_enabled() -> bool:
+    """Return whether this tenant may use native passive source research.
+
+    ``workflow_spiderfoot`` is the explicit OFF-by-default rollout gate.  The
+    existing ``spiderfoot`` entitlement remains an independent plan gate, so a
+    tenant cannot gain access merely by enabling the new UI flag.
+    """
+    return (
+        check_feature("workflow_spiderfoot", current_user.tenant_id)
+        and check_feature("spiderfoot", current_user.tenant_id)
+    )
+
+
+def _can_choose_source_research_intensity() -> bool:
+    """Return whether the current actor may request curated advanced scans."""
+    return bool(
+        current_user.is_authenticated
+        and (
+            getattr(current_user, "is_super_admin", False)
+            or current_user.role in _ADVANCED_SOURCE_RESEARCH_ROLES
+        )
+        and check_feature("workflow_source_research_intensity", current_user.tenant_id)
+    )
+
+
+def _can_use_source_research_expert_mode() -> bool:
+    """Expert module selection is intentionally super-admin only."""
+    return bool(
+        current_user.is_authenticated
+        and getattr(current_user, "is_super_admin", False)
+        and check_feature("workflow_source_research_expert", current_user.tenant_id)
+    )
 
 
 def ensure_investigation_access(case_id: str, investigation_id: str):
@@ -320,15 +368,6 @@ def _wf_contacts(prefix: str):
     """Contact rows for a subject: serialized JSON, else the flat fields."""
     serialized = _wf_json_list(prefix, "contacts_data")
     if serialized is not None:
-        for contact in serialized:
-            if (
-                contact.get("value")
-                and contact.get("contact_type") == "social"
-                and not str(contact.get("platform") or "").strip()
-            ):
-                raise ValueError(
-                    "Koppel eerst een platform aan deze sociale contactwaarde."
-                )
         return serialized
     email = _wf_value(prefix, "email")
     phone = _wf_value(prefix, "phone")
@@ -447,13 +486,32 @@ def _remove_orphan_screenshot(file_path):
 @login_required
 @_investigator_required
 def dashboard():
+    # Use the same bulk access rule as the findings register.  A tenant-wide
+    # dashboard query would otherwise expose case cards which a non-admin
+    # investigator cannot open.
+    from cms.auth import get_accessible_case_ids
+
+    per_page = 25
+    requested_page = request.args.get("page", 1, type=int) or 1
+    accessible_ids = get_accessible_case_ids(current_user)
+    cases_query = WorkflowCase.query.filter(
+        WorkflowCase.archived_at.is_(None),
+        WorkflowCase.is_deleted == False,
+    )
+    if accessible_ids:
+        cases_query = cases_query.filter(WorkflowCase.id.in_(accessible_ids))
+    else:
+        cases_query = cases_query.filter(sa.false())
+
+    cases_query = cases_query.order_by(
+        WorkflowCase.created_at.desc(), WorkflowCase.id.desc()
+    )
+    cases_total = cases_query.count()
+    cases_pages = max(1, (cases_total + per_page - 1) // per_page)
+    cases_page = min(max(requested_page, 1), cases_pages)
     cases = (
-        WorkflowCase.query.filter(
-            WorkflowCase.archived_at.is_(None),
-            WorkflowCase.is_deleted == False,
-            WorkflowCase.tenant_id == current_user.tenant_id,
-        )
-        .order_by(WorkflowCase.created_at.desc())
+        cases_query.offset((cases_page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
     case_ids = [c.id for c in cases]
@@ -480,6 +538,9 @@ def dashboard():
     return render_template(
         "cms/workflow/workflow_dashboard.html",
         cases=cases,
+        cases_total=cases_total,
+        cases_page=cases_page,
+        cases_pages=cases_pages,
         action_counts=action_counts,
         action_types=ACTION_REGISTRY,
     )
@@ -525,10 +586,10 @@ def _finding_json_with_context(f, case=None, subject=None):
         "id": f.id,
         "case_id": f.case_id,
         "subject_id": f.subject_id,
-        "title": f.title,
+        "title": source_research_display_title(f.title, f.source_type),
         "detail": f.detail,
         "source_url": f.source_url,
-        "source_type": f.source_type,
+        "source_type": source_research_display_type(f.source_type),
         "icon": f.icon,
         "verified": f.verified,
         "status": f.status,
@@ -801,22 +862,8 @@ def client_lookup():
         # would autoflush and re-encrypt the freshly decrypted client, turning
         # the bank_account/financial_notes reads below into ciphertext.
         with db.session.no_autoflush:
-            primary_address = (
-                Address.query.filter_by(client_id=client.id)
-                .order_by(Address.is_primary.desc(), Address.created_at)
-                .first()
-            )
-            if primary_address:
-                primary_address.decrypt_fields()
+            client.decrypt_naw()
             raw = client.to_dict(decrypted=True)
-            if primary_address:
-                raw["address"] = {
-                    "street": primary_address.street or "",
-                    "number": primary_address.number or "",
-                    "city": primary_address.town or "",
-                    "postal": primary_address.zipcode or "",
-                    "country": primary_address.country or "Netherlands",
-                }
             # Also search by contact person
             contact = raw.get("contact_person", "") or ""
             contact_score = 0
@@ -1071,6 +1118,9 @@ def case_detail(case_id):
         abort(404)
     ensure_case_access(case)
     show_archived = request.args.get("show_archived") == "1"
+    findings_page = max(1, request.args.get("findings_page", 1, type=int))
+    findings_per_page = 25
+    finding_scope = request.args.get("finding_scope", "").strip()
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
         .filter(
@@ -1081,20 +1131,40 @@ def case_detail(case_id):
         .order_by(WorkflowResearchAction.created_at.desc())
         .all()
     )
-    findings = (
+    findings_query = (
         WorkflowFinding.query.filter_by(case_id=case_id)
         .filter(WorkflowFinding.is_deleted == False)
         .filter(
             WorkflowFinding.archived_at.is_(None) if not show_archived else sa.true()
         )
-        .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
-        .all()
     )
-    candidate_count = sum(
-        1
-        for finding in findings
-        if finding.status == "candidate" and not finding.verified
+    if finding_scope:
+        scoped_actions = WorkflowResearchAction.query.with_entities(
+            WorkflowResearchAction.id
+        ).filter(WorkflowResearchAction.case_id == case_id)
+        if finding_scope == "__wide":
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id.is_(None)
+            )
+        else:
+            scoped_actions = scoped_actions.filter(
+                WorkflowResearchAction.investigation_id == finding_scope
+            )
+        scoped_finding_ids = db.session.query(
+            WorkflowActionFinding.finding_id
+        ).filter(WorkflowActionFinding.action_id.in_(scoped_actions))
+        findings_query = findings_query.filter(
+            WorkflowFinding.id.in_(scoped_finding_ids)
+        )
+    findings_total = findings_query.count()
+    findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
+    findings_page = min(findings_page, findings_pages)
+    findings = (
+        findings_query.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
+        .order_by(WorkflowFinding.created_at.desc(), WorkflowFinding.id.desc())
+        .offset((findings_page - 1) * findings_per_page)
+        .limit(findings_per_page)
+        .all()
     )
 
     finding_ids = [f.id for f in findings]
@@ -1143,7 +1213,6 @@ def case_detail(case_id):
                 decrypted_contacts.append(
                     {
                         "contact_type": c.contact_type,
-                        "platform": c.platform,
                         "value": c.value,
                         "is_primary": c.is_primary,
                     }
@@ -1208,7 +1277,11 @@ def case_detail(case_id):
             subjects_data=subjects_data,
             actions=actions,
             findings=findings,
-            candidate_count=candidate_count,
+            findings_total=findings_total,
+            findings_page=findings_page,
+            findings_pages=findings_pages,
+            findings_per_page=findings_per_page,
+            finding_scope=finding_scope,
             finding_actions=finding_actions,
             investigations=investigations,
             investigations_meta=investigations_meta,
@@ -1221,11 +1294,21 @@ def case_detail(case_id):
             show_archived=show_archived,
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
-            investigation_workspace_enabled=check_feature("investigation_workspace"),
-            finding_capture_enabled=(
+            source_research_enabled=(
                 _current_user_is_investigator()
-                and check_feature("finding_screenshot_capture", current_user.tenant_id)
+                and _workflow_source_research_enabled()
             ),
+            source_research_intensity_enabled=(
+                _current_user_is_investigator()
+                and _can_choose_source_research_intensity()
+            ),
+            source_research_expert_enabled=_can_use_source_research_expert_mode(),
+            source_research_expert_options=(
+                expert_module_options_by_target()
+                if _can_use_source_research_expert_mode()
+                else {}
+            ),
+            investigation_workspace_enabled=check_feature("investigation_workspace"),
             local_browser_capture_enabled=(
                 _current_user_is_investigator()
                 and check_feature(
@@ -1233,6 +1316,38 @@ def case_detail(case_id):
                 )
             ),
         )
+
+
+@workflow_bp.route("/case/<case_id>/report")
+@login_required
+@_investigator_required
+def case_report_hub(case_id):
+    """Single report entry point for the investigator workflow.
+
+    The live report and PDF never depend on a document template.  Templates
+    remain an optional document-generation facility, retained for teams that
+    need a particular house style or a reusable narrative format.
+    """
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        abort(404)
+    ensure_case_access(case)
+
+    templates = (
+        DocumentTemplate.query.filter_by(tenant_id=case.tenant_id, is_active=True)
+        .order_by(DocumentTemplate.is_default.desc(), DocumentTemplate.name)
+        .all()
+    )
+    return render_template(
+        "cms/workflow/workflow_case_report_hub.html",
+        case=case,
+        templates=templates,
+        can_manage_templates=current_user.has_role(
+            UserRole.SENIOR_INVESTIGATOR,
+            UserRole.ADMIN,
+            UserRole.OWNER,
+        ),
+    )
 
 
 @workflow_bp.route("/case/<case_id>/investigations")
@@ -1275,11 +1390,23 @@ def investigation_detail(case_id, investigation_id):
     inv, case = ensure_investigation_access(case_id, investigation_id)
 
     ws = build_inv_workspace(inv, case)
-    investigation_candidate_count = sum(
-        1
-        for finding in ws.findings
-        if finding.status == "candidate" and not finding.verified
+    investigation_findings_page = max(
+        1, request.args.get("findings_page", 1, type=int)
     )
+    investigation_findings_per_page = 25
+    investigation_findings_total = len(ws.findings)
+    investigation_findings_pages = max(
+        1,
+        (investigation_findings_total + investigation_findings_per_page - 1)
+        // investigation_findings_per_page,
+    )
+    investigation_findings_page = min(
+        investigation_findings_page, investigation_findings_pages
+    )
+    finding_start = (investigation_findings_page - 1) * investigation_findings_per_page
+    investigation_findings = ws.findings[
+        finding_start : finding_start + investigation_findings_per_page
+    ]
 
     # PR4: minimal "Start Action" modal context (action types + case subjects).
     # photo_analysis needs its file-upload picker and manual_entry its rich form,
@@ -1304,11 +1431,23 @@ def investigation_detail(case_id, investigation_id):
         for key, cfg in ACTION_REGISTRY.items()
         if key not in ("photo_analysis", "manual_entry")
     ]
+    if can_start_actions and _workflow_source_research_enabled():
+        # Native passive research has its own durable queue rather than a
+        # synchronous ACTION_REGISTRY handler, but belongs in the same Start
+        # Action chooser as every other investigation action.
+        action_types.append(
+            {
+                "key": "source_research",
+                "label": "Deep source research",
+                "icon": "🕷️",
+                "category": "open",
+            }
+        )
     # Modal subject options — explicit tenant/case/soft-delete scoped query via
-    # the case-subject junction (review P1-1). The action form needs the
-    # selected subject's contact/identifier value for safe autofill (for
-    # example, the phone number for a phone action). Decrypt only while
-    # rendering and keep the session protected from an accidental autoflush.
+    # the case-subject junction (review P1-1). Only the plaintext name fields
+    # are rendered in the modal, so decrypt_identifiers() is deliberately NOT
+    # called: compute_name() reads plaintext columns only, so no cipher is
+    # touched, nothing is re-encrypted and no autoflush side-effect can occur.
     # Sorted deterministically by display name (case-insensitive), then id.
     subject_rows = (
         case.subjects.filter(
@@ -1316,47 +1455,13 @@ def investigation_detail(case_id, investigation_id):
             Subject.is_deleted.is_(False),
         ).all()
     )
-    def _read_identifier(value):
-        if not value:
-            return value
-        try:
-            return encryptor.decrypt(value)
-        except Exception:
-            # Keep legacy/plaintext values readable without mutating the ORM
-            # object. This is a read-only rendering path.
-            return value
-
-    def _first_contact_value(subject, contact_type):
-        contacts = [c for c in subject.contacts.all() if c.contact_type == contact_type]
-        contacts.sort(key=lambda c: (not bool(c.is_primary), str(c.id)))
-        return _read_identifier(contacts[0].value) if contacts else None
-
     _candidates = []
     for s in subject_rows:
         _display_name = subject_display_name(s)
         _candidates.append((_display_name, s))
     _candidates.sort(key=lambda item: (item[0].lower(), item[1].id))
     subjects_cfg = [
-        {
-            "id": s.id,
-            "display_name": display_name,
-            "subject_type": s.subject_type,
-            "name": s.name,
-            "email": _read_identifier(s.email) or _first_contact_value(s, "email"),
-            "phone": _read_identifier(s.phone) or _first_contact_value(s, "phone"),
-            "street": _read_identifier(s.street),
-            "house_number": _read_identifier(s.house_number),
-            "house_number_addition": _read_identifier(s.house_number_addition),
-            "postal_code": _read_identifier(s.postal_code),
-            "city": _read_identifier(s.city),
-            "registration_number": s.registration_number,
-            "license_plate": _read_identifier(s.license_plate),
-            "rdw_data": s.rdw_data or {},
-            "imo_number": _read_identifier(s.imo_number),
-            "mmsi": _read_identifier(s.mmsi),
-            "eni_number": _read_identifier(s.eni_number),
-            "workflow_social_accounts": s.workflow_social_accounts or [],
-        }
+        {"id": s.id, "display_name": display_name, "subject_type": s.subject_type}
         for display_name, s in _candidates
     ]
 
@@ -1368,10 +1473,27 @@ def investigation_detail(case_id, investigation_id):
         can_start_actions=can_start_actions,
         created_by_name=ws.created_by_name or "",
         ws=ws,
-        investigation_candidate_count=investigation_candidate_count,
+        investigation_findings=investigation_findings,
+        investigation_findings_page=investigation_findings_page,
+        investigation_findings_pages=investigation_findings_pages,
+        investigation_findings_total=investigation_findings_total,
         action_types=action_types,
         subjects_cfg=subjects_cfg,
         paid_enabled=paid_channels_enabled(),
+        source_research_enabled=(
+            can_start_actions and _workflow_source_research_enabled()
+        ),
+        source_research_intensity_enabled=(
+            can_start_actions and _can_choose_source_research_intensity()
+        ),
+        source_research_expert_enabled=(
+            can_start_actions and _can_use_source_research_expert_mode()
+        ),
+        source_research_expert_options=(
+            expert_module_options_by_target()
+            if can_start_actions and _can_use_source_research_expert_mode()
+            else {}
+        ),
         finding_capture_enabled=(
             can_write
             and check_feature("finding_screenshot_capture", current_user.tenant_id)
@@ -1383,6 +1505,447 @@ def investigation_detail(case_id, investigation_id):
             )
         ),
     )
+
+
+@workflow_bp.route("/api/source-research/active", methods=["GET"])
+@login_required
+@_investigator_required
+def active_source_research():
+    """Return only the caller's bounded, active native research jobs.
+
+    This powers a non-blocking status panel.  It never returns another
+    investigator's work or cached third-party results.
+    """
+    if not _workflow_source_research_enabled():
+        return jsonify({"scans": []})
+    scans = (
+        SpiderFootScan.query.filter_by(
+            tenant_id=current_user.tenant_id,
+            created_by=current_user.id,
+            is_deleted=False,
+        )
+        .filter(SpiderFootScan.status.in_(("pending", "running")))
+        .order_by(SpiderFootScan.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    return jsonify(
+        {
+            "scans": [
+                {
+                    "id": scan.id,
+                    "status": scan.status,
+                    "progress": scan.progress,
+                    "progress_available": scan.progress is not None and scan.progress > 0,
+                    "case_id": scan.case_id,
+                    "investigation_id": scan.investigation_id,
+                    "created_at": scan.created_at.isoformat() if scan.created_at else None,
+                    "started_at": scan.started_at.isoformat() if scan.started_at else None,
+                }
+                for scan in scans
+            ]
+        }
+    )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research",
+    methods=["POST"],
+)
+@workflow_bp.route("/api/case/<case_id>/source-research", methods=["POST"])
+@login_required
+@_investigator_required
+def request_passive_source_research(case_id, investigation_id=None):
+    """Queue one explicitly requested, policy-bounded source-research action.
+
+    This endpoint is deliberately a durable request boundary: it records the
+    action, scan and audit entries in one transaction but never opens a
+    SpiderFoot connection in Gunicorn.  The dedicated worker claims the scan
+    after commit, and later updates its public progress state.
+    """
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Payload must be a JSON object"}), 400
+    allowed = {
+        "target_type", "target_value", "subject_id", "investigation_id",
+        "scan_intensity", "expert_module_ids",
+    }
+    unknown = sorted(set(body) - allowed)
+    if unknown:
+        return jsonify({"error": f"Unknown fields: {', '.join(unknown)}"}), 400
+
+    # The legacy investigation-specific URL remains supported, but the native
+    # action UI can now use one case endpoint for both an investigation and a
+    # case-wide action.  A URL scope and body scope may never disagree.
+    body_investigation_id = body.get("investigation_id")
+    if investigation_id is not None and body_investigation_id not in (None, investigation_id):
+        return jsonify({"error": "Investigation scope does not match this URL"}), 400
+    selected_investigation_id = investigation_id or body_investigation_id
+
+    intensity = body.get("scan_intensity", "passive")
+    if not isinstance(intensity, str) or intensity not in SCAN_INTENSITIES:
+        return jsonify({"error": "Unsupported source-research intensity"}), 400
+    if intensity != "passive" and not _can_choose_source_research_intensity():
+        return jsonify({"error": "Forbidden"}), 403
+    expert_module_ids = body.get("expert_module_ids")
+    if expert_module_ids is not None and not _can_use_source_research_expert_mode():
+        return jsonify({"error": "Forbidden"}), 403
+
+    if selected_investigation_id is not None:
+        if not isinstance(selected_investigation_id, str) or not selected_investigation_id:
+            return jsonify({"error": "investigation_id must be a non-empty string"}), 400
+        investigation, case = ensure_investigation_access(
+            case_id, selected_investigation_id
+        )
+        try:
+            require_open(investigation)
+        except OperationalConflict:
+            return jsonify({"error": "Investigation is not open"}), 409
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Case not found"}), 404
+        ensure_case_access(case)
+        investigation = None
+
+    subject = None
+    subject_id = body.get("subject_id")
+    if subject_id is not None:
+        if not isinstance(subject_id, str) or not subject_id:
+            return jsonify({"error": "subject_id must be a non-empty string"}), 400
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if subject is None:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject.id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
+    # Use the existing tenant limit before writing.  The worker re-checks the
+    # feature gates before starting external work, so a later kill-switch is
+    # honored even for already queued actions.
+    from cms.tier_limits import check_concurrent_spiderfoot_scans
+
+    permitted, running, maximum = check_concurrent_spiderfoot_scans(
+        current_user.tenant_id
+    )
+    if not permitted:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Maximum concurrent source-research scans reached "
+                        f"({running}/{maximum})"
+                    )
+                }
+            ),
+            429,
+        )
+
+    try:
+        action, scan = queue_passive_source_research(
+            case=case,
+            investigation=investigation,
+            actor=current_user,
+            target_type=body.get("target_type"),
+            target_value=body.get("target_value"),
+            subject=subject,
+            intensity=intensity,
+            expert_module_ids=expert_module_ids,
+        )
+        # Capture scalar ids before commit: under FORCE RLS a post-commit ORM
+        # refresh may use a different pooled connection and turn a successful
+        # queued request into a misleading ObjectDeletedError response.
+        action_id = action.id
+        scan_id = scan.id
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case.id,
+            description=(
+                "Queued passive source research (linked to investigation)"
+                if investigation is not None
+                else "Queued passive source research (case-wide)"
+            ),
+            new_investigation_id=investigation.id if investigation is not None else None,
+        )
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="spiderfoot_scan",
+            entity_id=scan_id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={
+                "use_case": scan.use_case,
+                "target_type": scan.target_type,
+                "profile": scan.profile,
+                "status": "pending",
+            },
+            description="Queued workflow source-research scan",
+        )
+        db.session.commit()
+    except SourceResearchRejected as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception(
+            "request_passive_source_research failed case_id=%s investigation_id=%s",
+            case_id,
+            investigation_id,
+        )
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "action": {"id": action_id, "status": "pending"},
+            "scan": {"id": scan_id, "status": "pending", "use_case": intensity},
+        }
+    ), 202
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>",
+    methods=["GET"],
+)
+@workflow_bp.route(
+    "/api/case/<case_id>/source-research/<action_id>", methods=["GET"]
+)
+@login_required
+@_investigator_required
+def passive_source_research_status(case_id, action_id, investigation_id=None):
+    """Return bounded workflow-visible state for one source-research action."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    if investigation_id is not None:
+        investigation, case = ensure_investigation_access(case_id, investigation_id)
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Not found"}), 404
+        ensure_case_access(case)
+        investigation = None
+    action_query = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        action_type="source_research",
+    )
+    action_query = (
+        action_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else action_query.filter(WorkflowResearchAction.investigation_id.is_(None))
+    )
+    action = action_query.first()
+    if action is None:
+        return jsonify({"error": "Not found"}), 404
+
+    from cms.models import SpiderFootScan
+
+    scan_query = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        research_action_id=action.id,
+        is_deleted=False,
+    )
+    scan_query = (
+        scan_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else scan_query.filter(SpiderFootScan.investigation_id.is_(None))
+    )
+    scan = scan_query.first()
+    if scan is None:
+        return jsonify({"error": "Not found"}), 404
+    result = scan.result_summary if isinstance(scan.result_summary, dict) else {}
+    proposals = result.get("proposals", []) if scan.status == "completed" else []
+    # Stored proposal snapshots are bounded by the worker.  Defend again at
+    # this boundary so a historic or manually malformed row cannot make a
+    # status response unexpectedly large.
+    if not isinstance(proposals, list):
+        proposals = []
+    imported_indexes = result.get("imported_indexes", [])
+    imported_count = len(
+        [index for index in imported_indexes if isinstance(index, int) and not isinstance(index, bool)]
+    ) if isinstance(imported_indexes, list) else 0
+    return jsonify(
+        {
+            "ok": True,
+            "action": {
+                "id": action.id,
+                "status": action.status,
+                "result_summary": action.result_summary,
+            },
+            "scan": {
+                "id": scan.id,
+                "status": scan.status,
+                "progress": scan.progress,
+                "result_count": scan.result_count,
+                "proposals": proposals[:250],
+                "imported_count": imported_count,
+            },
+        }
+    )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/source-research/<action_id>/import",
+    methods=["POST"],
+)
+@workflow_bp.route(
+    "/api/case/<case_id>/source-research/<action_id>/import", methods=["POST"]
+)
+@login_required
+@_investigator_required
+def import_passive_source_research(case_id, action_id, investigation_id=None):
+    """Import selected, cached source-research proposals as workflow findings."""
+    if not _workflow_source_research_enabled():
+        return jsonify({"error": "Not found"}), 404
+    if investigation_id is not None:
+        investigation, case = ensure_investigation_access(case_id, investigation_id)
+    else:
+        case = db.session.get(WorkflowCase, case_id)
+        if not case:
+            return jsonify({"error": "Not found"}), 404
+        ensure_case_access(case)
+        investigation = None
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"proposal_indexes"}:
+        return jsonify({"error": "proposal_indexes is required"}), 400
+    indexes = body.get("proposal_indexes")
+    if (
+        not isinstance(indexes, list)
+        or not indexes
+        or len(indexes) > 50
+        or any(not isinstance(index, int) or isinstance(index, bool) for index in indexes)
+    ):
+        return jsonify({"error": "proposal_indexes must contain 1 to 50 indexes"}), 400
+    if len(set(indexes)) != len(indexes):
+        return jsonify({"error": "proposal_indexes must be unique"}), 400
+
+    from cms.models import SpiderFootScan
+
+    scan_query = SpiderFootScan.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        research_action_id=action_id,
+        is_deleted=False,
+        status="completed",
+    )
+    scan_query = (
+        scan_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else scan_query.filter(SpiderFootScan.investigation_id.is_(None))
+    )
+    if db.session.bind and db.session.bind.dialect.name == "postgresql":
+        scan_query = scan_query.with_for_update()
+    scan = scan_query.first()
+    if scan is None:
+        return jsonify({"error": "Completed source research not found"}), 404
+    action_query = WorkflowResearchAction.query.filter_by(
+        id=action_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case.id,
+        action_type="source_research",
+    )
+    action_query = (
+        action_query.filter_by(investigation_id=investigation.id)
+        if investigation is not None
+        else action_query.filter(WorkflowResearchAction.investigation_id.is_(None))
+    )
+    action = action_query.first()
+    if action is None:
+        return jsonify({"error": "Source-research action not found"}), 404
+
+    state = dict(scan.result_summary) if isinstance(scan.result_summary, dict) else {}
+    proposals = state.get("proposals")
+    if not isinstance(proposals, list):
+        return jsonify({"error": "Source-research proposals are unavailable"}), 409
+    if any(index < 0 or index >= len(proposals) for index in indexes):
+        return jsonify({"error": "Proposal index is out of range"}), 400
+    imported_indexes = {
+        index
+        for index in state.get("imported_indexes", [])
+        if isinstance(index, int) and not isinstance(index, bool)
+    }
+    selected_indexes = [index for index in indexes if index not in imported_indexes]
+    if not selected_indexes:
+        return jsonify({"ok": True, "imported": 0, "finding_ids": []})
+
+    # The action's optional subject remains the only subject context used by
+    # its findings; proposals never submit client-controlled subject ids.
+    finding_ids = []
+    try:
+        for index in selected_indexes:
+            proposal = proposals[index]
+            if not isinstance(proposal, dict):
+                raise ValueError("Stored source-research proposal is invalid")
+            event_type = str(proposal.get("type") or "UNKNOWN")[:100]
+            data = str(proposal.get("data") or "")[:2000]
+            module = str(proposal.get("source_module") or "")[:200]
+            source_url = str(proposal.get("source_url") or "")[:2000] or None
+            if not data:
+                raise ValueError("Stored source-research proposal has no data")
+            finding = WorkflowFinding(
+                id=str(uuid.uuid4()),
+                tenant_id=case.tenant_id,
+                case_id=case.id,
+                subject_id=action.subject_id,
+                title=f"Verdiept bronnenonderzoek · {event_type}: {data[:100]}",
+                content=(
+                    f"Bron: Verdiept bronnenonderzoek\nType: {event_type}\nData: {data}"
+                    + (f"\nModule: {module}" if module else "")
+                ),
+                detail=data,
+                source_url=source_url,
+                source_type="spiderfoot",
+                icon="🕷️",
+                verified=False,
+                status="candidate",
+                raw_data={
+                    "source_research_action_id": action.id,
+                    "proposal_index": index,
+                    "event_type": event_type,
+                    "source_module": module,
+                },
+                created_by=current_user.id,
+                created_at=datetime.now(UTC),
+            )
+            db.session.add(finding)
+            db.session.flush()
+            db.session.add(
+                WorkflowActionFinding(action_id=action.id, finding_id=finding.id)
+            )
+            finding_ids.append(finding.id)
+
+        state["imported_indexes"] = sorted(imported_indexes | set(selected_indexes))
+        scan.result_summary = state
+        AuditLog.log(
+            user_id=current_user.id,
+            action="import",
+            entity_type="spiderfoot_scan",
+            entity_id=scan.id,
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            ip_address=request.remote_addr,
+            new_values={"imported_count": len(finding_ids)},
+            description="Imported selected workflow source-research findings",
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 409
+    except Exception:
+        db.session.rollback()
+        logger.exception("import_passive_source_research failed action_id=%s", action_id)
+        return jsonify({"error": "Internal error"}), 500
+
+    return jsonify({"ok": True, "imported": len(finding_ids), "finding_ids": finding_ids})
 
 
 @workflow_bp.route(
@@ -1654,22 +2217,17 @@ def case_edit(case_id):
         return redirect(url_for("workflow.case_edit", case_id=case_id))
 
     # process new subjects
-    try:
-        n = 0
-        while request.form.get(f"subj_new_{n}_name") or request.form.get(
-            f"subj_new_{n}_type"
-        ):
-            new_subj = subject_service.create(
-                _wf_subject_data(f"subj_new_{n}"),
-                created_by=current_user.id,
-                tenant_id=current_user.tenant_id,
-            )
-            case.subjects.append(new_subj)
-            n += 1
-    except ValueError as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-        return redirect(url_for("workflow.case_edit", case_id=case_id))
+    n = 0
+    while request.form.get(f"subj_new_{n}_name") or request.form.get(
+        f"subj_new_{n}_type"
+    ):
+        new_subj = subject_service.create(
+            _wf_subject_data(f"subj_new_{n}"),
+            created_by=current_user.id,
+            tenant_id=current_user.tenant_id,
+        )
+        case.subjects.append(new_subj)
+        n += 1
 
     # remove unlinked subjects
     for sid in list(removed_ids):
@@ -2473,12 +3031,6 @@ def pv_view(case_id):
     ensure_case_access(case)
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
-    investigations = list(
-        Investigation.query.filter_by(case_id=case_id, tenant_id=current_user.tenant_id)
-        .filter(Investigation.archived_at.is_(None))
-        .order_by(Investigation.created_at.asc())
-        .all()
-    )
     findings = (
         case.findings.filter(report_visible_finding_filter())
         .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
@@ -2541,7 +3093,6 @@ def pv_view(case_id):
         client=client,
         subjects=subjects,
         findings=findings,
-        investigations=investigations,
         screenshot_evidence=screenshot_evidence,
         body_html=body_html,
     )
@@ -2731,104 +3282,6 @@ def batch_delete_findings(case_id):
     return jsonify({"ok": True, "deleted": deleted})
 
 
-@workflow_bp.route(
-    "/api/case/<case_id>/findings/finalize-candidates", methods=["POST"]
-)
-@login_required
-@_investigator_required
-def finalize_finding_candidates(case_id):
-    """Soft-delete all remaining unverified candidates for a case."""
-    case = db.session.get(WorkflowCase, case_id)
-    if not case:
-        return jsonify({"error": "Case not found"}), 404
-    ensure_case_access(case)
-
-    candidates = (
-        WorkflowFinding.query.filter_by(
-            case_id=case_id,
-            is_deleted=False,
-            status="candidate",
-            verified=False,
-        )
-        .filter(WorkflowFinding.archived_at.is_(None))
-        .all()
-    )
-    for finding in candidates:
-        finding.reject(current_user)
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action="finalize_candidates",
-        entity_type="case",
-        entity_id=case.id,
-        case_id=case.id,
-        ip_address=request.remote_addr,
-        description=(
-            f"Workflow finalized findings for case {case.case_number}: "
-            f"soft-deleted {len(candidates)} unverified candidates"
-        ),
-    )
-    db.session.commit()
-    return jsonify({"ok": True, "removed": len(candidates)})
-
-
-@workflow_bp.route(
-    "/api/case/<case_id>/investigations/<investigation_id>/findings/finalize-candidates",
-    methods=["POST"],
-)
-@login_required
-@_investigator_required
-def finalize_investigation_finding_candidates(case_id, investigation_id):
-    """Soft-delete unverified candidates linked only to one investigation."""
-    inv, case = ensure_investigation_access(case_id, investigation_id)
-    candidate_ids = (
-        WorkflowFinding.query
-        .join(
-            WorkflowActionFinding,
-            WorkflowActionFinding.finding_id == WorkflowFinding.id,
-        )
-        .join(
-            WorkflowResearchAction,
-            WorkflowResearchAction.id == WorkflowActionFinding.action_id,
-        )
-        .filter(
-            WorkflowFinding.case_id == case_id,
-            WorkflowFinding.is_deleted == False,  # noqa: E712
-            WorkflowFinding.archived_at.is_(None),
-            WorkflowFinding.status == "candidate",
-            WorkflowFinding.verified == False,  # noqa: E712
-            WorkflowResearchAction.case_id == case_id,
-            WorkflowResearchAction.investigation_id == investigation_id,
-        )
-        .with_entities(WorkflowFinding.id)
-        .distinct()
-        .all()
-    )
-    candidate_ids = [row[0] for row in candidate_ids]
-    candidates = (
-        WorkflowFinding.query.filter(WorkflowFinding.id.in_(candidate_ids)).all()
-        if candidate_ids
-        else []
-    )
-    for finding in candidates:
-        finding.reject(current_user)
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action="finalize_investigation_candidates",
-        entity_type="investigation",
-        entity_id=inv.id,
-        case_id=case.id,
-        ip_address=request.remote_addr,
-        description=(
-            f"Workflow finalized findings for investigation {inv.human_number}: "
-            f"soft-deleted {len(candidates)} unverified candidates"
-        ),
-    )
-    db.session.commit()
-    return jsonify({"ok": True, "removed": len(candidates)})
-
-
 # Per-worker (in-process) cooldown to prevent a rapid toggle-back of the
 # legacy boolean verify button. NOTE: this dict is NOT shared across gunicorn
 # workers, so it only guards the common single-worker rapid-toggle case. If a
@@ -2951,9 +3404,8 @@ def save_comment(case_id, finding_id):
 def set_report_flag(case_id, finding_id):
     """Toggle generic include-in-report selection (ADR-0001 optie (b)).
 
-    ``include_in_report`` semantics: a verified finding with NULL/True is
-    eligible for official reports; False excludes it. Lifecycle status is the
-    minimum report gate. Existing findings are unchanged.
+    ``include_in_report`` semantics: NULL/True = included in official reports,
+    False = excluded. Backward compatible — existing findings are unchanged.
     """
     finding, err = _resolve_mutable_finding(case_id, finding_id)
     if err is not None:
