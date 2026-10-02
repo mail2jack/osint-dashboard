@@ -84,6 +84,36 @@ def _clean_narrative_placeholders(narrative, subject_names):
     return cleaned
 
 
+def _remove_repeated_ai_question(narrative):
+    """Remove an AI-generated question section from the report body.
+
+    The application inserts the original question separately.  This guard
+    prevents a model from adding a second, rewritten version of that question
+    inside the narrative itself.
+    """
+    lines = (narrative or "").splitlines()
+    cleaned = []
+    skipping_question = False
+    skipped_question_text = False
+    for line in lines:
+        if re.match(r"^\s{0,3}#{1,6}\s*onderzoeksvraag\b", line, re.IGNORECASE):
+            skipping_question = True
+            skipped_question_text = False
+            continue
+        if skipping_question:
+            if not line.strip():
+                if skipped_question_text:
+                    skipping_question = False
+                continue
+            if re.match(r"^\s{0,3}#{1,6}\s+\S", line):
+                skipping_question = False
+            else:
+                skipped_question_text = True
+                continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def _canonical_person_name(name):
     """Return a person's name without a duplicated leading initial."""
     text = str(name or "").strip()
@@ -725,8 +755,9 @@ def investigation_ai_narrative(case_id, investigation_id):
     }, ensure_ascii=False)
     narrative = _generate(
         "Schrijf een helder Nederlandstalig onderzoeksrapport op basis van uitsluitend de onderstaande gegevens. "
-        "Begin het informatieproduct met de exacte onderzoeksvraag onder de kop 'Onderzoeksvraag'. "
-        "Maak daarna een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
+        "Neem zelf geen kop 'Onderzoeksvraag' op en herhaal of herformuleer de onderzoeksvraag niet. "
+        "De applicatie plaatst de oorspronkelijke vraag apart en exact zoals de onderzoeker die heeft ingevoerd. "
+        "Begin direct met een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
         "identiteits- en naamvarianten, mogelijke online accounts (gegroepeerd per platform met URL en status), "
         "belangrijkste inhoudelijke bevindingen, mogelijke relaties of associaties, onzekerheden en vervolgstappen. "
         "Als er LinkedIn-findings zijn, analyseer dan ook de daarin vastgelegde profielgegevens en neem concrete "
@@ -734,7 +765,6 @@ def investigation_ai_narrative(case_id, investigation_id):
         "Leid geen nieuwe gegevens af buiten de vastgelegde LinkedIn-finding; markeer ontbrekende of onzekere gegevens. "
         "Neem ieder account alleen op als kandidaat of geverifieerd volgens de bronstatus. "
         "Verbind iedere belangrijke bewering aan de bijbehorende bron-URL of finding. "
-        "Herhaal de onderzoeksvraag niet in je antwoord; die wordt al apart door het systeem geplaatst. "
         "Gebruik de genormaliseerde subjectnaam zonder een losse dubbele voorletter. "
         "Behandel browser_search-items met 'manual review' uitsluitend als nog handmatig uit te voeren zoekopdrachten, "
         "niet als onderzoeksresultaten. "
@@ -749,6 +779,7 @@ def investigation_ai_narrative(case_id, investigation_id):
     if not narrative:
         return jsonify({"error": "De AI kon geen rapport genereren"}), 503
     narrative = _clean_narrative_placeholders(narrative, subject_names)
+    narrative = _remove_repeated_ai_question(narrative)
     investigation.ai_narrative = narrative
     investigation.ai_narrative_generated_at = datetime.now(timezone.utc)
     investigation.ai_narrative_generated_by = current_user.id
