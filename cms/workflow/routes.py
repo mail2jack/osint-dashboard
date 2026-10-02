@@ -57,7 +57,10 @@ from cms.services.finding_capture_queue import (
     enqueue_finding_capture,
 )
 from cms.services.report_evidence import report_screenshots
-from cms.services.report_findings import deduplicate_report_findings
+from cms.services.report_findings import (
+    deduplicate_report_findings,
+    normalize_report_markdown,
+)
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -3290,7 +3293,14 @@ def pv_view(case_id):
         "th": ["align"],
         "td": ["align"],
     }
-    raw_html = md_lib.markdown(case.pv_body or "") if case.pv_body else ""
+    raw_html = (
+        md_lib.markdown(
+            normalize_report_markdown(case.pv_body),
+            extensions=["tables"],
+        )
+        if case.pv_body
+        else ""
+    )
     body_html = bleach.clean(raw_html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
 
     # Never let a stored external URL become an image request in a report.  The

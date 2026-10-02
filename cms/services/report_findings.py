@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import re
+
+
+_TABLE_SEPARATOR = re.compile(r"^:?-{3,}:?$")
+
 
 def deduplicate_report_findings(findings):
     """Return visible findings once per identical evidential payload.
@@ -40,3 +45,70 @@ def deduplicate_report_findings(findings):
         if finding_score > existing_score:
             result[existing_position] = finding
     return result
+
+
+def normalize_report_markdown(markdown_text: str | None) -> str:
+    """Repair compact pipe tables emitted as one physical Markdown line.
+
+    Some generated reports contain a complete table (header, separator and
+    rows) on one line.  Markdown table parsers need one physical line per row,
+    so split only the unambiguous table shape and leave all other text intact.
+    """
+    if not markdown_text:
+        return markdown_text or ""
+
+    normalized = []
+    for line in markdown_text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            normalized.append(line)
+            continue
+
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        # A compact table commonly has an empty cell between each concatenated
+        # row (``... | |---| ... | |Row...``).  Those separators are not data
+        # cells and can be removed once a table separator is present.
+        compact_cells = [cell for cell in cells if cell]
+        separator_start = next(
+            (
+                index
+                for index, cell in enumerate(compact_cells)
+                if _TABLE_SEPARATOR.fullmatch(cell)
+            ),
+            None,
+        )
+        if separator_start is None or separator_start == 0:
+            normalized.append(line)
+            continue
+
+        column_count = 0
+        while (
+            separator_start + column_count < len(compact_cells)
+            and _TABLE_SEPARATOR.fullmatch(
+                compact_cells[separator_start + column_count]
+            )
+        ):
+            column_count += 1
+
+        if separator_start != column_count:
+            normalized.append(line)
+            continue
+
+        remaining = compact_cells[2 * column_count :]
+        if not remaining or len(remaining) % column_count:
+            normalized.append(line)
+            continue
+
+        rows = [
+            compact_cells[:column_count],
+            compact_cells[column_count : 2 * column_count],
+        ]
+        rows.extend(
+            remaining[offset : offset + column_count]
+            for offset in range(0, len(remaining), column_count)
+        )
+        normalized.extend(
+            "| " + " | ".join(row) + " |" for row in rows
+        )
+
+    return "\n".join(normalized)
