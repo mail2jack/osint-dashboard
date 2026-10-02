@@ -61,7 +61,16 @@
 .relationship-graph-wrap { display:grid; grid-template-columns:minmax(0, 1fr) 280px; gap:1rem; align-items:start; }
 .relationship-graph-canvas { width:100%; min-height:360px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card,#fff); overflow:hidden; }
 .relationship-graph-canvas svg { display:block; width:100%; height:auto; min-height:360px; }
+.relationship-graph-canvas.is-pannable { cursor:grab; touch-action:none; }
+.relationship-graph-canvas.is-pannable.is-panning { cursor:grabbing; }
+.relationship-graph-toolbar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.relationship-graph-toolbar button { border:1px solid var(--border-color); border-radius:5px; padding:.25rem .5rem; background:var(--bg-card); color:var(--text-primary); cursor:pointer; font-size:.78rem; }
+.relationship-graph-toolbar button:hover { border-color:var(--accent-primary); color:var(--accent-primary); }
+.relationship-graph-toolbar .graph-zoom-label { margin-left:auto; color:var(--text-muted); font-size:.75rem; }
 .relationship-graph-edge { stroke:#94a3b8; stroke-width:1.5; opacity:.8; cursor:pointer; }
+.relationship-graph-edge.is-dimmed, .relationship-graph-node.is-dimmed { opacity:.16; }
+.relationship-graph-edge.is-highlighted { opacity:1; stroke-width:3; }
+.relationship-graph-node.is-highlighted circle { stroke:#f59e0b; stroke-width:4; }
 .relationship-graph-edge.verified { stroke:#15803d; stroke-width:2.2; }
 .relationship-graph-edge.candidate { stroke:#b45309; stroke-dasharray:5 4; }
 .relationship-graph-edge-label { fill:var(--text-muted); font-size:10px; pointer-events:none; }
@@ -229,6 +238,13 @@
     <p style="font-size:.84rem;color:var(--text-secondary);margin-top:0;">Deze grafiek toont relaties die herleidbaar zijn naar findings uit dit onderzoek. Een verbinding is een onderzoeksaanwijzing, geen automatisch bewezen relatie.</p>
     <div class="relationship-graph-wrap">
       <div>
+        <div class="relationship-graph-toolbar" aria-label="Bediening relatiegrafiek">
+          <button type="button" id="relationshipGraphZoomOut" title="Uitzoomen">−</button>
+          <button type="button" id="relationshipGraphZoomIn" title="Inzoomen">+</button>
+          <button type="button" id="relationshipGraphReset" title="Weergave herstellen">Herstel weergave</button>
+          <button type="button" id="relationshipGraphClear" title="Selectie wissen">Wis selectie</button>
+          <span class="graph-zoom-label" id="relationshipGraphZoomLabel">100%</span>
+        </div>
         <div class="relationship-graph-canvas">
           <svg id="relationshipGraphSvg" viewBox="0 0 1000 560" role="img" aria-label="Relatiegrafiek van dit onderzoek"></svg>
         </div>
@@ -250,12 +266,17 @@
   if (!svg || !detail) return;
   var graph = {{ relationship_graph|tojson }};
   var NS = 'http://www.w3.org/2000/svg';
+  var canvas = svg.parentElement;
   var nodeById = {};
   graph.nodes.forEach(function (node) { nodeById[node.id] = node; });
   var positions = {};
   var center = {x: 500, y: 280};
   var subjects = graph.nodes.filter(function (node) { return node.type === 'subject'; });
   var entities = graph.nodes.filter(function (node) { return node.type === 'entity'; });
+  var viewport;
+  var edgeElements = [];
+  var nodeElements = [];
+  var view = {scale: 1, x: 0, y: 0, panning: false, startX: 0, startY: 0, originX: 0, originY: 0};
   positions.investigation = center;
   subjects.forEach(function (node, index) {
     var angle = (Math.PI * 2 * index / Math.max(subjects.length, 1)) - Math.PI / 2;
@@ -270,6 +291,53 @@
     var item = document.createElementNS(NS, name);
     Object.keys(attrs || {}).forEach(function (key) { item.setAttribute(key, attrs[key]); });
     return item;
+  }
+  viewport = el('g', {id:'relationshipGraphViewport'});
+  function updateView() {
+    viewport.setAttribute('transform', 'translate(' + view.x + ' ' + view.y + ') scale(' + view.scale + ')');
+    var zoomLabel = document.getElementById('relationshipGraphZoomLabel');
+    if (zoomLabel) zoomLabel.textContent = Math.round(view.scale * 100) + '%';
+  }
+  function zoom(factor) {
+    view.scale = Math.max(.55, Math.min(2.2, view.scale * factor));
+    updateView();
+  }
+  function resetView() {
+    view.scale = 1; view.x = 0; view.y = 0;
+    updateView(); clearHighlight();
+  }
+  function clearHighlight() {
+    edgeElements.forEach(function (item) { item.element.classList.remove('is-dimmed', 'is-highlighted'); });
+    nodeElements.forEach(function (item) { item.element.classList.remove('is-dimmed', 'is-highlighted'); });
+  }
+  function highlightNode(nodeId) {
+    var connected = {};
+    graph.edges.forEach(function (edge, index) {
+      if (edge.source === nodeId || edge.target === nodeId) connected[index] = true;
+    });
+    edgeElements.forEach(function (item, index) {
+      item.element.classList.toggle('is-highlighted', !!connected[index]);
+      item.element.classList.toggle('is-dimmed', !connected[index]);
+    });
+    nodeElements.forEach(function (item) {
+      var related = item.node.id === nodeId || graph.edges.some(function (edge) {
+        return (edge.source === nodeId && edge.target === item.node.id) || (edge.target === nodeId && edge.source === item.node.id);
+      });
+      item.element.classList.toggle('is-highlighted', item.node.id === nodeId);
+      item.element.classList.toggle('is-dimmed', !related);
+    });
+  }
+  function highlightEdge(edge) {
+    edgeElements.forEach(function (item) {
+      var active = item.edge === edge;
+      item.element.classList.toggle('is-highlighted', active);
+      item.element.classList.toggle('is-dimmed', !active);
+    });
+    nodeElements.forEach(function (item) {
+      var related = item.node.id === edge.source || item.node.id === edge.target;
+      item.element.classList.toggle('is-highlighted', related);
+      item.element.classList.toggle('is-dimmed', !related);
+    });
   }
   function shortLabel(value, max) {
     value = String(value || '');
@@ -299,14 +367,16 @@
     setDetail('Verbinding', '<div style="margin-top:.45rem;">' + shortLabel(source.label, 70) + ' → ' + shortLabel(target.label, 70) + '</div><div>Wijze: ' + (edge.label || 'finding') + '</div><div>Status: ' + (edge.status || 'candidate') + '</div>' + extra + '<div style="margin-top:.4rem;color:var(--text-muted);">Finding: ' + (edge.finding_id || '—') + '</div>');
   }
   if (!graph.nodes.length) { detail.textContent = 'Er zijn nog geen gegevens voor een relatiegrafiek.'; return; }
+  svg.appendChild(viewport);
   graph.edges.forEach(function (edge) {
     var source = positions[edge.source] || center, target = positions[edge.target] || center;
     var line = el('line', {x1:source.x, y1:source.y, x2:target.x, y2:target.y, class:'relationship-graph-edge ' + (edge.status === 'verified' ? 'verified' : 'candidate')});
-    line.addEventListener('click', function () { showEdge(edge); });
-    svg.appendChild(line);
+    line.addEventListener('click', function () { showEdge(edge); highlightEdge(edge); });
+    viewport.appendChild(line);
+    edgeElements.push({element:line, edge:edge});
     var label = el('text', {x:(source.x + target.x) / 2, y:(source.y + target.y) / 2 - 4, class:'relationship-graph-edge-label', 'text-anchor':'middle'});
     label.textContent = shortLabel(edge.label || 'finding', 18);
-    svg.appendChild(label);
+    viewport.appendChild(label);
   });
   graph.nodes.forEach(function (node) {
     var pos = positions[node.id] || center;
@@ -316,14 +386,36 @@
     text.textContent = shortLabel(node.label, node.type === 'entity' ? 25 : 30);
     group.appendChild(circle); group.appendChild(text);
     group.addEventListener('click', function () {
+      highlightNode(node.id);
       if (node.type === 'subject' && node.url) {
         window.location.href = node.url;
         return;
       }
       showNode(node);
     });
-    svg.appendChild(group);
+    viewport.appendChild(group);
+    nodeElements.push({element:group, node:node});
   });
+  updateView();
+  document.getElementById('relationshipGraphZoomOut').addEventListener('click', function () { zoom(.85); });
+  document.getElementById('relationshipGraphZoomIn').addEventListener('click', function () { zoom(1.18); });
+  document.getElementById('relationshipGraphReset').addEventListener('click', resetView);
+  document.getElementById('relationshipGraphClear').addEventListener('click', function () { clearHighlight(); detail.textContent = 'Selecteer een knooppunt of verbinding voor details.'; });
+  canvas.classList.add('is-pannable');
+  svg.addEventListener('pointerdown', function (event) {
+    if (event.target.closest && event.target.closest('.relationship-graph-node')) return;
+    view.panning = true; view.startX = event.clientX; view.startY = event.clientY; view.originX = view.x; view.originY = view.y;
+    canvas.classList.add('is-panning'); svg.setPointerCapture(event.pointerId);
+  });
+  svg.addEventListener('pointermove', function (event) {
+    if (!view.panning) return;
+    view.x = view.originX + event.clientX - view.startX;
+    view.y = view.originY + event.clientY - view.startY;
+    updateView();
+  });
+  function stopPan() { view.panning = false; canvas.classList.remove('is-panning'); }
+  svg.addEventListener('pointerup', stopPan);
+  svg.addEventListener('pointercancel', stopPan);
 })();
 </script>
 
