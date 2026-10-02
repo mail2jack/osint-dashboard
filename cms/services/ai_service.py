@@ -305,6 +305,12 @@ def _generate(prompt, system_prompt=None, timeout=60, max_tokens=4096) -> str | 
         result = openrouter_generate(prompt, system_prompt, timeout, max_tokens)
         if result is not None:
             return result
+        # Do not wait through another full model timeout when Ollama is not
+        # actually running.  This keeps API callers responsive after an
+        # OpenRouter timeout instead of letting the web worker be killed.
+        if not check_ollama_available():
+            logger.info("OpenRouter failed and Ollama is unavailable")
+            return None
         logger.info("OpenRouter failed, falling back to Ollama")
     return ollama_generate(prompt, system_prompt, timeout)
 

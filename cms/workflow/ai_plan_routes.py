@@ -773,8 +773,8 @@ def investigation_ai_narrative(case_id, investigation_id):
         "en schrijf voor onbekende gegevens dat ze niet zijn vastgesteld. "
         "Dit is een analytische samenvatting en geen zelfstandig bewijs.\n\nGEGEVENS:\n" + prompt,
         "Je bent een zorgvuldige OSINT-analist. Scheid feiten, bronclaims en interpretaties strikt.",
-        timeout=90,
-        max_tokens=8192,
+        timeout=60,
+        max_tokens=4096,
     )
     if not narrative:
         return jsonify({"error": "De AI kon geen rapport genereren"}), 503
