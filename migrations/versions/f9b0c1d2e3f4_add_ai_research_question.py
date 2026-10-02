@@ -1,7 +1,7 @@
 """Store the original AI research question on investigations.
 
 Revision ID: f9b0c1d2e3f4
-Revises: f8a9b0c1d2e3
+Revises: b8c9d0e1f4a5
 Create Date: 2026-10-02
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 
 revision: str = "f9b0c1d2e3f4"
-down_revision: str | None = "f8a9b0c1d2e3"
+down_revision: str | None = "b8c9d0e1f4a5"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
