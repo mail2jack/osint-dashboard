@@ -519,11 +519,11 @@ input:-webkit-autofill:focus {
   </div>
 </div>
 
-{% if findings_pages > 1 %}
+{% if findings_pages|default(1, true) > 1 %}
 <div style="display:flex;justify-content:center;align-items:center;gap:.75rem;margin:.75rem 0 1.25rem;">
-  {% if findings_page > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page-1, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>{% endif %}
-  <span style="font-size:.8rem;color:var(--text-muted);">{{ _('Page') }} {{ findings_page }} / {{ findings_pages }}</span>
-  {% if findings_page < findings_pages %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page+1, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>{% endif %}
+  {% if findings_page|default(1, true) > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)-1, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>{% endif %}
+  <span style="font-size:.8rem;color:var(--text-muted);">{{ _('Page') }} {{ findings_page|default(1, true) }} / {{ findings_pages|default(1, true) }}</span>
+  {% if findings_page|default(1, true) < findings_pages|default(1, true) %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)+1, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>{% endif %}
 </div>
 {% endif %}
 
