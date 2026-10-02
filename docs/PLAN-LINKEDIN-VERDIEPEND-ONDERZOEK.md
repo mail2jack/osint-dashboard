@@ -66,3 +66,26 @@ onderzoeker deze valideert.
 Voor fase 2 moet nog worden bepaald welke toegestane uitvoermethode we willen
 gebruiken: alleen bestaande findings, een gecontroleerde browseractie, of een
 officiële API wanneer die beschikbaar en passend is.
+
+## Vastgelegde keuze
+
+De gekozen methode is **optie A: gecontroleerde browseractie**.
+
+De bestaande browser-sandbox op staging is op dit moment ingericht voor
+beveiligde publieke pagina-captures en screenshots. Voor LinkedIn-verdieping
+moet deze nog worden uitgebreid met een aparte, begrensde tekstextractie:
+
+1. de webapp geeft uitsluitend een expliciet gestart voorstel door aan de
+   dedicated sandbox-worker;
+2. de worker accepteert alleen een `https://www.linkedin.com/...`-URL;
+3. de worker controleert redirects en DNS opnieuw via de SSRF-bescherming;
+4. alleen zichtbare profieltekst wordt kortstondig uitgelezen;
+5. loginpagina’s, CAPTCHA’s, blokkades en niet-openbare inhoud worden als
+   `niet toegankelijk` geregistreerd en niet omzeild;
+6. de worker maakt kandidaat-findings met bron-URL, tijdstip en actie-ID;
+7. de onderzoeker valideert de findings voordat ze in het rapport of de
+   relatiegrafiek worden gebruikt.
+
+De webapp mag deze browser niet rechtstreeks starten. Eerst moet de aparte
+sandbox-worker worden uitgebreid en met een testprofiel worden gevalideerd;
+pas daarna wordt de actie op staging ingeschakeld.
