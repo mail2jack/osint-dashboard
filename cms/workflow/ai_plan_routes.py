@@ -76,7 +76,22 @@ def _clean_narrative_placeholders(narrative, subject_names):
     def replace(match):
         return replacements.get(match.group(1), match.group(1).replace("_", " ").title())
 
-    return _NARRATIVE_PLACEHOLDER_RE.sub(replace, narrative or "").strip()
+    cleaned = _NARRATIVE_PLACEHOLDER_RE.sub(replace, narrative or "").strip()
+    for name in subject_names:
+        canonical = _canonical_person_name(name)
+        if name and canonical and name != canonical:
+            cleaned = cleaned.replace(name, canonical)
+    return cleaned
+
+
+def _canonical_person_name(name):
+    """Return a person's name without a duplicated leading initial."""
+    text = str(name or "").strip()
+    parts = text.split()
+    if len(parts) >= 2 and re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ]\.", parts[0]):
+        if parts[1] and parts[0][0].casefold() == parts[1][0].casefold():
+            return " ".join(parts[1:])
+    return text
 
 
 def _candidate_account_context(findings):
@@ -585,11 +600,13 @@ def investigation_ai_narrative(case_id, investigation_id):
             subject_names.append(action.subject.name)
     if not subject_names:
         subject_names = [subject.name for subject in case.subjects if subject.name]
+    canonical_subject_names = [_canonical_person_name(name) for name in subject_names]
     research_question = (investigation.ai_research_question or "").strip()
     prompt = json.dumps({
         "investigation": investigation.title,
         "case": case.case_number,
         "research_question": research_question or "Niet opgeslagen",
+        "subject_names": canonical_subject_names,
         "actions": action_context,
         "findings": evidence,
         "possible_accounts_extracted_from_findings": _candidate_account_context(findings),
@@ -602,6 +619,10 @@ def investigation_ai_narrative(case_id, investigation_id):
         "belangrijkste inhoudelijke bevindingen, mogelijke relaties of associaties, onzekerheden en vervolgstappen. "
         "Neem ieder account alleen op als kandidaat of geverifieerd volgens de bronstatus. "
         "Verbind iedere belangrijke bewering aan de bijbehorende bron-URL of finding. "
+        "Herhaal de onderzoeksvraag niet in je antwoord; die wordt al apart door het systeem geplaatst. "
+        "Gebruik de genormaliseerde subjectnaam zonder een losse dubbele voorletter. "
+        "Behandel browser_search-items met 'manual review' uitsluitend als nog handmatig uit te voeren zoekopdrachten, "
+        "niet als onderzoeksresultaten. "
         "Verzin niets, presenteer kandidaten niet als feiten, en noem bronnen bij de relevante bevindingen. "
         "Gebruik nooit tekst tussen vierkante haken als placeholder. Vervang bekende namen door hun echte naam "
         "en schrijf voor onbekende gegevens dat ze niet zijn vastgesteld. "
