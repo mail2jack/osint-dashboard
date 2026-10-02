@@ -12,12 +12,14 @@ import json
 import logging
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import sqlalchemy as sa
 
 from cms.models import ActionFinding, Finding, Notification, SpiderFootScan, db
 from cms.tenant_context import set_tenant_context
 from cms.tier_limits import check_feature
+from cms.services.report_findings import finding_payload_key
 from cms.workflow.models import WorkflowResearchAction
 
 logger = logging.getLogger(__name__)
@@ -191,6 +193,17 @@ def _materialize_completed_proposals(
         if isinstance(index, int) and not isinstance(index, bool)
     }
     created = 0
+    existing_findings = Finding.query.filter(
+        Finding.tenant_id == action.tenant_id,
+        Finding.case_id == action.case_id,
+        Finding.subject_id == action.subject_id,
+        Finding.is_deleted == False,  # noqa: E712
+        Finding.archived_at.is_(None),
+    ).all()
+    existing_by_key = {
+        finding_payload_key(finding, include_subject=True): finding
+        for finding in existing_findings
+    }
     for index, proposal in enumerate(proposals):
         if index in imported or not isinstance(proposal, dict):
             continue
@@ -201,13 +214,36 @@ def _materialize_completed_proposals(
             continue
         module = str(proposal.get("source_module") or "")[:200]
         source_url = str(proposal.get("source_url") or "")[:2000] or None
+        title = f"Verdiept bronnenonderzoek · {event_type}: {data[:100]}"
+        content = (
+            f"Bron: Verdiept bronnenonderzoek\nType: {event_type}\nData: {data}"
+            + (f"\nModule: {module}" if module else "")
+        )
+        finding_key = finding_payload_key(
+            SimpleNamespace(
+                title=title,
+                content=content,
+                detail=data,
+                source_url=source_url,
+                source_type="spiderfoot",
+                subject_id=action.subject_id,
+            ),
+            include_subject=True,
+        )
+        existing = existing_by_key.get(finding_key)
+        if existing:
+            if not ActionFinding.query.filter_by(
+                action_id=action.id, finding_id=existing.id
+            ).first():
+                db.session.add(ActionFinding(action_id=action.id, finding_id=existing.id))
+            imported.add(index)
+            continue
         finding = Finding(
             tenant_id=action.tenant_id,
             case_id=action.case_id,
             subject_id=action.subject_id,
-            title=f"Verdiept bronnenonderzoek · {event_type}: {data[:100]}",
-            content=(f"Bron: Verdiept bronnenonderzoek\nType: {event_type}\nData: {data}"
-                     + (f"\nModule: {module}" if module else "")),
+            title=title,
+            content=content,
             detail=data,
             source_url=source_url,
             source_type="spiderfoot",
@@ -224,6 +260,7 @@ def _materialize_completed_proposals(
         db.session.add(finding)
         db.session.flush()
         db.session.add(ActionFinding(action_id=action.id, finding_id=finding.id))
+        existing_by_key[finding_key] = finding
         imported.add(index)
         created += 1
     state["imported_indexes"] = sorted(imported)

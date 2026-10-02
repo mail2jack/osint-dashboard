@@ -8,6 +8,20 @@ import re
 _TABLE_SEPARATOR = re.compile(r"^:?-{3,}:?$")
 
 
+def finding_payload_key(finding, *, include_subject: bool = False):
+    """Return a stable identity for one evidential finding payload."""
+    key = (
+        finding.title or "",
+        finding.content or "",
+        finding.detail or "",
+        finding.source_url or "",
+        finding.source_type or "",
+    )
+    if include_subject:
+        return (getattr(finding, "subject_id", None),) + key
+    return key
+
+
 def deduplicate_report_findings(findings):
     """Return visible findings once per identical evidential payload.
 
@@ -20,13 +34,7 @@ def deduplicate_report_findings(findings):
     result = []
     positions = {}
     for finding in findings:
-        key = (
-            finding.title or "",
-            finding.content or "",
-            finding.detail or "",
-            finding.source_url or "",
-            finding.source_type or "",
-        )
+        key = finding_payload_key(finding)
         existing_position = positions.get(key)
         if existing_position is None:
             positions[key] = len(result)

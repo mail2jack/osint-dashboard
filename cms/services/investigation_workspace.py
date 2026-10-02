@@ -40,6 +40,7 @@ from urllib.parse import urlparse
 import sqlalchemy as sa
 
 from cms.models import AuditLog, Investigation, Subject, User, db
+from cms.services.report_findings import finding_payload_key
 from cms.services.subject_service import subject_display_name
 from cms.workflow.actions.registry import ACTION_REGISTRY
 from cms.workflow.models import (
@@ -52,6 +53,22 @@ logger = logging.getLogger(__name__)
 
 # Maximum number of timeline events rendered on the workspace page.
 CAP = 50
+
+
+def _deduplicate_workspace_findings(findings):
+    """Collapse identical active findings while retaining source action links."""
+    unique = []
+    canonical_by_id = {}
+    seen = {}
+    for finding in findings:
+        key = finding_payload_key(finding, include_subject=True)
+        canonical = seen.get(key)
+        if canonical is None:
+            seen[key] = finding
+            unique.append(finding)
+            canonical = finding
+        canonical_by_id[finding.id] = canonical.id
+    return unique, canonical_by_id
 
 # Sort key used for events without a timestamp (older than everything).
 _EPOCH_FLOOR = -float("inf")
@@ -396,6 +413,7 @@ def load_inv_findings(
         .all()
     )
     survivors = {f.id for f in findings}
+    findings, canonical_by_id = _deduplicate_workspace_findings(findings)
     scoped_actions = WorkflowResearchAction.query.filter(
         WorkflowResearchAction.tenant_id == tenant_id,
         WorkflowResearchAction.case_id == case_id,
@@ -407,7 +425,10 @@ def load_inv_findings(
     for link in junction:
         if link.finding_id not in survivors:
             continue
-        finding_actions_map.setdefault(link.finding_id, []).append(link.action_id)
+        canonical_id = canonical_by_id.get(link.finding_id, link.finding_id)
+        action_ids_for_finding = finding_actions_map.setdefault(canonical_id, [])
+        if link.action_id not in action_ids_for_finding:
+            action_ids_for_finding.append(link.action_id)
 
     dtos = [
         FindingDTO(
@@ -674,6 +695,7 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
             .all()
         )
     survivors = {f.id for f in findings_orm}
+    findings_orm, canonical_by_id = _deduplicate_workspace_findings(findings_orm)
 
     timeline = load_inv_timeline(
         tenant_id=tenant_id,
@@ -709,6 +731,9 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
     action_display = {a.id: _action_display_label(a) for a in actions_orm}
     action_icon_map = {a.id: _action_icon(a) for a in actions_orm}
     finding_display = {f.id: f.title for f in findings_orm}
+    for finding_id, canonical_id in canonical_by_id.items():
+        if finding_id not in finding_display and canonical_id in finding_display:
+            finding_display[finding_id] = finding_display[canonical_id]
 
     # Channel-B events can reference actions that are no longer in scope
     # (unlinked); resolve their labels in one extra query so the timeline never
@@ -736,7 +761,10 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
     for link in junction:
         if link.finding_id not in survivors:
             continue
-        finding_actions_map.setdefault(link.finding_id, []).append(link.action_id)
+        canonical_id = canonical_by_id.get(link.finding_id, link.finding_id)
+        action_ids_for_finding = finding_actions_map.setdefault(canonical_id, [])
+        if link.action_id not in action_ids_for_finding:
+            action_ids_for_finding.append(link.action_id)
     finding_action_labels: dict[str, list[str]] = {}
     for finding_id, f_action_ids in finding_actions_map.items():
         finding_action_labels[finding_id] = [

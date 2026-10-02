@@ -2757,7 +2757,20 @@ def create_proposals(case_id):
             return jsonify({"error": "Subject is not linked to this case"}), 400
 
     created = []
+    duplicate_action_types = []
     for action_type in action_types:
+        duplicate = WorkflowResearchAction.query.filter(
+            WorkflowResearchAction.tenant_id == current_user.tenant_id,
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.subject_id == subject_id,
+            WorkflowResearchAction.investigation_id == investigation_id,
+            WorkflowResearchAction.action_type == action_type,
+            WorkflowResearchAction.archived_at.is_(None),
+            WorkflowResearchAction.status.in_(["proposal", "pending", "running"]),
+        ).first()
+        if duplicate:
+            duplicate_action_types.append(action_type)
+            continue
         action = WorkflowResearchAction(
             id=str(uuid.uuid4()),
             case_id=case_id,
@@ -2768,6 +2781,7 @@ def create_proposals(case_id):
             label=ACTION_REGISTRY[action_type]["label"],
             status="proposal",
             tenant_id=current_user.tenant_id,
+            created_by=current_user.id,
         )
         action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
         db.session.add(action)
@@ -2789,7 +2803,14 @@ def create_proposals(case_id):
             new_investigation_id=investigation_id,
         )
     db.session.commit()
-    return jsonify({"ok": True, "ids": created, "skipped": skipped})
+    return jsonify(
+        {
+            "ok": True,
+            "ids": created,
+            "skipped": skipped,
+            "duplicate_actions": duplicate_action_types,
+        }
+    )
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/start", methods=["POST"])
