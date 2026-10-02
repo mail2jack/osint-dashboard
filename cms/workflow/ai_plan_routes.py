@@ -612,7 +612,7 @@ def investigation_ai_narrative(case_id, investigation_id):
         "possible_accounts_extracted_from_findings": _candidate_account_context(findings),
     }, ensure_ascii=False)
     narrative = _generate(
-        "Schrijf een helder Nederlandstalig onderzoeksverhaal op basis van uitsluitend de onderstaande gegevens. "
+        "Schrijf een helder Nederlandstalig onderzoeksrapport op basis van uitsluitend de onderstaande gegevens. "
         "Begin het informatieproduct met de exacte onderzoeksvraag onder de kop 'Onderzoeksvraag'. "
         "Maak daarna een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
         "identiteits- en naamvarianten, mogelijke online accounts (gegroepeerd per platform met URL en status), "
@@ -632,7 +632,7 @@ def investigation_ai_narrative(case_id, investigation_id):
         max_tokens=8192,
     )
     if not narrative:
-        return jsonify({"error": "De AI kon geen verhaal genereren"}), 503
+        return jsonify({"error": "De AI kon geen rapport genereren"}), 503
     narrative = _clean_narrative_placeholders(narrative, subject_names)
     investigation.ai_narrative = narrative
     investigation.ai_narrative_generated_at = datetime.now(timezone.utc)
