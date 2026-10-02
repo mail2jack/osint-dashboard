@@ -201,7 +201,7 @@ def _build_relationship_graph(ws, case_subjects=None):
         if len(matches) < 2:
             continue
         for index, (left_id, label) in enumerate(matches):
-            for right_id, _ in matches[index + 1:]:
+            for right_id, _right_label in matches[index + 1:]:
                 pair = tuple(sorted((left_id, right_id)))
                 edge_key = (pair, kind, value)
                 if edge_key in edge_keys:
