@@ -995,6 +995,9 @@ function pollStatus() {
   })
   .catch(function () { /* transient polling error; retry on the next interval */ });
 }
+function refreshFindingView() {
+  window.setTimeout(function () { window.location.reload(); }, 250);
+}
 var investigationPollTimer = null;
 var investigationHasRunning = Object.keys(INITIAL_ACTION_STATES).some(function (id) {
   return INITIAL_ACTION_STATES[id] === 'pending' || INITIAL_ACTION_STATES[id] === 'running';
