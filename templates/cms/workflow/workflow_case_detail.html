@@ -110,11 +110,11 @@
 }
 /* Keep consecutive findings easy to scan without introducing loud colours. */
 .finding-group-body > .finding-item:nth-of-type(even) {
-  background: rgba(99,102,241,0.035);
+  background: rgba(99,102,241,0.075);
 }
 @supports (background: color-mix(in srgb, white 50%, black)) {
   .finding-group-body > .finding-item:nth-of-type(even) {
-    background: color-mix(in srgb, var(--bg-card) 97%, var(--accent-primary) 3%);
+    background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
 }
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
