@@ -56,6 +56,27 @@ _PLAN_ACTIONS = {
     "domain": ["osint", "subdomain", "browser_search"],
 }
 
+_NARRATIVE_PLACEHOLDER_RE = re.compile(r"\[([A-Z][A-Z0-9_ ]+)\]")
+
+
+def _clean_narrative_placeholders(narrative, subject_names):
+    """Replace common AI placeholders and remove unresolved brackets."""
+    primary_name = next((name for name in subject_names if name), "de onderzochte persoon")
+    replacements = {
+        "PERSON_NAME": primary_name,
+        "SUBJECT_NAME": primary_name,
+        "NAME": primary_name,
+        "ADDRESS": "Adres",
+        "EMAIL": "E-mailadres",
+        "PHONE": "Telefoonnummer",
+        "SOURCE": "Bron",
+    }
+
+    def replace(match):
+        return replacements.get(match.group(1), match.group(1).replace("_", " ").title())
+
+    return _NARRATIVE_PLACEHOLDER_RE.sub(replace, narrative or "").strip()
+
 
 def _upsert_narrative_in_report(case, investigation, narrative):
     """Insert or replace one AI narrative in the editable Markdown report."""
@@ -519,11 +540,19 @@ def investigation_ai_narrative(case_id, investigation_id):
         {"label": action.label or action.action_type, "query": action.data_value or "", "status": action.status}
         for action in actions if action.status != "proposal"
     ]
+    subject_names = []
+    for action in actions:
+        if action.subject and action.subject.name and action.subject.name not in subject_names:
+            subject_names.append(action.subject.name)
+    if not subject_names:
+        subject_names = [subject.name for subject in case.subjects if subject.name]
     prompt = json.dumps({"investigation": investigation.title, "case": case.case_number, "actions": action_context, "findings": evidence}, ensure_ascii=False)
     narrative = _generate(
         "Schrijf een helder Nederlandstalig onderzoeksverhaal op basis van uitsluitend de onderstaande gegevens. "
         "Gebruik korte alinea's met: kernbeeld, belangrijkste bevindingen, onzekerheden en vervolgstappen. "
         "Verzin niets, presenteer kandidaten niet als feiten, en noem bronnen bij de relevante bevindingen. "
+        "Gebruik nooit tekst tussen vierkante haken als placeholder. Vervang bekende namen door hun echte naam "
+        "en schrijf voor onbekende gegevens dat ze niet zijn vastgesteld. "
         "Dit is een analytische samenvatting en geen zelfstandig bewijs.\n\nGEGEVENS:\n" + prompt,
         "Je bent een zorgvuldige OSINT-analist. Scheid feiten, bronclaims en interpretaties strikt.",
         timeout=90,
@@ -531,6 +560,7 @@ def investigation_ai_narrative(case_id, investigation_id):
     )
     if not narrative:
         return jsonify({"error": "De AI kon geen verhaal genereren"}), 503
+    narrative = _clean_narrative_placeholders(narrative, subject_names)
     investigation.ai_narrative = narrative
     investigation.ai_narrative_generated_at = datetime.now(timezone.utc)
     investigation.ai_narrative_generated_by = current_user.id
