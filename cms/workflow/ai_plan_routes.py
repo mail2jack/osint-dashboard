@@ -22,6 +22,7 @@ from cms.services.ai_service import (
     check_ai_available,
     get_ai_config,
 )
+from cms.services.finding_followups import extract_finding_followups
 from cms.workflow.actions.registry import (
     ACTION_REGISTRY,
     is_paid_action,
@@ -688,6 +689,104 @@ def create_linkedin_deepening_proposal(case_id, investigation_id):
     )
     db.session.commit()
     return jsonify({"ok": True, "id": action.id, "status": "proposal", "started": False})
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/extract-followups",
+    methods=["POST"],
+)
+@login_required
+def extract_investigation_followups(case_id, investigation_id):
+    """Extract finding values and save explicit, non-started follow-up proposals."""
+    denied = _investigator_required()
+    if denied:
+        return denied
+    case, error = _load_case(case_id)
+    if error:
+        return error
+    investigation = db.session.get(Investigation, investigation_id)
+    if not investigation or investigation.case_id != case_id:
+        return jsonify({"error": "Investigation not found"}), 404
+    ensure_case_access(case)
+
+    actions = WorkflowResearchAction.query.filter_by(
+        case_id=case_id, investigation_id=investigation_id, tenant_id=current_user.tenant_id
+    ).all()
+    findings = []
+    seen_findings = set()
+    for action in actions:
+        for finding in action.findings:
+            if finding.id not in seen_findings and not finding.archived_at:
+                seen_findings.add(finding.id)
+                findings.append(finding)
+    subjects = case.subjects.all()
+    extracted = extract_finding_followups(findings, subjects)
+
+    created = []
+    candidates = []
+
+    def add_proposal(action_type, value, label, subject_id=None, finding_ids=None):
+        existing = WorkflowResearchAction.query.filter_by(
+            case_id=case_id,
+            investigation_id=investigation_id,
+            action_type=action_type,
+            data_value=value,
+            status="proposal",
+        ).first()
+        item = {
+            "action_type": action_type,
+            "value": value,
+            "label": label,
+            "finding_ids": finding_ids or [],
+            "existing": bool(existing),
+        }
+        candidates.append(item)
+        if existing:
+            return
+        action = WorkflowResearchAction(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            subject_id=subject_id,
+            investigation_id=investigation_id,
+            target_kind="subject" if subject_id else "case",
+            action_type=action_type,
+            data_value=value,
+            label=label,
+            status="proposal",
+            tenant_id=current_user.tenant_id,
+            created_by=current_user.id,
+        )
+        subject = db.session.get(WorkflowSubject, subject_id) if subject_id else None
+        action.target_snapshot = json.dumps(action.build_target_snapshot(subject, value))
+        db.session.add(action)
+        db.session.flush()
+        log_scope_audit(
+            action=action,
+            audit_action="create",
+            user_id=current_user.id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Extracted follow-up proposal from findings: {label}",
+            new_investigation_id=investigation_id,
+        )
+        created.append(action.id)
+
+    for item in extracted["emails"]:
+        add_proposal("email", item["value"], "Email uit finding controleren", finding_ids=item["finding_ids"])
+    for item in extracted["phones"]:
+        add_proposal("phone", item["value"], "Telefoonnummer uit finding controleren", finding_ids=item["finding_ids"])
+    for item in extracted["accounts"]:
+        # Paid platform actions are never silently proposed. A browser review
+        # keeps the URL available without spending credits or making a lookup.
+        action_type = item["platform"] if not is_paid_action(item["platform"]) else "browser_search"
+        label = f"Account uit finding controleren ({item['platform']})"
+        add_proposal(action_type, item["url"], label, finding_ids=item["finding_ids"])
+    for item in extracted["relations"]:
+        query = f'"{item["subject_names"][0]}" "{item["subject_names"][1]}"'
+        add_proposal("browser_search", query, "Mogelijke relatie uit finding controleren", finding_ids=item["finding_ids"])
+
+    db.session.commit()
+    return jsonify({"ok": True, "extracted": extracted, "candidates": candidates, "proposal_ids": created, "started": False})
 
 
 @workflow_bp.route("/api/case/<case_id>/investigations/<investigation_id>/ai-research/narrative", methods=["POST"])

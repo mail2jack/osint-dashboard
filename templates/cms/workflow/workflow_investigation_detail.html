@@ -443,8 +443,12 @@
     <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">F</span>
     <span>{{ _('Findings') }}</span>
     <span class="badge badge-info" style="font-size:0.7rem;">{{ ws.counts.findings }}</span>
+    {% if can_write and ws.findings %}
+    <button type="button" id="extractFindingFollowups" style="margin-left:auto;background:var(--bg-card);color:var(--accent-primary);border:1px solid var(--border-color);border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;">🔎 Gegevens uit findings uitlezen</button>
+    <span id="extractFindingFollowupsStatus" style="font-size:.78rem;color:var(--text-muted);"></span>
+    {% endif %}
     {% if can_write and investigation_candidate_count > 0 %}
-    <button type="button" id="finalizeInvestigationCandidates" data-candidate-count="{{ investigation_candidate_count }}" style="margin-left:auto;background:#b45309;color:#fff;border:none;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;" title="{{ _('Remove all remaining unverified candidates from this investigation') }}">✅ {{ _('Finish investigation validation') }} ({{ investigation_candidate_count }} {{ _('candidates left') }})</button>
+    <button type="button" id="finalizeInvestigationCandidates" data-candidate-count="{{ investigation_candidate_count }}" style="margin-left:.4rem;background:#b45309;color:#fff;border:none;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;" title="{{ _('Remove all remaining unverified candidates from this investigation') }}">✅ {{ _('Finish investigation validation') }} ({{ investigation_candidate_count }} {{ _('candidates left') }})</button>
     {% endif %}
   </div>
   <div class="workflow-step-body">
@@ -786,6 +790,21 @@
         output.hidden = false;
         status.textContent = '✅ Verhaal in het bewerkbare rapport geplaatst (' + data.finding_count + ' findings).';
       }).catch(function (e) { status.textContent = '❌ ' + e.message; }).finally(function () { narrativeBtn.disabled = false; });
+    });
+  }
+  var followupBtn = document.getElementById('extractFindingFollowups');
+  if (followupBtn) {
+    followupBtn.addEventListener('click', function () {
+      var status = document.getElementById('extractFindingFollowupsStatus');
+      followupBtn.disabled = true;
+      status.textContent = ' Findings worden uitgelezen…';
+      fetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/extract-followups', {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'}, body: '{}'
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        if (!data.ok) throw new Error(data.error || 'Uitlezen mislukt');
+        status.textContent = ' ✅ ' + data.proposal_ids.length + ' vervolgvoorstellen opgeslagen (nog niet gestart).';
+        window.setTimeout(function () { window.location.reload(); }, 900);
+      }).catch(function (e) { status.textContent = ' ❌ ' + e.message; }).finally(function () { followupBtn.disabled = false; });
     });
   }
 })();
