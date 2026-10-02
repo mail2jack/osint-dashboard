@@ -100,6 +100,20 @@ def _is_username(query):
     return "/" not in query and " " not in query and len(query) < 100
 
 
+def _linkedin_name_for_search(value):
+    """Normalize a person's name before LinkedIn name searches.
+
+    Initials are useful for identification, but they make a quoted search too
+    strict and often prevent the real profile from being returned.  Keep the
+    original value for direct URL checks; only name-based searches use this
+    normalized form.
+    """
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    while re.match(r"^(?:[A-Za-zÀ-ÖØ-öø-ÿ]\.){1,8}(?:\s+|$)", text):
+        text = re.sub(r"^(?:[A-Za-zÀ-ÖØ-öø-ÿ]\.){1,8}\s*", "", text, count=1)
+    return text.strip()
+
+
 # ─── Platform handlers ──────────────────────────────────────────
 
 
@@ -552,9 +566,15 @@ def _linkedin_check(action):
         return []
     query, subject_id, name_for_dork = result
 
-    findings, seen_urls = _run_dork_search(
-        "linkedin.com", name_for_dork, subject_id, icon="💼"
-    )
+    is_url = "linkedin.com" in query.lower() and query.startswith(("http://", "https://"))
+    search_query = _linkedin_name_for_search(query)
+    dork_query = _linkedin_name_for_search(name_for_dork)
+    if is_url:
+        findings, seen_urls = [], set()
+    else:
+        findings, seen_urls = _run_dork_search(
+            "linkedin.com", dork_query, subject_id, icon="💼"
+        )
     add_api_finding = _make_add_api_finding(
         findings, seen_urls, "LinkedIn", "linkedin", "💼", subject_id
     )
@@ -563,9 +583,8 @@ def _linkedin_check(action):
     if not api_key or not _has_credits("linkedin"):
         return findings
 
-    is_url = "linkedin.com" in query.lower() and query.startswith("http")
     is_username = (
-        not is_url and "/" not in query and " " not in query and len(query) < 100
+        not is_url and "/" not in search_query and " " not in search_query and len(search_query) < 100
     )
 
     try:
@@ -637,7 +656,7 @@ def _linkedin_check(action):
                     return findings
 
         if is_username:
-            profile_url = f"https://www.linkedin.com/in/{query}/"
+            profile_url = f"https://www.linkedin.com/in/{search_query}/"
             data = api_get("/get-profile-data-by-url", {"url": profile_url})
             if data:
                 result = extract_profile(data)
@@ -660,7 +679,7 @@ def _linkedin_check(action):
                     return findings
 
         # Name search
-        data = api_get("/search-people", {"keyword": query})
+        data = api_get("/search-people", {"keyword": search_query})
         if data:
             _use_credit("linkedin")
             items = data.get("data") if isinstance(data, dict) else data

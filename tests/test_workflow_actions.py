@@ -385,6 +385,13 @@ class TestLinkedInCheck:
         assert len(findings) >= 1
         assert any("linkedin.com" in f.get("source_url", "") for f in findings)
 
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
+    def test_name_search_removes_leading_initials(self, mock_dork, mock_get_key):
+        _linkedin_check(MockAction(data_value="F.M. Foivi Melina Nearchou"))
+        assert mock_dork.call_args.args[0] == "linkedin.com"
+        assert mock_dork.call_args.args[1] == "Foivi Melina Nearchou"
+
 
 # ─── Twitter ──────────────────────────────────────────────────
 
