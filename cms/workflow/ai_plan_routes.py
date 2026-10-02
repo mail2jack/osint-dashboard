@@ -570,6 +570,96 @@ def start_investigation_ai_proposals(case_id, investigation_id):
     return jsonify({"ok": True, "started_ids": started_ids, "started": len(started_ids)})
 
 
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/linkedin-deepen",
+    methods=["POST"],
+)
+@login_required
+def create_linkedin_deepening_proposal(case_id, investigation_id):
+    """Create, but never start, an explicit LinkedIn deepening proposal."""
+    denied = _investigator_required()
+    if denied:
+        return denied
+    case, error = _load_case(case_id)
+    if error:
+        return error
+    investigation, err, err_status = get_linkable_investigation(
+        investigation_id, case=case, tenant_id=current_user.tenant_id
+    )
+    if err:
+        return jsonify({"error": err}), err_status
+
+    body = request.get_json(silent=True) or {}
+    finding_id = str(body.get("finding_id") or "").strip()
+    source_url = str(body.get("source_url") or "").strip()[:2000]
+    parsed = urlparse(source_url)
+    if not finding_id or parsed.scheme not in {"http", "https"} or "linkedin." not in parsed.netloc.lower():
+        return jsonify({"error": "Een geldige LinkedIn-profiel-URL en finding zijn vereist"}), 400
+
+    finding = WorkflowFinding.query.filter_by(
+        id=finding_id,
+        case_id=case_id,
+        tenant_id=current_user.tenant_id,
+        is_deleted=False,
+    ).first()
+    if not finding:
+        return jsonify({"error": "LinkedIn-finding niet gevonden"}), 404
+    scoped_action = (
+        WorkflowResearchAction.query
+        .join(WorkflowActionFinding, WorkflowActionFinding.action_id == WorkflowResearchAction.id)
+        .filter(
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.tenant_id == current_user.tenant_id,
+            WorkflowResearchAction.investigation_id == investigation.id,
+            WorkflowActionFinding.finding_id == finding.id,
+        )
+        .order_by(WorkflowResearchAction.created_at.asc())
+        .first()
+    )
+    subject_id = scoped_action.subject_id if scoped_action else None
+    subject = db.session.get(WorkflowSubject, subject_id) if subject_id else None
+    if subject_id and (not subject or not case.subjects.filter_by(id=subject_id).first()):
+        return jsonify({"error": "Het subject van deze finding is niet aan de zaak gekoppeld"}), 400
+
+    existing = WorkflowResearchAction.query.filter_by(
+        case_id=case_id,
+        tenant_id=current_user.tenant_id,
+        investigation_id=investigation.id,
+        action_type="linkedin",
+        data_value=source_url,
+        status="proposal",
+    ).first()
+    if existing:
+        return jsonify({"ok": True, "id": existing.id, "status": "proposal", "existing": True})
+
+    action = WorkflowResearchAction(
+        id=str(uuid.uuid4()),
+        case_id=case_id,
+        subject_id=subject_id,
+        investigation_id=investigation.id,
+        target_kind="subject" if subject_id else "case",
+        action_type="linkedin",
+        data_value=source_url,
+        label="LinkedIn-profiel verdiepen",
+        status="proposal",
+        tenant_id=current_user.tenant_id,
+    )
+    action.target_snapshot = json.dumps(action.build_target_snapshot(subject, source_url))
+    db.session.add(action)
+    db.session.flush()
+    log_scope_audit(
+        action=action,
+        audit_action="create",
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Proposed LinkedIn deepening from finding {finding.id}; not started",
+        new_investigation_id=investigation.id,
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "id": action.id, "status": "proposal", "started": False})
+
+
 @workflow_bp.route("/api/case/<case_id>/investigations/<investigation_id>/ai-research/narrative", methods=["POST"])
 @login_required
 def investigation_ai_narrative(case_id, investigation_id):

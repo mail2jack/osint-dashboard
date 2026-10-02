@@ -874,6 +874,28 @@ if (finalizeInvestigationCandidatesBtn) finalizeInvestigationCandidatesBtn.addEv
 document.addEventListener('click', function (e) {
   handleFindingClick(e);
 
+  var linkedinButton = e.target.closest('[data-linkedin-deepen]');
+  if (linkedinButton) {
+    var findingId = linkedinButton.getAttribute('data-finding-id');
+    var status = document.querySelector('[data-linkedin-deepen-status="' + findingId + '"]');
+    linkedinButton.disabled = true;
+    linkedinButton.textContent = '⏳ Voorstel opslaan…';
+    fetch('/cms/workflow/api/case/' + CASE_ID + '/investigations/' + INVESTIGATION_ID + '/linkedin-deepen', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'Accept': 'application/json'},
+      body: JSON.stringify({finding_id: findingId, source_url: linkedinButton.getAttribute('data-source-url') || ''})
+    }).then(function (response) { return response.json(); }).then(function (data) {
+      if (!data.ok) throw new Error(data.error || 'LinkedIn-voorstel kon niet worden opgeslagen');
+      if (status) status.textContent = data.existing ? '✅ Bestond al als voorstel' : '✅ Voorstel opgeslagen';
+      window.setTimeout(function () { window.location.reload(); }, 350);
+    }).catch(function (error) {
+      if (status) status.textContent = '❌ ' + error.message;
+      linkedinButton.disabled = false;
+      linkedinButton.textContent = '💼 LinkedIn-profiel verdiepen';
+    });
+    return;
+  }
+
   {% if finding_capture_enabled %}
   var openCapture = e.target.closest('[data-action="open-capture-request"]');
   if (openCapture) {

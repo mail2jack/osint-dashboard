@@ -82,6 +82,10 @@
     {% if finding_capture_enabled %}
     <button type="button" data-action="open-capture-request" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">🌐 {{ _('Capture website') }}</button>
     {% endif %}
+    {% if fd.source_url and (fd.source_type|lower == 'linkedin' or 'linkedin.' in (fd.source_url|lower)) %}
+    <button type="button" data-linkedin-deepen data-finding-id="{{ fd.id }}" data-source-url="{{ fd.source_url }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">💼 LinkedIn-profiel verdiepen</button>
+    <span data-linkedin-deepen-status="{{ fd.id }}" style="font-size:0.76rem;color:var(--text-muted);"></span>
+    {% endif %}
     {% if fd.include_in_report is sameas false %}
     <button type="button" data-action="report-flag" data-finding-id="{{ fd.id }}" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _('Include in official reports') }}">📄 {{ _('Include in report') }}</button>
     {% else %}
