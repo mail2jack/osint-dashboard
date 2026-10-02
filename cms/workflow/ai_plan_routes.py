@@ -135,7 +135,7 @@ def _upsert_narrative_in_report(case, investigation, narrative, research_questio
     block = (
         f"{marker}\n"
         f"{question_block}"
-        f"## AI-onderzoeksverhaal — {heading}\n\n"
+        f"## AI-onderzoeksrapport — {heading}\n\n"
         f"{narrative.strip()}\n"
         f"{end_marker}"
     )
