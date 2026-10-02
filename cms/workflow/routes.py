@@ -113,7 +113,7 @@ def _current_user_is_investigator() -> bool:
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
 
 
-def _build_relationship_graph(ws):
+def _build_relationship_graph(ws, case_subjects=None):
     """Build a source-traceable relationship graph for one investigation."""
     nodes = {}
     edges = []
@@ -130,8 +130,27 @@ def _build_relationship_graph(ws):
 
     add_node("investigation", "Onderzoek", "investigation")
     action_subjects = {action.id: action.subject_id for action in ws.actions}
-    for subject in ws.subjects:
-        add_node(f"subject:{subject.id}", subject.display_name, "subject", subject_id=subject.id)
+    subject_records = [
+        {"id": subject.id, "display_name": subject.display_name, "decrypted": subject.decrypted or {}}
+        for subject in ws.subjects
+    ]
+    known_subject_ids = {subject["id"] for subject in subject_records}
+    for subject in case_subjects or []:
+        if subject["id"] not in known_subject_ids:
+            subject_records.append({
+                "id": subject["id"],
+                "display_name": subject.get("display_name") or subject["id"],
+                "decrypted": {
+                    key: subject.get(key)
+                    for key in (
+                        "email", "phone", "street", "house_number",
+                        "house_number_addition", "postal_code", "city",
+                        "workflow_social_accounts", "social_media_ids",
+                    )
+                },
+            })
+    for subject in subject_records:
+        add_node(f"subject:{subject['id']}", subject["display_name"], "subject", subject_id=subject["id"])
 
     def normalise(value, kind):
         value = str(value or "").strip().casefold()
@@ -140,7 +159,7 @@ def _build_relationship_graph(ws):
         return value
 
     def subject_identifiers(subject):
-        data = subject.decrypted or {}
+        data = subject["decrypted"] or {}
         identifiers = []
         for kind, label in (("email", "Gelijk e-mailadres"), ("phone", "Gelijk telefoonnummer")):
             value = normalise(data.get(kind), kind)
@@ -169,9 +188,9 @@ def _build_relationship_graph(ws):
         return identifiers
 
     subject_identifier_map = {}
-    for subject in ws.subjects:
+    for subject in subject_records:
         for kind, value, label in subject_identifiers(subject):
-            subject_identifier_map.setdefault((kind, value), []).append((subject.id, label))
+            subject_identifier_map.setdefault((kind, value), []).append((subject["id"], label))
     for (kind, value), matches in subject_identifier_map.items():
         if len(matches) < 2:
             continue
@@ -1640,7 +1659,7 @@ def investigation_detail(case_id, investigation_id):
         }
         for display_name, s in _candidates
     ]
-    relationship_graph = _build_relationship_graph(ws)
+    relationship_graph = _build_relationship_graph(ws, subjects_cfg)
 
     return render_template(
         "cms/workflow/workflow_investigation_detail.html",
