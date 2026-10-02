@@ -123,6 +123,27 @@ def _candidate_account_context(findings):
     return candidates[:100]
 
 
+def _linkedin_finding_context(findings):
+    """Expose LinkedIn evidence explicitly to the report model."""
+    profiles = []
+    for finding in findings:
+        url = (finding.source_url or "").strip()
+        host = urlparse(url).netloc.lower().removeprefix("www.") if url else ""
+        source_type = (finding.source_type or "").strip().casefold()
+        if source_type != "linkedin" and "linkedin." not in host:
+            continue
+        profiles.append({
+            "title": (finding.title or "")[:220],
+            "profile_url": url[:500],
+            "content": (finding.content or "")[:1800],
+            "detail": (finding.detail or "")[:1000],
+            "status": finding.status or ("verified" if finding.verified else "candidate"),
+            "verified": bool(finding.verified),
+            "source_finding_id": finding.id,
+        })
+    return profiles[:50]
+
+
 def _upsert_narrative_in_report(case, investigation, narrative, research_question=None):
     """Insert or replace one AI narrative in the editable Markdown report."""
     marker = f"<!-- ai-investigation-narrative:{investigation.id} -->"
@@ -610,6 +631,7 @@ def investigation_ai_narrative(case_id, investigation_id):
         "actions": action_context,
         "findings": evidence,
         "possible_accounts_extracted_from_findings": _candidate_account_context(findings),
+        "linkedin_profiles_extracted_from_findings": _linkedin_finding_context(findings),
     }, ensure_ascii=False)
     narrative = _generate(
         "Schrijf een helder Nederlandstalig onderzoeksrapport op basis van uitsluitend de onderstaande gegevens. "
@@ -617,6 +639,9 @@ def investigation_ai_narrative(case_id, investigation_id):
         "Maak daarna een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
         "identiteits- en naamvarianten, mogelijke online accounts (gegroepeerd per platform met URL en status), "
         "belangrijkste inhoudelijke bevindingen, mogelijke relaties of associaties, onzekerheden en vervolgstappen. "
+        "Als er LinkedIn-findings zijn, analyseer dan ook de daarin vastgelegde profielgegevens en neem concrete "
+        "functies, organisaties, opleidingen, locaties, datums, profiel-URL's en genoemde relaties afzonderlijk op. "
+        "Leid geen nieuwe gegevens af buiten de vastgelegde LinkedIn-finding; markeer ontbrekende of onzekere gegevens. "
         "Neem ieder account alleen op als kandidaat of geverifieerd volgens de bronstatus. "
         "Verbind iedere belangrijke bewering aan de bijbehorende bron-URL of finding. "
         "Herhaal de onderzoeksvraag niet in je antwoord; die wordt al apart door het systeem geplaatst. "
