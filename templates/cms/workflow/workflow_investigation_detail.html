@@ -307,7 +307,13 @@
     var text = el('text', {x:pos.x, y:pos.y + (node.type === 'investigation' ? 48 : 40), 'text-anchor':'middle'});
     text.textContent = shortLabel(node.label, node.type === 'entity' ? 25 : 30);
     group.appendChild(circle); group.appendChild(text);
-    group.addEventListener('click', function () { showNode(node); });
+    group.addEventListener('click', function () {
+      if (node.type === 'subject' && node.url) {
+        window.location.href = node.url;
+        return;
+      }
+      showNode(node);
+    });
     svg.appendChild(group);
   });
 })();

@@ -150,7 +150,13 @@ def _build_relationship_graph(ws, case_subjects=None):
                 },
             })
     for subject in subject_records:
-        add_node(f"subject:{subject['id']}", subject["display_name"], "subject", subject_id=subject["id"])
+        add_node(
+            f"subject:{subject['id']}",
+            subject["display_name"],
+            "subject",
+            subject_id=subject["id"],
+            url=url_for("cms.subject_profile", subject_id=subject["id"]),
+        )
 
     def normalise(value, kind):
         value = str(value or "").strip().casefold()
