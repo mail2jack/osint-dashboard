@@ -15,6 +15,15 @@
   border-radius: 8px; margin-bottom: 0.5rem;
   background: var(--bg-card); position: relative;
 }
+/* Keep consecutive findings easy to scan without introducing loud colours. */
+.finding-list > .finding-item:nth-of-type(even) {
+  background: rgba(99,102,241,0.035);
+}
+@supports (background: color-mix(in srgb, white 50%, black)) {
+  .finding-list > .finding-item:nth-of-type(even) {
+    background: color-mix(in srgb, var(--bg-card) 97%, var(--accent-primary) 3%);
+  }
+}
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 .finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
 .finding-item .meta a { color: var(--link-color); }
@@ -211,7 +220,7 @@
         <span style="color:var(--text-muted);font-weight:400;">{{ ns.groups[cid] | length }} {{ _('findings') }}</span>
       </div>
       {% endif %}
-      <div style="display:flex;flex-direction:column;gap:0.35rem;padding:0.45rem;">
+      <div class="finding-list" style="display:flex;flex-direction:column;gap:0.35rem;padding:0.45rem;">
         {% set finding_show_context = True %}
         {% for f in ns.groups[cid] %}
         {% include "cms/workflow/_finding_item.html" %}
