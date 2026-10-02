@@ -108,13 +108,18 @@ def _candidate_account_context(findings):
     return candidates[:100]
 
 
-def _upsert_narrative_in_report(case, investigation, narrative):
+def _upsert_narrative_in_report(case, investigation, narrative, research_question=None):
     """Insert or replace one AI narrative in the editable Markdown report."""
     marker = f"<!-- ai-investigation-narrative:{investigation.id} -->"
     end_marker = f"<!-- /ai-investigation-narrative:{investigation.id} -->"
     heading = getattr(investigation, "human_number", None) or investigation.title or "onderzoek"
+    question_block = ""
+    if research_question:
+        quoted_question = "\n".join(f"> {line}" for line in research_question.strip().splitlines())
+        question_block = f"## Onderzoeksvraag\n\n{quoted_question}\n\n"
     block = (
         f"{marker}\n"
+        f"{question_block}"
         f"## AI-onderzoeksverhaal — {heading}\n\n"
         f"{narrative.strip()}\n"
         f"{end_marker}"
@@ -427,6 +432,9 @@ def approve_ai_plan(case_id):
     )
     if err:
         return jsonify({"error": err}), err_status
+    investigation = db.session.get(Investigation, investigation_id)
+    if investigation and query:
+        investigation.ai_research_question = query
 
     created = []
     for spec in specs:
@@ -577,16 +585,19 @@ def investigation_ai_narrative(case_id, investigation_id):
             subject_names.append(action.subject.name)
     if not subject_names:
         subject_names = [subject.name for subject in case.subjects if subject.name]
+    research_question = (investigation.ai_research_question or "").strip()
     prompt = json.dumps({
         "investigation": investigation.title,
         "case": case.case_number,
+        "research_question": research_question or "Niet opgeslagen",
         "actions": action_context,
         "findings": evidence,
         "possible_accounts_extracted_from_findings": _candidate_account_context(findings),
     }, ensure_ascii=False)
     narrative = _generate(
         "Schrijf een helder Nederlandstalig onderzoeksverhaal op basis van uitsluitend de onderstaande gegevens. "
-        "Maak een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
+        "Begin het informatieproduct met de exacte onderzoeksvraag onder de kop 'Onderzoeksvraag'. "
+        "Maak daarna een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
         "identiteits- en naamvarianten, mogelijke online accounts (gegroepeerd per platform met URL en status), "
         "belangrijkste inhoudelijke bevindingen, mogelijke relaties of associaties, onzekerheden en vervolgstappen. "
         "Neem ieder account alleen op als kandidaat of geverifieerd volgens de bronstatus. "
@@ -606,7 +617,7 @@ def investigation_ai_narrative(case_id, investigation_id):
     investigation.ai_narrative_generated_at = datetime.now(timezone.utc)
     investigation.ai_narrative_generated_by = current_user.id
     investigation.ai_narrative_finding_count = len(findings)
-    _upsert_narrative_in_report(case, investigation, narrative)
+    _upsert_narrative_in_report(case, investigation, narrative, research_question)
     AuditLog.log(
         user_id=current_user.id,
         action="create",

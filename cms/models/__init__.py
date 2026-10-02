@@ -2176,6 +2176,7 @@ class Investigation(db.Model):
     title = db.Column(db.String(300), nullable=False)
     instructions = db.Column(db.Text)
     notes = db.Column(db.Text)
+    ai_research_question = db.Column(db.Text, nullable=True)
     # Latest source-bound AI interpretation for this investigation.  The
     # narrative is explicitly not evidence; source findings remain the
     # authoritative record.
