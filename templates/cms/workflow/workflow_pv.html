@@ -129,11 +129,19 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
 {% endif %}
 
 {% set narrative_investigations = investigations|selectattr('ai_narrative')|list %}
-{% if narrative_investigations %}
-<hr>
-<h2>AI-onderzoeksverhalen</h2>
-<p style="font-size:10pt;color:#555;"><em>Deze teksten zijn interpretatieve samenvattingen van onderzoeksbevindingen en vormen geen zelfstandig bewijs.</em></p>
+{% set report_body = case.pv_body or '' %}
+{% set legacy = namespace(investigations=[]) %}
 {% for investigation in narrative_investigations %}
+  {% set marker = '<!-- ai-investigation-narrative:' ~ investigation.id ~ ' -->' %}
+  {% if marker not in report_body %}
+    {% set legacy.investigations = legacy.investigations + [investigation] %}
+  {% endif %}
+{% endfor %}
+{% if legacy.investigations %}
+<hr>
+<h2>AI-onderzoeksverhalen (oude opslag)</h2>
+<p style="font-size:10pt;color:#555;"><em>Deze oudere teksten zijn nog niet in het bewerkbare rapportgedeelte geplaatst. Nieuwe of opnieuw gegenereerde verhalen worden daar automatisch opgenomen.</em></p>
+{% for investigation in legacy.investigations %}
 <h3>{{ investigation.human_number }} — {{ investigation.title }}</h3>
 <p style="white-space:pre-wrap;">{{ investigation.ai_narrative }}</p>
 {% endfor %}

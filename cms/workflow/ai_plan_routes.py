@@ -57,6 +57,27 @@ _PLAN_ACTIONS = {
 }
 
 
+def _upsert_narrative_in_report(case, investigation, narrative):
+    """Insert or replace one AI narrative in the editable Markdown report."""
+    marker = f"<!-- ai-investigation-narrative:{investigation.id} -->"
+    end_marker = f"<!-- /ai-investigation-narrative:{investigation.id} -->"
+    heading = getattr(investigation, "human_number", None) or investigation.title or "onderzoek"
+    block = (
+        f"{marker}\n"
+        f"## AI-onderzoeksverhaal — {heading}\n\n"
+        f"{narrative.strip()}\n"
+        f"{end_marker}"
+    )
+    body = case.pv_body or ""
+    pattern = re.compile(re.escape(marker) + r".*?" + re.escape(end_marker), re.DOTALL)
+    if pattern.search(body):
+        case.pv_body = pattern.sub(block, body, count=1)
+    else:
+        separator = "\n\n" if body.strip() else ""
+        case.pv_body = body.rstrip() + separator + block + "\n"
+    case.pv_updated_at = datetime.now(timezone.utc)
+
+
 def _identifier(value, identifier_type, subject, source, platform=None):
     value = str(value or "").strip()
     if not value:
@@ -514,6 +535,7 @@ def investigation_ai_narrative(case_id, investigation_id):
     investigation.ai_narrative_generated_at = datetime.now(timezone.utc)
     investigation.ai_narrative_generated_by = current_user.id
     investigation.ai_narrative_finding_count = len(findings)
+    _upsert_narrative_in_report(case, investigation, narrative)
     AuditLog.log(
         user_id=current_user.id,
         action="create",
@@ -521,10 +543,16 @@ def investigation_ai_narrative(case_id, investigation_id):
         entity_id=investigation.id,
         ip_address=request.remote_addr,
         case_id=case_id,
-        description=f"Generated AI narrative from {len(findings)} investigation findings",
+        description=f"Generated AI narrative from {len(findings)} investigation findings and inserted it into the editable report",
     )
     db.session.commit()
-    return jsonify({"ok": True, "narrative": narrative, "finding_count": len(findings), "stored": True})
+    return jsonify({
+        "ok": True,
+        "narrative": narrative,
+        "finding_count": len(findings),
+        "stored": True,
+        "report_updated": True,
+    })
 
 
 @workflow_bp.route("/api/case/<case_id>/ai-research/start-proposals", methods=["POST"])

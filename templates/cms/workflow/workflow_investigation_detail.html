@@ -349,6 +349,7 @@
     <button type="button" class="btn-cms primary small" data-create-investigation-narrative>📝 Maak verhaal van findings</button>
     <span data-narrative-status style="margin-left:.6rem;font-size:.85rem;"></span>
     <div data-narrative-output {% if not inv.ai_narrative %}hidden{% endif %} style="white-space:pre-wrap;margin-top:1rem;padding:1rem;border-left:4px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);line-height:1.55;">{% if inv.ai_narrative %}{{ inv.ai_narrative }}{% endif %}</div>
+    {% if inv.ai_narrative %}<a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" style="display:inline-block;margin-top:.6rem;">✏️ Verhaal bewerken in rapport</a>{% endif %}
     {% if inv.ai_narrative_generated_at %}<div style="font-size:.8rem;color:#777;margin-top:.4rem;">Opgeslagen als interpretatieve samenvatting op {{ inv.ai_narrative_generated_at.strftime('%d-%m-%Y %H:%M') }} ({{ inv.ai_narrative_finding_count or 0 }} findings).</div>{% endif %}
   </div>
 </div>
@@ -646,7 +647,7 @@
         if (data.error) throw new Error(data.error);
         output.textContent = data.narrative;
         output.hidden = false;
-        status.textContent = '✅ Verhaal opgeslagen bij dit onderzoek (' + data.finding_count + ' findings).';
+        status.textContent = '✅ Verhaal in het bewerkbare rapport geplaatst (' + data.finding_count + ' findings).';
       }).catch(function (e) { status.textContent = '❌ ' + e.message; }).finally(function () { narrativeBtn.disabled = false; });
     });
   }
