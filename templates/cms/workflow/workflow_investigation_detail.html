@@ -597,6 +597,10 @@
     <span data-narrative-status style="margin-left:.6rem;font-size:.85rem;"></span>
     <div data-narrative-output {% if not inv.ai_narrative %}hidden{% endif %} style="white-space:pre-wrap;margin-top:1rem;padding:1rem;border-left:4px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);line-height:1.55;">{% if inv.ai_narrative %}{{ inv.ai_narrative }}{% endif %}</div>
     {% if inv.ai_narrative %}<a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" style="display:inline-block;margin-top:.6rem;">✏️ Rapport bewerken</a>{% endif %}
+    <div data-investigation-report-link {% if not inv.ai_narrative %}hidden{% endif %} style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border-color);">
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
+      <span style="font-size:.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
+    </div>
     {% if inv.ai_narrative_generated_at %}<div style="font-size:.8rem;color:#777;margin-top:.4rem;">Opgeslagen als interpretatieve samenvatting op {{ inv.ai_narrative_generated_at.strftime('%d-%m-%Y %H:%M') }} ({{ inv.ai_narrative_finding_count or 0 }} findings).</div>{% endif %}
   </div>
 </div>
@@ -884,6 +888,7 @@
     narrativeBtn.addEventListener('click', function () {
       var status = document.querySelector('[data-narrative-status]');
       var output = document.querySelector('[data-narrative-output]');
+      var reportLink = document.querySelector('[data-investigation-report-link]');
       narrativeBtn.disabled = true;
       status.textContent = 'AI maakt het rapport… dit kan ongeveer een minuut duren.';
       fetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/ai-research/narrative', {
@@ -906,6 +911,7 @@
         if (data.error) throw new Error(data.error);
         output.textContent = data.narrative;
         output.hidden = false;
+        if (reportLink) reportLink.hidden = false;
         status.textContent = '✅ Verhaal in het bewerkbare rapport geplaatst (' + data.finding_count + ' findings).';
       }).catch(function (e) { status.textContent = '❌ ' + e.message; }).finally(function () { narrativeBtn.disabled = false; });
     });
