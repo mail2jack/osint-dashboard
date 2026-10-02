@@ -24,6 +24,10 @@
     background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
 }
+.finding-list > .finding-item + .finding-item::before {
+  content: ""; position: absolute; top: -0.55rem; left: 0; right: 0;
+  border-top: 1px solid var(--border-color); opacity: 0.85;
+}
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 .finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
 .finding-item .meta a { color: var(--link-color); }

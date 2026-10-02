@@ -90,6 +90,10 @@
     background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
 }
+.investigation-findings-list > .finding-item + .finding-item::before {
+  content: ""; position: absolute; top: -0.55rem; left: 0; right: 0;
+  border-top: 1px solid var(--border-color); opacity: 0.85;
+}
 @media (max-width: 800px) { .relationship-graph-wrap { grid-template-columns:1fr; } }
 </style>
 <nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
