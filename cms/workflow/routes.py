@@ -146,6 +146,16 @@ def _build_relationship_graph(ws):
             value = normalise(data.get(kind), kind)
             if value and (kind != "phone" or len(value) >= 7):
                 identifiers.append((kind, value, label))
+        address_parts = [
+            data.get("street"),
+            data.get("house_number"),
+            data.get("house_number_addition"),
+            data.get("postal_code"),
+            data.get("city"),
+        ]
+        address = normalise(" ".join(str(part or "") for part in address_parts), "address")
+        if data.get("street") and (data.get("house_number") or data.get("postal_code")) and address:
+            identifiers.append(("address", address, "Gelijk adres"))
         for raw in data.get("workflow_social_accounts") or []:
             value = normalise(raw, "username")
             if value:
