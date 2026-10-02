@@ -117,6 +117,7 @@ def _build_relationship_graph(ws):
     """Build a source-traceable relationship graph for one investigation."""
     nodes = {}
     edges = []
+    edge_keys = set()
 
     def add_node(node_id, label, node_type, **extra):
         if node_id not in nodes:
@@ -131,6 +132,54 @@ def _build_relationship_graph(ws):
     action_subjects = {action.id: action.subject_id for action in ws.actions}
     for subject in ws.subjects:
         add_node(f"subject:{subject.id}", subject.display_name, "subject", subject_id=subject.id)
+
+    def normalise(value, kind):
+        value = str(value or "").strip().casefold()
+        if kind == "phone":
+            return "".join(char for char in value if char.isdigit())
+        return value
+
+    def subject_identifiers(subject):
+        data = subject.decrypted or {}
+        identifiers = []
+        for kind, label in (("email", "Gelijk e-mailadres"), ("phone", "Gelijk telefoonnummer")):
+            value = normalise(data.get(kind), kind)
+            if value and (kind != "phone" or len(value) >= 7):
+                identifiers.append((kind, value, label))
+        for raw in data.get("workflow_social_accounts") or []:
+            value = normalise(raw, "username")
+            if value:
+                identifiers.append(("social", value.lstrip("@"), "Gelijk socialmedia-account"))
+        for platform, raw in (data.get("social_media_ids") or {}).items():
+            values = raw if isinstance(raw, dict) else {"id": raw}
+            for field in ("username", "id"):
+                value = normalise(values.get(field), "username")
+                if value:
+                    identifiers.append((f"social:{platform}:{field}", value.lstrip("@"), f"Gelijk {platform}-account"))
+        return identifiers
+
+    subject_identifier_map = {}
+    for subject in ws.subjects:
+        for kind, value, label in subject_identifiers(subject):
+            subject_identifier_map.setdefault((kind, value), []).append((subject.id, label))
+    for (kind, value), matches in subject_identifier_map.items():
+        if len(matches) < 2:
+            continue
+        for index, (left_id, label) in enumerate(matches):
+            for right_id, _ in matches[index + 1:]:
+                pair = tuple(sorted((left_id, right_id)))
+                edge_key = (pair, kind, value)
+                if edge_key in edge_keys:
+                    continue
+                edge_keys.add(edge_key)
+                edges.append({
+                    "source": f"subject:{pair[0]}",
+                    "target": f"subject:{pair[1]}",
+                    "label": label,
+                    "status": "candidate",
+                    "finding_id": None,
+                    "detail": "Beide subjects bevatten dezelfde identifier; handmatige verificatie blijft nodig.",
+                })
 
     for finding in ws.findings:
         if not finding.source_url or finding.source_type == "browser_search":
@@ -159,6 +208,21 @@ def _build_relationship_graph(ws):
             sources = [f"subject:{subject_id}" for subject_id in linked_subjects]
         else:
             sources = ["investigation"]
+        if len(linked_subjects) > 1:
+            linked = sorted(linked_subjects)
+            for index, left_id in enumerate(linked):
+                for right_id in linked[index + 1:]:
+                    edge_key = (tuple(sorted((left_id, right_id))), "finding", finding.id)
+                    if edge_key not in edge_keys:
+                        edge_keys.add(edge_key)
+                        edges.append({
+                            "source": f"subject:{left_id}",
+                            "target": f"subject:{right_id}",
+                            "label": "Gedeelde finding",
+                            "status": finding.status or ("verified" if finding.verified else "candidate"),
+                            "finding_id": finding.id,
+                            "detail": finding.title,
+                        })
         for source_id in sources:
             edges.append({
                 "source": source_id,

@@ -287,7 +287,8 @@
   function showEdge(edge) {
     var source = nodeById[edge.source] || {label: edge.source};
     var target = nodeById[edge.target] || {label: edge.target};
-    setDetail('Verbinding', '<div style="margin-top:.45rem;">' + shortLabel(source.label, 70) + ' → ' + shortLabel(target.label, 70) + '</div><div>Wijze: ' + (edge.label || 'finding') + '</div><div>Status: ' + (edge.status || 'candidate') + '</div><div style="margin-top:.4rem;color:var(--text-muted);">Finding: ' + (edge.finding_id || '—') + '</div>');
+    var extra = edge.detail ? '<div style="margin-top:.4rem;">' + String(edge.detail).replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</div>' : '';
+    setDetail('Verbinding', '<div style="margin-top:.45rem;">' + shortLabel(source.label, 70) + ' → ' + shortLabel(target.label, 70) + '</div><div>Wijze: ' + (edge.label || 'finding') + '</div><div>Status: ' + (edge.status || 'candidate') + '</div>' + extra + '<div style="margin-top:.4rem;color:var(--text-muted);">Finding: ' + (edge.finding_id || '—') + '</div>');
   }
   if (!graph.nodes.length) { detail.textContent = 'Er zijn nog geen gegevens voor een relatiegrafiek.'; return; }
   graph.edges.forEach(function (edge) {

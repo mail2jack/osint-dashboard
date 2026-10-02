@@ -613,6 +613,11 @@ def _subject_plain_fields(subject: Subject) -> dict:
         "email": subject.email,
         "phone": subject.phone,
         "notes": subject.notes,
+        # These are non-secret identifiers already entered for workflow use.
+        # Keep them in the read model so the investigation graph can compare
+        # subjects without loading ORM relationships in the template.
+        "social_media_ids": subject.social_media_ids or {},
+        "workflow_social_accounts": subject.workflow_social_accounts or [],
     }
 
 
