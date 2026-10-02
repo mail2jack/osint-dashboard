@@ -104,5 +104,5 @@ def test_narrative_is_stored_and_rendered_in_report(auth_client, app):
         report = auth_client.get(f"/cms/workflow/case/{case.id}/pv")
         assert report.status_code == 200
         assert narrative.encode() in report.data
-        assert b"interpretatieve samenvatting" in report.data
+        assert b"AI-onderzoeksrapport" in report.data
         assert finding.title.encode() in report.data

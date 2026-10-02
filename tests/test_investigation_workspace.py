@@ -1095,7 +1095,8 @@ class TestWorkspaceXssAndUrlScheme:
         case, inv, *_ = self._xss_page(subject_name='<svg onload="alert(5)">')
         body = self._get_with(auth_client, case, inv).get_data(as_text=True)
         assert "alert(5)" in body
-        assert "<svg" not in body
+        assert '<svg onload="alert(5)">' not in body
+        assert '&lt;svg onload=&#34;alert(5)&#34;&gt;' in body
 
     def test_source_url_javascript_scheme(self, auth_client):
         assert ws_mod._is_linkable_url("javascript:alert(1)") is False
