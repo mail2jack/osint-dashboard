@@ -8,6 +8,7 @@ import json
 import re
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from flask import jsonify, render_template, request
 from flask_login import current_user, login_required
@@ -76,6 +77,35 @@ def _clean_narrative_placeholders(narrative, subject_names):
         return replacements.get(match.group(1), match.group(1).replace("_", " ").title())
 
     return _NARRATIVE_PLACEHOLDER_RE.sub(replace, narrative or "").strip()
+
+
+def _candidate_account_context(findings):
+    """Build a compact, source-bound account list for the narrative model."""
+    candidates = []
+    seen = set()
+    for finding in findings:
+        title = (finding.title or "").strip()
+        url = (finding.source_url or "").strip()
+        source_type = (finding.source_type or "").strip()
+        if not (
+            source_type in {"social", "email", "phone"}
+            or re.search(r"\b(account|profile|linkedin|whatsapp|telegram|instagram|reddit|spotify|tiktok|youtube)\b", title, re.I)
+        ):
+            continue
+        key = (title.casefold(), url.casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        host = urlparse(url).netloc.lower().removeprefix("www.") if url else ""
+        candidates.append({
+            "title": title[:220],
+            "platform_or_host": host or source_type or "onbekend",
+            "url": url[:500],
+            "status": finding.status or ("verified" if finding.verified else "candidate"),
+            "verified": bool(finding.verified),
+            "source_finding_id": finding.id,
+        })
+    return candidates[:100]
 
 
 def _upsert_narrative_in_report(case, investigation, narrative):
@@ -527,7 +557,7 @@ def investigation_ai_narrative(case_id, investigation_id):
     if not findings:
         return jsonify({"error": "Er zijn nog geen findings om samen te vatten"}), 409
     evidence = []
-    for finding in findings[:20]:
+    for finding in findings[:100]:
         evidence.append({
             "title": finding.title,
             "content": (finding.content or "")[:900],
@@ -535,6 +565,7 @@ def investigation_ai_narrative(case_id, investigation_id):
             "source": finding.source_url or finding.source_type or "onbekende bron",
             "status": finding.status or ("verified" if finding.verified else "candidate"),
             "reliability": finding.reliability_score,
+            "finding_id": finding.id,
         })
     action_context = [
         {"label": action.label or action.action_type, "query": action.data_value or "", "status": action.status}
@@ -546,10 +577,20 @@ def investigation_ai_narrative(case_id, investigation_id):
             subject_names.append(action.subject.name)
     if not subject_names:
         subject_names = [subject.name for subject in case.subjects if subject.name]
-    prompt = json.dumps({"investigation": investigation.title, "case": case.case_number, "actions": action_context, "findings": evidence}, ensure_ascii=False)
+    prompt = json.dumps({
+        "investigation": investigation.title,
+        "case": case.case_number,
+        "actions": action_context,
+        "findings": evidence,
+        "possible_accounts_extracted_from_findings": _candidate_account_context(findings),
+    }, ensure_ascii=False)
     narrative = _generate(
         "Schrijf een helder Nederlandstalig onderzoeksverhaal op basis van uitsluitend de onderstaande gegevens. "
-        "Gebruik korte alinea's met: kernbeeld, belangrijkste bevindingen, onzekerheden en vervolgstappen. "
+        "Maak een uitgebreid maar nuchter informatieproduct met deze vaste onderdelen: kernbeeld, "
+        "identiteits- en naamvarianten, mogelijke online accounts (gegroepeerd per platform met URL en status), "
+        "belangrijkste inhoudelijke bevindingen, mogelijke relaties of associaties, onzekerheden en vervolgstappen. "
+        "Neem ieder account alleen op als kandidaat of geverifieerd volgens de bronstatus. "
+        "Verbind iedere belangrijke bewering aan de bijbehorende bron-URL of finding. "
         "Verzin niets, presenteer kandidaten niet als feiten, en noem bronnen bij de relevante bevindingen. "
         "Gebruik nooit tekst tussen vierkante haken als placeholder. Vervang bekende namen door hun echte naam "
         "en schrijf voor onbekende gegevens dat ze niet zijn vastgesteld. "

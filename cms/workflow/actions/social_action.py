@@ -1,10 +1,26 @@
 import json
 import logging
+import re
 
 from cms.models import db, Subject
 
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_name_query(value):
+    """Drop a duplicated leading initial from a person's display name.
+
+    For example, ``P. Patricia van Sandwijk`` becomes ``Patricia van
+    Sandwijk``.  Real usernames and explicit social-account values are left
+    untouched by the caller.
+    """
+    text = str(value or "").strip()
+    parts = text.split()
+    if len(parts) >= 2 and re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ]\.", parts[0]):
+        if parts[1] and parts[0][0].casefold() == parts[1][0].casefold():
+            return " ".join(parts[1:])
+    return text
 
 
 def _social_scan(action):
@@ -75,6 +91,8 @@ def _social_scan(action):
             username = acct.strip()
             if username.startswith("@"):
                 username = username[1:]
+            if subject_id:
+                username = _normalize_name_query(username)
             label = username
         else:
             url = (
