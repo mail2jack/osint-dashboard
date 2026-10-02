@@ -56,6 +56,8 @@ from cms.services.finding_capture_queue import (
     CaptureRequestRejected,
     enqueue_finding_capture,
 )
+from cms.services.report_evidence import report_screenshots
+from cms.services.report_findings import deduplicate_report_findings
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -3249,6 +3251,7 @@ def pv_view(case_id):
         .order_by(WorkflowFinding.created_at)
         .all()
     )
+    findings = deduplicate_report_findings(findings)
 
     import markdown as md_lib
 
@@ -3293,8 +3296,6 @@ def pv_view(case_id):
     # Never let a stored external URL become an image request in a report.  The
     # report helper supplies thumbnails only for files confined to the private
     # screenshot store, while retaining a safe source URL as evidence metadata.
-    from cms.services.report_evidence import report_screenshots
-
     screenshot_evidence = {
         finding.id: report_screenshots(finding) for finding in findings
     }
@@ -3325,6 +3326,7 @@ def pv_regenerate(case_id):
         .order_by(WorkflowFinding.created_at)
         .all()
     )
+    findings = deduplicate_report_findings(findings)
 
     if findings:
         type_map = {}
