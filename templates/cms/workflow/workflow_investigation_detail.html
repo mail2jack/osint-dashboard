@@ -763,7 +763,7 @@
       var status = document.querySelector('[data-narrative-status]');
       var output = document.querySelector('[data-narrative-output]');
       narrativeBtn.disabled = true;
-      status.textContent = 'AI maakt het rapport...';
+      status.textContent = 'AI maakt het rapport… dit kan ongeveer een minuut duren.';
       fetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/ai-research/narrative', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
