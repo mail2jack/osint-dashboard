@@ -58,6 +58,22 @@
 }
 .ws-mode { display: flex; gap: 1rem; font-size: 0.85rem; }
 .ws-mode label { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+.relationship-graph-wrap { display:grid; grid-template-columns:minmax(0, 1fr) 280px; gap:1rem; align-items:start; }
+.relationship-graph-canvas { width:100%; min-height:360px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card,#fff); overflow:hidden; }
+.relationship-graph-canvas svg { display:block; width:100%; height:auto; min-height:360px; }
+.relationship-graph-edge { stroke:#94a3b8; stroke-width:1.5; opacity:.8; cursor:pointer; }
+.relationship-graph-edge.verified { stroke:#15803d; stroke-width:2.2; }
+.relationship-graph-edge.candidate { stroke:#b45309; stroke-dasharray:5 4; }
+.relationship-graph-edge-label { fill:var(--text-muted); font-size:10px; pointer-events:none; }
+.relationship-graph-node { cursor:pointer; }
+.relationship-graph-node circle { stroke:var(--bg-card,#fff); stroke-width:2; }
+.relationship-graph-node text { fill:var(--text-primary); font-size:11px; pointer-events:none; }
+.relationship-graph-detail { border:1px solid var(--border-color); border-radius:8px; padding:.75rem; min-height:150px; font-size:.82rem; color:var(--text-secondary); }
+.relationship-graph-detail strong { color:var(--text-primary); }
+.relationship-graph-legend { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:.65rem; font-size:.78rem; color:var(--text-muted); }
+.relationship-graph-legend span { display:inline-flex; align-items:center; gap:.3rem; }
+.relationship-graph-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
+@media (max-width: 800px) { .relationship-graph-wrap { grid-template-columns:1fr; } }
 </style>
 <nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
@@ -193,6 +209,108 @@
     {% endif %}
   </div>
 </details>
+
+{# ── Traceable relationship graph ── #}
+<details class="workflow-step workflow-activity" open id="investigation-relationship-graph">
+  <summary class="workflow-step-header">
+    <span class="step-nr" style="background:var(--accent-secondary, var(--accent-primary));">G</span>
+    <span>Relatiegrafiek</span>
+    <span style="font-size:.78rem;color:var(--text-muted);font-weight:400;">{{ relationship_graph.nodes|length }} knooppunten · {{ relationship_graph.edges|length }} verbindingen</span>
+  </summary>
+  <div class="workflow-step-body">
+    <p style="font-size:.84rem;color:var(--text-secondary);margin-top:0;">Deze grafiek toont relaties die herleidbaar zijn naar findings uit dit onderzoek. Een verbinding is een onderzoeksaanwijzing, geen automatisch bewezen relatie.</p>
+    <div class="relationship-graph-wrap">
+      <div>
+        <div class="relationship-graph-canvas">
+          <svg id="relationshipGraphSvg" viewBox="0 0 1000 560" role="img" aria-label="Relatiegrafiek van dit onderzoek"></svg>
+        </div>
+        <div class="relationship-graph-legend" aria-label="Legenda">
+          <span><i class="relationship-graph-dot" style="background:#312e81;"></i> Onderzoek</span>
+          <span><i class="relationship-graph-dot" style="background:#1d4ed8;"></i> Subject</span>
+          <span><i class="relationship-graph-dot" style="background:#15803d;"></i> Geverifieerd</span>
+          <span><i class="relationship-graph-dot" style="background:#b45309;"></i> Kandidaat</span>
+        </div>
+      </div>
+      <div id="relationshipGraphDetail" class="relationship-graph-detail" aria-live="polite">Selecteer een knooppunt of verbinding voor details.</div>
+    </div>
+  </div>
+</details>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var svg = document.getElementById('relationshipGraphSvg');
+  var detail = document.getElementById('relationshipGraphDetail');
+  if (!svg || !detail) return;
+  var graph = {{ relationship_graph|tojson }};
+  var NS = 'http://www.w3.org/2000/svg';
+  var nodeById = {};
+  graph.nodes.forEach(function (node) { nodeById[node.id] = node; });
+  var positions = {};
+  var center = {x: 500, y: 280};
+  var subjects = graph.nodes.filter(function (node) { return node.type === 'subject'; });
+  var entities = graph.nodes.filter(function (node) { return node.type === 'entity'; });
+  positions.investigation = center;
+  subjects.forEach(function (node, index) {
+    var angle = (Math.PI * 2 * index / Math.max(subjects.length, 1)) - Math.PI / 2;
+    positions[node.id] = {x: 270 + Math.cos(angle) * 145, y: 280 + Math.sin(angle) * 190};
+  });
+  entities.forEach(function (node, index) {
+    var angle = (Math.PI * 2 * index / Math.max(entities.length, 1)) - Math.PI / 2;
+    var radius = entities.length > 12 ? 220 : 185;
+    positions[node.id] = {x: 730 + Math.cos(angle) * radius, y: 280 + Math.sin(angle) * Math.min(radius, 220)};
+  });
+  function el(name, attrs) {
+    var item = document.createElementNS(NS, name);
+    Object.keys(attrs || {}).forEach(function (key) { item.setAttribute(key, attrs[key]); });
+    return item;
+  }
+  function shortLabel(value, max) {
+    value = String(value || '');
+    return value.length > max ? value.slice(0, max - 1) + '…' : value;
+  }
+  function setDetail(title, html) {
+    detail.innerHTML = '<strong>' + title.replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</strong>' + html;
+  }
+  function nodeColor(node) {
+    if (node.type === 'investigation') return '#312e81';
+    if (node.type === 'subject') return '#1d4ed8';
+    return node.verified || node.status === 'verified' ? '#15803d' : '#b45309';
+  }
+  function showNode(node) {
+    var html = '<div style="margin-top:.45rem;">Type: ' + (node.type || 'entity') + '</div>';
+    if (node.host) html += '<div>Bron: ' + node.host + '</div>';
+    if (node.status) html += '<div>Status: ' + node.status + '</div>';
+    if (node.url) html += '<div style="margin-top:.4rem;overflow-wrap:anywhere;"><a href="' + node.url.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Bron openen</a></div>';
+    if (node.detail) html += '<div style="margin-top:.4rem;white-space:pre-wrap;">' + node.detail.replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</div>';
+    if (node.finding_id) html += '<div style="margin-top:.4rem;color:var(--text-muted);">Finding: ' + node.finding_id + '</div>';
+    setDetail(shortLabel(node.label, 80), html);
+  }
+  function showEdge(edge) {
+    var source = nodeById[edge.source] || {label: edge.source};
+    var target = nodeById[edge.target] || {label: edge.target};
+    setDetail('Verbinding', '<div style="margin-top:.45rem;">' + shortLabel(source.label, 70) + ' → ' + shortLabel(target.label, 70) + '</div><div>Wijze: ' + (edge.label || 'finding') + '</div><div>Status: ' + (edge.status || 'candidate') + '</div><div style="margin-top:.4rem;color:var(--text-muted);">Finding: ' + (edge.finding_id || '—') + '</div>');
+  }
+  if (!graph.nodes.length) { detail.textContent = 'Er zijn nog geen gegevens voor een relatiegrafiek.'; return; }
+  graph.edges.forEach(function (edge) {
+    var source = positions[edge.source] || center, target = positions[edge.target] || center;
+    var line = el('line', {x1:source.x, y1:source.y, x2:target.x, y2:target.y, class:'relationship-graph-edge ' + (edge.status === 'verified' ? 'verified' : 'candidate')});
+    line.addEventListener('click', function () { showEdge(edge); });
+    svg.appendChild(line);
+    var label = el('text', {x:(source.x + target.x) / 2, y:(source.y + target.y) / 2 - 4, class:'relationship-graph-edge-label', 'text-anchor':'middle'});
+    label.textContent = shortLabel(edge.label || 'finding', 18);
+    svg.appendChild(label);
+  });
+  graph.nodes.forEach(function (node) {
+    var pos = positions[node.id] || center;
+    var group = el('g', {class:'relationship-graph-node'});
+    var circle = el('circle', {cx:pos.x, cy:pos.y, r:node.type === 'investigation' ? 30 : (node.type === 'subject' ? 24 : 19), fill:nodeColor(node)});
+    var text = el('text', {x:pos.x, y:pos.y + (node.type === 'investigation' ? 48 : 40), 'text-anchor':'middle'});
+    text.textContent = shortLabel(node.label, node.type === 'entity' ? 25 : 30);
+    group.appendChild(circle); group.appendChild(text);
+    group.addEventListener('click', function () { showNode(node); });
+    svg.appendChild(group);
+  });
+})();
+</script>
 
 {% if source_research_enabled %}
 <div id="wsSourceResearchModal" class="ws-action-overlay" hidden role="dialog" aria-modal="true">

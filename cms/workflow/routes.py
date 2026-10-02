@@ -3,6 +3,7 @@ import logging
 import os
 import uuid
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 import bleach
 import sqlalchemy as sa
@@ -110,6 +111,64 @@ _ADVANCED_SOURCE_RESEARCH_ROLES = (
 def _current_user_is_investigator() -> bool:
     """Writer check for the investigations section (role-based, matches scope)."""
     return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def _build_relationship_graph(ws):
+    """Build a source-traceable relationship graph for one investigation."""
+    nodes = {}
+    edges = []
+
+    def add_node(node_id, label, node_type, **extra):
+        if node_id not in nodes:
+            nodes[node_id] = {
+                "id": node_id,
+                "label": (label or node_type)[:180],
+                "type": node_type,
+                **extra,
+            }
+
+    add_node("investigation", "Onderzoek", "investigation")
+    action_subjects = {action.id: action.subject_id for action in ws.actions}
+    for subject in ws.subjects:
+        add_node(f"subject:{subject.id}", subject.display_name, "subject", subject_id=subject.id)
+
+    for finding in ws.findings:
+        if not finding.source_url or finding.source_type == "browser_search":
+            continue
+        parsed = urlparse(finding.source_url)
+        host = parsed.netloc.removeprefix("www.") or finding.source_type or "bron"
+        entity_id = f"entity:{finding.source_url}"
+        label = finding.title or host
+        add_node(
+            entity_id,
+            label,
+            "entity",
+            url=finding.source_url,
+            host=host,
+            status=finding.status or ("verified" if finding.verified else "candidate"),
+            verified=bool(finding.verified),
+            finding_id=finding.id,
+            detail=(finding.detail or "")[:500],
+        )
+        linked_subjects = {
+            action_subjects[action_id]
+            for action_id in finding.action_ids
+            if action_id in action_subjects and action_subjects[action_id]
+        }
+        if linked_subjects:
+            sources = [f"subject:{subject_id}" for subject_id in linked_subjects]
+        else:
+            sources = ["investigation"]
+        for source_id in sources:
+            edges.append({
+                "source": source_id,
+                "target": entity_id,
+                "label": finding.source_type or "finding",
+                "status": finding.status or ("verified" if finding.verified else "candidate"),
+                "finding_id": finding.id,
+            })
+
+    return {"nodes": list(nodes.values())[:120], "edges": edges[:240]}
 
 
 def _workflow_source_research_enabled() -> bool:
@@ -1507,6 +1566,7 @@ def investigation_detail(case_id, investigation_id):
         }
         for display_name, s in _candidates
     ]
+    relationship_graph = _build_relationship_graph(ws)
 
     return render_template(
         "cms/workflow/workflow_investigation_detail.html",
@@ -1523,6 +1583,7 @@ def investigation_detail(case_id, investigation_id):
         investigation_candidate_count=investigation_candidate_count,
         action_types=action_types,
         subjects_cfg=subjects_cfg,
+        relationship_graph=relationship_graph,
         paid_enabled=paid_channels_enabled(),
         source_research_enabled=(
             can_start_actions and _workflow_source_research_enabled()
