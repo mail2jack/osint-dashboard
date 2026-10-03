@@ -86,7 +86,11 @@ def main() -> int:
         if not is_smtp_configured():
             print("[backup-notify] mail skipped: SMTP not configured")
             return 0
-        recipients = {user.email for user in User.query.filter_by(is_super_admin=True)}
+        recipients = {
+            user.email.strip()
+            for user in User.query.filter_by(is_super_admin=True, is_active=True)
+            if user.email and not user.email.strip().lower().endswith("@localhost")
+        }
         for email in recipients:
             try:
                 send_email(email, subject, body_html, body_text)
