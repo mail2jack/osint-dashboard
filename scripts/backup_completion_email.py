@@ -11,7 +11,7 @@ import argparse
 import html
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -52,7 +52,8 @@ def main() -> int:
     archive_id = archive.name if args.archive else "geen archive"
     status_icon = "✅" if args.status == "success" else "❌"
     status_text = "geslaagd" if args.status == "success" else "mislukt"
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Servers run on UTC so the notification must make that explicit.
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     subject = f"{status_icon} Iveras backup {status_text} — {now}"
 
     rows = (
