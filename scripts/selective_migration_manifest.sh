@@ -7,7 +7,7 @@ DB_USER="${MIGRATION_DB_USER:-cms}"
 DB_NAME="${MIGRATION_DB_NAME:-cms_db}"
 
 psql() {
-    docker compose exec -T postgres psql -X -U "$DB_USER" -d "$DB_NAME" "$@"
+    docker compose exec -T postgres psql -X -U "$DB_USER" -d "$DB_NAME" "$@" </dev/null
 }
 
 echo "SELECTIVE_MIGRATION_MANIFEST=1"
