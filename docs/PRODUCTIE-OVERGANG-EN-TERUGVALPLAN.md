@@ -70,6 +70,19 @@ productieomgeving toegepast.
 De meting is alleen een ontwerpinput. Er zijn tijdens deze inventarisatie geen
 services, DNS-records, gebruikers of productiegegevens gewijzigd.
 
+### Healthcheck-waarneming tijdens de preflight
+
+Op 3 oktober 2026 gaf de stagingomgeving:
+
+- `/health?quick=1`: HTTP 200 in circa 76 ms;
+- `/api/v1/health`: HTTP 200 in circa 49 ms;
+- `/health`: functioneel succesvol, maar soms meer dan 20 seconden door de
+  volledige externe service- en migratiecontrole.
+
+Voor beschikbaarheidsmonitoring en de migratie-smoke test gebruiken we daarom
+de snelle readiness-route. De volledige `/health`-controle blijft geschikt
+voor periodieke diagnostiek, maar niet als korte liveness-probe achter Nginx.
+
 ## Voorwaarden vóór de overgang
 
 De overgang mag pas plaatsvinden wanneer:
