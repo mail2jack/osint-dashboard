@@ -54,7 +54,7 @@ register_action(
     "Social media scan",
     "🌐",
     _social_scan,
-    "Scans multiple social media platforms based on name or username and collects public profiles, posts, and network connections.",
+    "Scans the default major platforms (YouTube, Facebook, Instagram, TikTok, LinkedIn, X, Reddit, Pinterest, Snapchat, and Telegram) for a name or username. Broader platform coverage requires an explicit expanded scan.",
 )
 register_action(
     "facebook",
