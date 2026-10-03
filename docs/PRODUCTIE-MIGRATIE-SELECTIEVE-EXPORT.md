@@ -51,8 +51,17 @@ Voor opname voorgesteld:
 `picarta_api_key`, `telegram_rapidapi_key` en de bijbehorende
 `telegram_rapidapi_limit`.
 
-OpenRouter blijft voorlopig uitgesloten:
+OpenRouter wordt op verzoek wél meegenomen:
 `openrouter_api_key`, `openrouter_base_url` en `openrouter_model`.
+De bestaande key hoeft dus niet opnieuw te worden aangemaakt. De overdracht
+gebeurt uitsluitend via het beveiligde migratiepad; de key komt niet in het
+manifest, GitHub of een logbestand terecht.
+
+Voor een versleutelde waarde moet de doelomgeving dezelfde compatibele
+CMS-encryptiesleutel gebruiken, of de bestaande OpenRouter-key wordt eenmalig
+via het beveiligde instellingenformulier in de nieuwe productie ingevoerd.
+Dat laatste maakt geen nieuwe OpenRouter-key nodig, maar voorkomt dat
+onbruikbare ciphertext wordt geïmporteerd.
 
 ### Technische integraties
 
