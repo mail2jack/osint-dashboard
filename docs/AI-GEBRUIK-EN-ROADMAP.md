@@ -44,6 +44,10 @@ licentiecontrole, authenticatie en rate limiting.
 - Zonder geconfigureerde provider zijn de AI-functies niet beschikbaar.
 - Een providerstatuscontrole is geen inhoudelijke AI-opdracht; deze controleert
   alleen of een provider beschikbaar is.
+- Het concrete OpenRouter-privacy- en retentiebeleid staat in
+  [`AI-OPENROUTER-PRIVACY.md`](AI-OPENROUTER-PRIVACY.md). OpenRouter betekent
+  niet automatisch EU-verwerking, geen retentie of geen modeltraining; dat moet
+  per model/provider en accountinstelling worden vastgesteld.
 
 ## Wat Joost nu niet doet
 
@@ -72,6 +76,7 @@ Voor deze ontwikkeling zijn eerst nodig:
 - logging en provenance van AI-invoer en -uitvoer;
 - kosten- en rate-limitbeleid;
 - bescherming tegen prompt injection en onbetrouwbare broninformatie;
+- providerkeuze, ZDR/data-collection-instelling en retentiecontrole;
 - een expliciete scheiding tussen AI-suggestie en menselijke vaststelling.
 
 ## Besluit
