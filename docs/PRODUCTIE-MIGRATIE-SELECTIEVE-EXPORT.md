@@ -18,6 +18,23 @@ recovery-codes en tokens worden dus niet geëxporteerd.
 
 ## Selectiebeleid
 
+### Inventaris staging op 3 oktober 2026
+
+Alleen metadata gelezen; waarden en secrets zijn niet uitgelezen:
+
+| Tabel | Rijen | Beleid |
+|---|---:|---|
+| `platform_settings` | 14 | allowlist per sleutel, nooit blind alles kopiëren |
+| `settings` | 96 | legacy/configuratie eerst normaliseren en daarna allowlisten |
+| `tenant_settings` | 0 | niets over te nemen |
+| `api_keys` | 1 | niet overnemen; nieuwe productietokens apart aanmaken |
+
+De huidige platform-sleutels omvatten onder meer Brave, Overheid, RapidAPI,
+OpenRouter, MarinePlan, Pimeyes, TinEye, TwoChat, WhatsApp CheckLeaked,
+Equasis en AI-modelinstellingen. De aanwezigheid van een sleutel betekent
+niet automatisch dat die sleutel naar productie mag; de uiteindelijke
+allowlist blijft expliciet.
+
 ### Wel selecteren, na allowlistcontrole
 
 - platforminstellingen die nodig zijn voor de applicatie;
