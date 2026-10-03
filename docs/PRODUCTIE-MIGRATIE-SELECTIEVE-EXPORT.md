@@ -35,6 +35,45 @@ Equasis en AI-modelinstellingen. De aanwezigheid van een sleutel betekent
 niet automatisch dat die sleutel naar productie mag; de uiteindelijke
 allowlist blijft expliciet.
 
+## Voorgestelde concrete allowlist
+
+Deze lijst bevat sleutel-namen, geen waarden. Alleen niet-lege waarden worden
+overgenomen en iedere waarde wordt vóór import afzonderlijk gecontroleerd.
+
+### Provider/API-configuratie
+
+Voor opname voorgesteld:
+
+`brave_api_key`, `google_search_api_key`, `overheid_api_key`,
+`rapidapi_username_key`, `marineplan_api_key`, `pimeyes_api_key`,
+`tineye_api_key`, `twochat_api_key`, `twochat_whatsapp_number`,
+`whatsapp_checkleaked_key`, `equasis_email`, `equasis_password`,
+`picarta_api_key`, `telegram_rapidapi_key` en de bijbehorende
+`telegram_rapidapi_limit`.
+
+OpenRouter blijft voorlopig uitgesloten:
+`openrouter_api_key`, `openrouter_base_url` en `openrouter_model`.
+
+### Technische integraties
+
+Alleen na controle en met nieuwe productie-identiteit:
+
+- SpiderFoot-URL, gebruikersnaam en wachtwoord;
+- licentie-public key; de licentiepayload en handtekening worden voor de
+  nieuwe productie-installatie opnieuw uitgegeven;
+- telemetry-URL en installatiegegevens;
+- Telegram-, SMTP- en Twilio-instellingen als die voor productie nodig zijn;
+- Tor-instellingen en goedgekeurde feature flags.
+
+Niet kopiëren maar opnieuw genereren of doelgericht instellen:
+
+- `install_token`;
+- `license_status`, `health_snapshot`, `telemetry_last_check` en
+  `telemetry_registered_id`;
+- rate-limitgebruik, setup-wizardstatus en andere runtime-/health-cache;
+- `organization_name`, `case_number_prefix` en vergelijkbare
+  productie-identiteit als die van staging afwijkt.
+
 ### Wel selecteren, na allowlistcontrole
 
 - platforminstellingen die nodig zijn voor de applicatie;
