@@ -38,3 +38,53 @@ def test_specific_confirmed_profile_scores_above_generic_false_positive():
     assert confirmed["confidence"] == "high"
     assert confirmed["score"] > false_positive["score"]
     assert false_positive["warnings"]
+
+
+def test_subject_signals_raise_score_without_using_email_domain():
+    subject = SimpleNamespace(
+        name="Patricia van Sandwijk",
+        voornamen="Patricia",
+        achternaam="van Sandwijk",
+        tussenvoegsels="van",
+        email="patricia.van.sandwijk@gmail.com",
+        phone="+31612345678",
+        social_media_ids={"linkedin": {"username": "patricia-van-sandwijk"}},
+        workflow_social_accounts=[],
+        social_accounts=[],
+        contacts=[],
+    )
+    finding = SimpleNamespace(
+        title="Account found on LinkedIn",
+        content="The profile patricia-van-sandwijk is active.",
+        detail="",
+        source_url="https://www.linkedin.com/in/patricia-van-sandwijk/",
+        subject=subject,
+    )
+    result = assess_finding(finding)
+    assert result["identity_score"] >= 20
+    assert "bekende gebruikersnaam in de bron" in result["identity_matches"]
+
+
+def test_subject_email_domain_alone_does_not_match():
+    subject = SimpleNamespace(
+        name="Jan Jansen",
+        voornamen="Jan",
+        achternaam="Jansen",
+        tussenvoegsels="",
+        email="jjansen@yahoo.fr",
+        phone="",
+        social_media_ids={},
+        workflow_social_accounts=[],
+        social_accounts=[],
+        contacts=[],
+    )
+    finding = SimpleNamespace(
+        title="Search result",
+        content="Yahoo.fr provides account recovery information.",
+        detail="",
+        source_url="https://www.google.com/search?q=yahoo.fr",
+        subject=subject,
+    )
+    result = assess_finding(finding)
+    assert "exact e-mailadres in de bron" not in result["identity_matches"]
+    assert "lokale deel van e-mailadres in de bron" not in result["identity_matches"]
