@@ -81,7 +81,7 @@ WITH allowlist(key) AS (VALUES
               WHEN s.key IS NOT NULL THEN 'settings'
               ELSE 'missing' END AS source,
          COALESCE(p.is_encrypted, s.is_encrypted, false) AS is_encrypted,
-         COALESCE(p.is_sensitive, s.is_sensitive, false) AS is_sensitive,
+         COALESCE(s.is_sensitive, false) AS is_sensitive,
          CASE
            WHEN p.key IS NOT NULL THEN (p.value IS NOT NULL AND p.value <> '')
            WHEN s.key IS NOT NULL THEN (s.value IS NOT NULL AND s.value <> '')
