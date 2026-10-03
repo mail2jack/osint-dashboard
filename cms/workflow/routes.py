@@ -1339,6 +1339,10 @@ def case_detail(case_id):
         .limit(findings_per_page)
         .all()
     )
+    for finding in findings:
+        # Calculate on read as well so historical findings receive the same
+        # explainable quality display as newly created findings.
+        finding.candidate_quality = assess_finding(finding)
 
     finding_ids = [f.id for f in findings]
     links = (

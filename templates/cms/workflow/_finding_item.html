@@ -18,7 +18,10 @@
       {% if f.confidence_level %}
       <span class="badge {% if f.confidence_level in ('high','verified') %}badge-status-success{% elif f.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ f.confidence_level }}</span>
       {% endif %}
-      {% if f.raw_data and f.raw_data.get('candidate_quality') %}
+      {% if f.candidate_quality is defined and f.candidate_quality %}
+      {% set quality = f.candidate_quality %}
+      <span class="badge {% if quality.get('confidence') == 'high' %}badge-status-success{% elif quality.get('confidence') == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;cursor:help;" title="{{ (quality.get('reasons', []) + quality.get('warnings', []))|join('; ') }}">kwaliteit {{ quality.get('score') }}/100</span>
+      {% elif f.raw_data and f.raw_data.get('candidate_quality') %}
       {% set quality = f.raw_data.get('candidate_quality') %}
       <span class="badge {% if quality.get('confidence') == 'high' %}badge-status-success{% elif quality.get('confidence') == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;cursor:help;" title="{{ (quality.get('reasons', []) + quality.get('warnings', []))|join('; ') }}">kwaliteit {{ quality.get('score') }}/100</span>
       {% endif %}
