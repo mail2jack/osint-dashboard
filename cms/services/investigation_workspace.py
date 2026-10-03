@@ -807,6 +807,7 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
             screenshots=_screenshot_dtos(f),
             action_ids=sorted(finding_actions_map.get(f.id, [])),
             action_labels=finding_action_labels.get(f.id, []),
+            candidate_quality=assess_finding(f),
         )
         for f in findings_orm
     ]
