@@ -28,6 +28,14 @@ def _social_scan(action):
     from cms.social_extractor import detect_platform, MAJOR_SOCIAL_PLATFORMS
     from cms.username_search import search_username, search_username_maigret
 
+    search_scope = "focused"
+    try:
+        snapshot = json.loads(getattr(action, "target_snapshot", "") or "{}")
+        search_scope = snapshot.get("search_scope") or search_scope
+    except (json.JSONDecodeError, TypeError):
+        pass
+    expanded = search_scope == "exotic"
+
     # Collect accounts with their subject context
     accounts_with_subject = []
 
@@ -120,7 +128,7 @@ def _social_scan(action):
         seen_sites = set()
 
         try:
-            maigret_result = search_username_maigret(username)
+            maigret_result = search_username_maigret(username, expanded=expanded)
             if maigret_result.get("found_count", 0) > 0:
                 for f in maigret_result.get("findings", []):
                     site = f.get("site") or f.get("platform", "")
@@ -149,7 +157,7 @@ def _social_scan(action):
             logger.warning("Maigret search for %s failed: %s", username, e)
 
         try:
-            sherlock_result = search_username(username)
+            sherlock_result = search_username(username, expanded=expanded)
             if sherlock_result.get("found_count", 0) > 0:
                 for f in sherlock_result.get("findings", []):
                     site = f.get("platform") or f.get("site", "")

@@ -58,6 +58,12 @@ _PLAN_ACTIONS = {
     "domain": ["osint", "subdomain", "browser_search"],
 }
 
+_SEARCH_SCOPES = {
+    "focused": "Gericht zoeken",
+    "broad": "Breed zoeken",
+    "exotic": "Exotisch zoeken",
+}
+
 _NARRATIVE_PLACEHOLDER_RE = re.compile(r"\[([A-Z][A-Z0-9_ ]+)\]")
 
 
@@ -297,7 +303,9 @@ def _load_case(case_id):
     return case, None
 
 
-def _build_plan(query, parsed, subjects=None):
+def _build_plan(query, parsed, subjects=None, search_scope="focused"):
+    if search_scope not in _SEARCH_SCOPES:
+        search_scope = "focused"
     search_type = parsed.get("type") if isinstance(parsed, dict) else None
     normalized_type = search_type if search_type in _PLAN_ACTIONS else "name"
     actions = []
@@ -316,7 +324,13 @@ def _build_plan(query, parsed, subjects=None):
 
     for index, target in enumerate(context[:40]):
         target_type = target["type"] if target["type"] in _PLAN_ACTIONS else normalized_type
-        for action_type in _PLAN_ACTIONS[target_type]:
+        action_types = list(_PLAN_ACTIONS[target_type])
+        if target_type in {"username", "name"}:
+            if search_scope == "focused":
+                action_types = ["social"]
+            elif search_scope in {"broad", "exotic"}:
+                action_types = ["social", "google_dork", "browser_search"]
+        for action_type in action_types:
             info = ACTION_REGISTRY.get(action_type)
             if not info or is_paid_action(action_type):
                 continue
@@ -334,6 +348,7 @@ def _build_plan(query, parsed, subjects=None):
                     "target_subject_name": target["subject_name"],
                     "target_source": target["source"],
                     "platform": target["platform"],
+                    "search_scope": search_scope,
                     "rationale": (
                         "Bestaande identifier uit het dossier; zoek dit exacte gegeven."
                     ),
@@ -365,6 +380,12 @@ def _build_plan(query, parsed, subjects=None):
             "automatic_verification": False,
             "exclude_instruction_pages": True,
             "relations_require_evidence": True,
+            "search_scope": search_scope,
+            "search_scope_label": _SEARCH_SCOPES[search_scope],
+            "exotic_warning": (
+                "Exotisch zoeken bezoekt veel extra sites en levert waarschijnlijk meer false positives op."
+                if search_scope == "exotic" else None
+            ),
         },
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -423,6 +444,10 @@ def create_ai_plan(case_id):
     if len(query) > 2000:
         return jsonify({"error": "Research question is too long"}), 400
 
+    search_scope = str(body.get("search_scope") or "focused").strip().casefold()
+    if search_scope not in _SEARCH_SCOPES:
+        return jsonify({"error": "Unknown search scope"}), 400
+
     subjects = case.subjects.all()
     config = get_ai_config()
     if config.get("available") and check_ai_available():
@@ -431,7 +456,7 @@ def create_ai_plan(case_id):
         parsed = _deterministic_query_parse(query)
     selected_subject_id = body.get("subject_id") or None
     selected_subjects = [s for s in subjects if not selected_subject_id or s.id == str(selected_subject_id)]
-    plan = _build_plan(query, parsed, selected_subjects)
+    plan = _build_plan(query, parsed, selected_subjects, search_scope=search_scope)
     AuditLog.log(
         user_id=current_user.id,
         action="create",
@@ -527,6 +552,9 @@ def approve_ai_plan(case_id):
             created_by=current_user.id,
         )
         action.target_snapshot = json.dumps(action.build_target_snapshot(subject, data_value))
+        snapshot = json.loads(action.target_snapshot or "{}")
+        snapshot["search_scope"] = spec.get("search_scope") or plan.get("policy", {}).get("search_scope", "focused")
+        action.target_snapshot = json.dumps(snapshot)
         db.session.add(action)
         db.session.flush()
         log_scope_audit(
