@@ -61,7 +61,11 @@ from cms.services.report_findings import (
     deduplicate_report_findings,
     normalize_report_markdown,
 )
-from cms.services.candidate_quality import assess_finding, enrich_finding_quality
+from cms.services.candidate_quality import (
+    assess_finding,
+    enrich_finding_quality,
+    finding_sort_key,
+)
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -800,6 +804,9 @@ def findings_index():
     f_status = request.args.get("status", "").strip()
     f_report = request.args.get("report", "").strip()  # in|out|all
     f_q = request.args.get("q", "").strip()
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     show_archived = request.args.get("show_archived") == "1"
     page = request.args.get("page", 1, type=int)
     per_page = 50
@@ -861,13 +868,16 @@ def findings_index():
         subject_options = sorted(subj_rows, key=lambda s: (s.name or "").lower())
 
     finding_count = q.count()
-    findings = (
-        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    all_findings = q.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
+        finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort), reverse=False)
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[(page - 1) * per_page : page * per_page]
     case_map = {c.id: c for c in cases}
     for f in findings:
         f._ctx_case = case_map.get(f.case_id)
@@ -892,6 +902,7 @@ def findings_index():
         f_status=f_status,
         f_report=f_report,
         f_q=f_q,
+        finding_sort=finding_sort,
         show_archived=show_archived,
         finding_count=finding_count,
         page=page,
@@ -914,6 +925,9 @@ def findings_api():
     f_status = request.args.get("status", "").strip()
     f_report = request.args.get("report", "").strip()
     f_q = request.args.get("q", "").strip()
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     show_archived = request.args.get("show_archived") == "1"
 
     cid = f_case_id if f_case_id in case_ids else None
@@ -946,13 +960,16 @@ def findings_api():
         )
     page = max(1, request.args.get("page", 1, type=int))
     per_page = max(1, min(request.args.get("per_page", 50, type=int), 200))
-    findings = (
-        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    all_findings = q.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
+        finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort))
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[(page - 1) * per_page : page * per_page]
     case_map = {}
     if findings:
         from cms.models import Case as _Case
@@ -997,6 +1014,7 @@ def findings_api():
             "finding_count": q.count(),
             "page": page,
             "per_page": per_page,
+            "finding_sort": finding_sort,
         }
     )
 
@@ -1289,6 +1307,9 @@ def case_detail(case_id):
     show_archived = request.args.get("show_archived") == "1"
     findings_page = max(1, request.args.get("findings_page", 1, type=int))
     findings_per_page = 25
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     finding_scope = request.args.get("finding_scope", "").strip()
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
@@ -1332,17 +1353,20 @@ def case_detail(case_id):
     ).count()
     findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
     findings_page = min(findings_page, findings_pages)
-    findings = (
-        findings_query.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc(), WorkflowFinding.id.desc())
-        .offset((findings_page - 1) * findings_per_page)
-        .limit(findings_per_page)
-        .all()
-    )
-    for finding in findings:
+    all_findings = findings_query.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
         # Calculate on read as well so historical findings receive the same
         # explainable quality display as newly created findings.
         finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort))
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[
+        (findings_page - 1) * findings_per_page : findings_page * findings_per_page
+    ]
 
     finding_ids = [f.id for f in findings]
     links = (
@@ -1460,6 +1484,7 @@ def case_detail(case_id):
             findings_pages=findings_pages,
             findings_per_page=findings_per_page,
             finding_scope=finding_scope,
+            finding_sort=finding_sort,
             finding_actions=finding_actions,
             investigations=investigations,
             investigations_meta=investigations_meta,
@@ -1572,6 +1597,14 @@ def investigation_detail(case_id, investigation_id):
         1, request.args.get("findings_page", 1, type=int)
     )
     investigation_findings_per_page = 25
+    investigation_finding_sort = request.args.get("finding_sort", "newest").strip()
+    if investigation_finding_sort not in {"newest", "quality", "relevance", "source"}:
+        investigation_finding_sort = "newest"
+    ws.findings.sort(
+        key=lambda finding: finding_sort_key(finding, investigation_finding_sort)
+    )
+    if investigation_finding_sort == "newest":
+        ws.findings.reverse()
     investigation_findings_total = len(ws.findings)
     investigation_candidate_count = sum(
         1
@@ -1693,6 +1726,7 @@ def investigation_detail(case_id, investigation_id):
         investigation_findings_page=investigation_findings_page,
         investigation_findings_pages=investigation_findings_pages,
         investigation_findings_total=investigation_findings_total,
+        investigation_finding_sort=investigation_finding_sort,
         investigation_candidate_count=investigation_candidate_count,
         action_types=action_types,
         subjects_cfg=subjects_cfg,

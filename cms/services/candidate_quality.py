@@ -216,3 +216,21 @@ def enrich_finding_quality(finding) -> dict:
     if not getattr(finding, "confidence_level", None):
         finding.confidence_level = quality["confidence"]
     return quality
+
+
+def finding_sort_key(finding, sort: str = "newest"):
+    """Return a stable UI sort key for a finding or finding DTO."""
+    quality = getattr(finding, "candidate_quality", None) or assess_finding(finding)
+    created = getattr(finding, "created_at", None)
+    created_key = created.isoformat() if created else ""
+    if sort == "quality":
+        return (-int(quality.get("score", 0)), -int(quality.get("identity_score", 0)), created_key)
+    if sort == "relevance":
+        return (-int(quality.get("identity_score", 0)), -int(quality.get("score", 0)), created_key)
+    if sort == "source":
+        return (
+            str(quality.get("platform") or getattr(finding, "source_type", "") or "").casefold(),
+            str(getattr(finding, "source_url", "") or "").casefold(),
+            created_key,
+        )
+    return ("", "", created_key)

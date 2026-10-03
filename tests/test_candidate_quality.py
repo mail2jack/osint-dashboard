@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from cms.services.candidate_quality import (
     assess_finding,
     canonicalize_url,
+    finding_sort_key,
     platform_for_url,
 )
 
@@ -88,3 +89,30 @@ def test_subject_email_domain_alone_does_not_match():
     result = assess_finding(finding)
     assert "exact e-mailadres in de bron" not in result["identity_matches"]
     assert "lokale deel van e-mailadres in de bron" not in result["identity_matches"]
+
+
+def test_finding_sort_key_supports_quality_relevance_and_source():
+    older = SimpleNamespace(
+        created_at=SimpleNamespace(isoformat=lambda: "2026-10-01T10:00:00"),
+        source_type="web",
+        source_url="https://example.com/older",
+        candidate_quality={
+            "score": 70,
+            "identity_score": 10,
+            "platform": "Example",
+        },
+    )
+    stronger_identity = SimpleNamespace(
+        created_at=SimpleNamespace(isoformat=lambda: "2026-10-01T11:00:00"),
+        source_type="social",
+        source_url="https://x.com/name",
+        candidate_quality={
+            "score": 80,
+            "identity_score": 40,
+            "platform": "X",
+        },
+    )
+
+    assert finding_sort_key(stronger_identity, "quality") < finding_sort_key(older, "quality")
+    assert finding_sort_key(stronger_identity, "relevance") < finding_sort_key(older, "relevance")
+    assert finding_sort_key(older, "source") < finding_sort_key(stronger_identity, "source")

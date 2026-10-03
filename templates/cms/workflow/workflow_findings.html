@@ -180,6 +180,12 @@
     <option value="out" {% if f_report == 'out' %}selected{% endif %}>{{ _('Excluded from report') }}</option>
   </select>
   <input type="text" name="q" value="{{ f_q }}" placeholder="{{ _('Search title/content...') }}" style="min-width:200px;">
+  <select name="finding_sort" title="{{ _('Sort findings') }}" onchange="this.form.submit()">
+    <option value="newest" {% if finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest first') }}</option>
+    <option value="quality" {% if finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
+    <option value="relevance" {% if finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance to subject') }}</option>
+    <option value="source" {% if finding_sort == 'source' %}selected{% endif %}>{{ _('Source / platform') }}</option>
+  </select>
   <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;">
     <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %}> {{ _('Show archived') }}
   </label>
@@ -190,11 +196,11 @@
 {% if finding_count > per_page %}
 <div class="findings-pager">
   {% if page > 1 %}
-  <a href="{{ url_for('workflow.findings_index', page=page-1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">← {{ _('Previous') }}</a>
+  <a href="{{ url_for('workflow.findings_index', page=page-1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, finding_sort=finding_sort, show_archived='1' if show_archived else '') }}" class="btn-cms small">← {{ _('Previous') }}</a>
   {% endif %}
   <span>{{ _('Page') }} {{ page }} / {{ (finding_count / per_page) | round(0, 'ceil') | int }}</span>
   {% if page * per_page < finding_count %}
-  <a href="{{ url_for('workflow.findings_index', page=page+1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">{{ _('Next') }} →</a>
+  <a href="{{ url_for('workflow.findings_index', page=page+1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, finding_sort=finding_sort, show_archived='1' if show_archived else '') }}" class="btn-cms small">{{ _('Next') }} →</a>
   {% endif %}
 </div>
 {% endif %}

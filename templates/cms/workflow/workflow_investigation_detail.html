@@ -568,11 +568,21 @@
     {% if can_write and investigation_candidate_count > 0 %}
     <button type="button" id="finalizeInvestigationCandidates" data-candidate-count="{{ investigation_candidate_count }}" style="margin-left:.4rem;background:#b45309;color:#fff;border:none;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;" title="{{ _('Remove all remaining unverified candidates from this investigation') }}">✅ {{ _('Finish investigation validation') }} ({{ investigation_candidate_count }} {{ _('candidates left') }})</button>
     {% endif %}
+    <form method="GET" style="display:inline-flex;align-items:center;gap:.25rem;margin-left:.35rem;">
+      <input type="hidden" name="findings_page" value="1">
+      <label for="investigationFindingSort" style="font-size:.72rem;color:var(--text-muted);">{{ _('Sort') }}</label>
+      <select id="investigationFindingSort" name="finding_sort" onchange="this.form.submit()" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+        <option value="newest" {% if investigation_finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest') }}</option>
+        <option value="quality" {% if investigation_finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
+        <option value="relevance" {% if investigation_finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance') }}</option>
+        <option value="source" {% if investigation_finding_sort == 'source' %}selected{% endif %}>{{ _('Source') }}</option>
+      </select>
+    </form>
   </div>
   <div class="workflow-step-body">
-    {% if ws.findings %}
+    {% if investigation_findings %}
     <div class="investigation-findings-list" style="display:flex;flex-direction:column;gap:0.75rem;">
-      {% for fd in ws.findings %}
+      {% for fd in investigation_findings %}
       {% with fd=fd %}
       {% include "cms/workflow/_finding_item_readonly.html" %}
       {% endwith %}
