@@ -70,6 +70,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - uploads:/app/static/uploads
+      - ${BACKUP_DIR_HOST:-./backups}:/app/backups:ro
     depends_on:
       postgres:
         condition: service_healthy

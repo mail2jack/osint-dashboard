@@ -62,10 +62,19 @@ _notify_completion() {
         status="success"
     fi
     if [ -f "$BACKUP_NOTIFY_SCRIPT" ]; then
-        "$BACKUP_NOTIFY_PYTHON" "$BACKUP_NOTIFY_SCRIPT" \
-            --dir "$SCRIPT_DIR" --status "$status" --archive "$ENCRYPTED_FILE" \
-            --errors "$ERRORS" --warnings "$WARNINGS" \
-            || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
+        if command -v docker >/dev/null 2>&1 \
+            && docker compose ps --status running -q app 2>/dev/null | grep -q .; then
+            docker compose exec -T app python3 /app/scripts/backup_completion_email.py \
+                --dir /app --status "$status" \
+                --archive "/app/backups/$(basename "$ENCRYPTED_FILE")" \
+                --errors "$ERRORS" --warnings "$WARNINGS" \
+                || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
+        else
+            "$BACKUP_NOTIFY_PYTHON" "$BACKUP_NOTIFY_SCRIPT" \
+                --dir "$SCRIPT_DIR" --status "$status" --archive "$ENCRYPTED_FILE" \
+                --errors "$ERRORS" --warnings "$WARNINGS" \
+                || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
+        fi
     fi
 }
 
