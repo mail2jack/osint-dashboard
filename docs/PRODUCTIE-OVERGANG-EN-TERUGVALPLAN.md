@@ -5,6 +5,18 @@
 **Productie:** `joost.iveras.com`  
 **Nieuwe productie kandidaat:** `staging.joost.iveras.com`
 
+## Vastgestelde huidige routing
+
+Read-only gecontroleerd op 3 oktober 2026:
+
+- `joost.iveras.com` → `136.144.209.108` (huidige productie; latere
+  backup/licentie/stagingserver);
+- `staging.joost.iveras.com` → `136.144.211.112` (huidige staging; latere
+  productie).
+
+Deze adressen zijn een controlepunt voor de overgang en mogen niet als
+permanente configuratie worden verondersteld zonder een nieuwe DNS-controle.
+
 ## Doelarchitectuur
 
 De huidige stagingserver wordt na goedkeuring de nieuwe productieserver. De
@@ -12,8 +24,11 @@ huidige productieserver blijft voorlopig bestaan en krijgt daarna een andere
 rol:
 
 - licentieserver;
-- tijdelijke tweede omgeving voor gecontroleerde tests;
-- later eventueel opslaglocatie voor versleutelde back-ups.
+- stagingomgeving voor gecontroleerde tests;
+- opslaglocatie voor versleutelde back-ups.
+
+De stagingomgeving op deze server gebruikt uitsluitend synthetische testdata.
+Productiegegevens worden niet naar staging gekopieerd.
 
 De applicatie, database en onderzoeksdata van productie blijven logisch
 gescheiden van de licentieserver en back-upopslag.
@@ -53,7 +68,8 @@ De overgang mag pas plaatsvinden wanneer:
 
 1. Korte onderhoudsperiode aankondigen.
 2. Laatste back-up van de bronomgeving maken.
-3. Productiedata en goedgekeurde configuratie overzetten.
+3. Een lege productieomgeving opbouwen met alleen de goedgekeurde technische
+   configuratie, API-instellingen, default company en één nieuw account.
 4. DNS naar de nieuwe productieserver laten wijzen.
 5. HTTPS, login, 2FA, case-aanmaak en health-check testen.
 6. Externe integraties en licentiecontrole testen.
@@ -93,7 +109,10 @@ onderzoeksworkflow of een kritieke integratie niet betrouwbaar werkt.
 
 Voor de daadwerkelijke overgang moet de eigenaar nog expliciet bevestigen:
 
-- welke tenant(s), gebruikers en dossiers meegaan;
+- bevestigen dat alleen de lege default company en
+  `ivan.versteegh@protonmail.com` worden aangemaakt;
+- bevestigen dat geen cases, clients, subjects, findings, onderzoeken,
+  rapporten of testdata meegaan;
 - wanneer de onderhoudsperiode mag plaatsvinden;
 - welke API-sleutels productie mag gebruiken;
 - hoe lang de oude productieomgeving als terugval beschikbaar blijft;

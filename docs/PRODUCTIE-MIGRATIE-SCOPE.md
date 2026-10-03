@@ -1,6 +1,6 @@
 # Besluit: scope van de latere productiemigratie
 
-**Vastgelegd:** 29 september 2026
+**Vastgelegd:** 3 oktober 2026
 
 ## Expliciete grens
 
@@ -12,12 +12,13 @@ geslaagde stagingtest geldt niet als toestemming om productie te wijzigen.
 
 Bij de latere migratie wordt uitsluitend meegenomen:
 
-- de **Default Organization / default company**;
-- één gebruiker: `ivan.versteegh@protonmail.com`;
-- de noodzakelijke configuratie en instellingen;
+- een lege **Default Organization / default company**;
+- precies één nieuw aangemaakte gebruiker: `ivan.versteegh@protonmail.com`;
+- de noodzakelijke technische configuratie en platforminstellingen;
 - de API-configuratie en API-sleutels, veilig overgenomen zoals eerder op
   staging is gedaan;
-- de benodigde licentie- en integratie-instellingen.
+- de benodigde licentie- en integratie-instellingen;
+- een nieuw wachtwoord en opnieuw geregistreerde 2FA voor de gebruiker.
 
 Niet meenemen:
 
@@ -26,7 +27,16 @@ Niet meenemen:
 - oude subjects;
 - oude findings en onderzoeksresultaten;
 - andere tenantbedrijven;
-- oude testdata.
+- oude testdata;
+- oude sessies, recovery-codes en authenticatietokens.
+
+## Omgevingen na de overgang
+
+- De huidige staging-VPS wordt `joost.iveras.com` en bevat alleen de hierboven
+  genoemde lege basisomgeving.
+- De huidige productie-VPS wordt licentie-, backup- en stagingserver.
+- Die nieuwe stagingomgeving gebruikt uitsluitend synthetische testdata en
+  krijgt geen productiecases, clients, subjects, findings of rapporten.
 
 ## Uitvoeringsregel
 
