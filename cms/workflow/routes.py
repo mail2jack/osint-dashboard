@@ -3578,6 +3578,80 @@ def batch_delete_findings(case_id):
     return jsonify({"ok": True, "deleted": deleted})
 
 
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/findings/finalize-candidates",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def finalize_investigation_candidates(case_id, investigation_id):
+    """Remove unverified candidate findings belonging only to one investigation."""
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    if investigation.archived_at is not None:
+        return jsonify({"error": "Investigation is archived"}), 409
+
+    action_ids = {
+        row[0]
+        for row in db.session.query(WorkflowResearchAction.id)
+        .filter(
+            WorkflowResearchAction.tenant_id == current_user.tenant_id,
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.investigation_id == investigation_id,
+            WorkflowResearchAction.archived_at.is_(None),
+        )
+        .all()
+    }
+    if not action_ids:
+        return jsonify({"ok": True, "removed": 0, "skipped_shared": 0})
+
+    scoped_links = WorkflowActionFinding.query.filter(
+        WorkflowActionFinding.action_id.in_(action_ids)
+    ).all()
+    finding_ids = {link.finding_id for link in scoped_links}
+    if not finding_ids:
+        return jsonify({"ok": True, "removed": 0, "skipped_shared": 0})
+
+    all_links = WorkflowActionFinding.query.filter(
+        WorkflowActionFinding.finding_id.in_(finding_ids)
+    ).all()
+    outside_links = {}
+    for link in all_links:
+        if link.action_id not in action_ids:
+            outside_links.setdefault(link.finding_id, set()).add(link.action_id)
+
+    findings = WorkflowFinding.query.filter(
+        WorkflowFinding.tenant_id == current_user.tenant_id,
+        WorkflowFinding.case_id == case_id,
+        WorkflowFinding.id.in_(finding_ids),
+        WorkflowFinding.is_deleted == False,  # noqa: E712
+        WorkflowFinding.archived_at.is_(None),
+        WorkflowFinding.verified.is_(False),
+        sa.or_(WorkflowFinding.status == "candidate", WorkflowFinding.status.is_(None)),
+    ).all()
+    removed = 0
+    skipped_shared = 0
+    for finding in findings:
+        if finding.id in outside_links:
+            skipped_shared += 1
+            continue
+        finding.soft_delete()
+        removed += 1
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="finalize_validation",
+        entity_type="investigation",
+        entity_id=investigation.id,
+        case_id=case_id,
+        description=(
+            f"Finalized investigation validation: removed {removed} candidate findings; "
+            f"skipped {skipped_shared} shared findings"
+        ),
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "removed": removed, "skipped_shared": skipped_shared})
+
+
 # Per-worker (in-process) cooldown to prevent a rapid toggle-back of the
 # legacy boolean verify button. NOTE: this dict is NOT shared across gunicorn
 # workers, so it only guards the common single-worker rapid-toggle case. If a

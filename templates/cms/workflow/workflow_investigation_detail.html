@@ -1015,7 +1015,16 @@ if (finalizeInvestigationCandidatesBtn) finalizeInvestigationCandidatesBtn.addEv
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'Accept': 'application/json'},
     body: '{}'
-  }).then(function (response) { return response.json(); }).then(function (data) {
+  }).then(function (response) {
+    return response.text().then(function (body) {
+      var contentType = response.headers.get('content-type') || '';
+      if (!response.ok || contentType.indexOf('application/json') === -1) {
+        throw new Error('{{ _('The server returned an invalid response. Please refresh and try again.') }}');
+      }
+      try { return JSON.parse(body); }
+      catch (e) { throw new Error('{{ _('The server returned an invalid response. Please refresh and try again.') }}'); }
+    });
+  }).then(function (data) {
     if (!data.ok) throw new Error(data.error || '{{ _('Could not finish investigation validation') }}');
     showToast(data.removed + ' {{ _('unverified candidates removed') }}', 'success');
     window.setTimeout(function () { window.location.reload(); }, 250);
