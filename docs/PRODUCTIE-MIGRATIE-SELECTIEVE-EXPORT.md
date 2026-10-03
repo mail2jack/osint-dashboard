@@ -68,8 +68,9 @@ onbruikbare ciphertext wordt geïmporteerd.
 Alleen na controle en met nieuwe productie-identiteit:
 
 - SpiderFoot-URL, gebruikersnaam en wachtwoord;
-- licentie-public key; de licentiepayload en handtekening worden voor de
-  nieuwe productie-installatie opnieuw uitgegeven;
+- bestaande licentie-public key, install-ID/token, licentiepayload en
+  handtekening, omdat de huidige staging-VPS dezelfde installatie wordt als
+  de nieuwe productie;
 - telemetry-URL en installatiegegevens;
 - Telegram-, SMTP- en Twilio-instellingen als die voor productie nodig zijn;
 - Tor-instellingen en goedgekeurde feature flags.
@@ -77,8 +78,7 @@ Alleen na controle en met nieuwe productie-identiteit:
 Niet kopiëren maar opnieuw genereren of doelgericht instellen:
 
 - `install_token`;
-- `license_status`, `health_snapshot`, `telemetry_last_check` en
-  `telemetry_registered_id`;
+- `health_snapshot`, `telemetry_last_check` en `telemetry_registered_id`;
 - rate-limitgebruik, setup-wizardstatus en andere runtime-/health-cache;
 - `organization_name`, `case_number_prefix` en vergelijkbare
   productie-identiteit als die van staging afwijkt.
