@@ -20,6 +20,7 @@ from cms.models import ActionFinding, Finding, Notification, SpiderFootScan, db
 from cms.tenant_context import set_tenant_context
 from cms.tier_limits import check_feature
 from cms.services.report_findings import finding_payload_key
+from cms.services.candidate_quality import enrich_finding_quality
 from cms.workflow.models import WorkflowResearchAction
 
 logger = logging.getLogger(__name__)
@@ -257,6 +258,7 @@ def _materialize_completed_proposals(
             created_by=action.created_by,
             created_at=datetime.now(timezone.utc),
         )
+        enrich_finding_quality(finding)
         db.session.add(finding)
         db.session.flush()
         db.session.add(ActionFinding(action_id=action.id, finding_id=finding.id))

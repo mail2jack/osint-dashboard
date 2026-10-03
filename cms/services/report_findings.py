@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from cms.services.candidate_quality import canonicalize_url
+
 
 _TABLE_SEPARATOR = re.compile(r"^:?-{3,}:?$")
 
@@ -14,7 +16,7 @@ def finding_payload_key(finding, *, include_subject: bool = False):
         finding.title or "",
         finding.content or "",
         finding.detail or "",
-        finding.source_url or "",
+        canonicalize_url(finding.source_url),
         finding.source_type or "",
     )
     if include_subject:

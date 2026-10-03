@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from cms.models import db, SocialAccount
 from cms.services.report_findings import finding_payload_key
+from cms.services.candidate_quality import enrich_finding_quality
 from cms.workflow.models import (
     WorkflowCase,
     WorkflowResearchAction,
@@ -347,6 +348,7 @@ def run_action(action_id):
                 created_by=action_creator_id,
                 created_at=datetime.now(),
             )
+            enrich_finding_quality(finding)
             db.session.add(finding)
             db.session.flush()
             existing_by_key[finding_key] = finding

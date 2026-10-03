@@ -61,6 +61,7 @@ from cms.services.report_findings import (
     deduplicate_report_findings,
     normalize_report_markdown,
 )
+from cms.services.candidate_quality import assess_finding, enrich_finding_quality
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -746,6 +747,9 @@ def _finding_json_with_context(f, case=None, subject=None):
             raw = json.loads(raw)
         except Exception:
             raw = None
+    candidate_quality = raw.get("candidate_quality") if isinstance(raw, dict) else None
+    if not candidate_quality:
+        candidate_quality = assess_finding(f)
     return {
         "id": f.id,
         "case_id": f.case_id,
@@ -763,6 +767,7 @@ def _finding_json_with_context(f, case=None, subject=None):
         "content_hash": f.content_hash,
         "integrity_verified": f.verify_integrity() if f.content_hash else None,
         "confidence_level": f.confidence_level,
+        "candidate_quality": candidate_quality,
         "archived_at": f.archived_at.isoformat() if f.archived_at else None,
         "comment": f.comment,
         "include_in_report": f.include_in_report,
@@ -2125,6 +2130,7 @@ def import_passive_source_research(case_id, action_id, investigation_id=None):
                 created_by=current_user.id,
                 created_at=datetime.now(UTC),
             )
+            enrich_finding_quality(finding)
             db.session.add(finding)
             db.session.flush()
             db.session.add(
@@ -3090,6 +3096,7 @@ def create_manual_finding(case_id):
         source_type="manual",
         created_by=current_user.id,
     )
+    enrich_finding_quality(finding)
     db.session.add(finding)
     db.session.flush()
 
