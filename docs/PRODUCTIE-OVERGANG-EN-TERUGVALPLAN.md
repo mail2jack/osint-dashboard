@@ -61,6 +61,12 @@ herinrichting als technische voorwaarde:
 4. bij structurele geheugendruk moet de VPS eerst worden opgewaardeerd of
    staging op deze server worden uitgesteld.
 
+De huidige Compose-configuratie van staging start PostgreSQL, Redis, de app,
+de worker en de WhatsApp-service. Er staan daarin nog geen expliciete
+CPU- of geheugenlimieten. Die limieten moeten onderdeel worden van de aparte
+staging-inrichting; ze worden niet zonder capaciteitsmeting op de bestaande
+productieomgeving toegepast.
+
 De meting is alleen een ontwerpinput. Er zijn tijdens deze inventarisatie geen
 services, DNS-records, gebruikers of productiegegevens gewijzigd.
 
