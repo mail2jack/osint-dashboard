@@ -6,6 +6,9 @@
       {% if fd.status %}
       <span class="badge badge-status-default" style="margin-left:0.25rem;">{{ fd.status }}</span>
       {% endif %}
+      {% if fd.candidate_quality %}
+      <span class="badge {% if fd.candidate_quality.get('confidence') == 'high' %}badge-status-success{% elif fd.candidate_quality.get('confidence') == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;cursor:help;" title="{{ (fd.candidate_quality.get('reasons', []) + fd.candidate_quality.get('warnings', []))|join('; ') }}">kwaliteit {{ fd.candidate_quality.get('score') }}/100</span>
+      {% endif %}
       {% if fd.verified %}
       <span style="border:1px solid #10b981;border-radius:4px;padding:0.15rem 0.5rem;font-size:0.78rem;color:#10b981;background:rgba(16,185,129,0.08);">✅ {{ _('Verified') }}</span>
       {% endif %}

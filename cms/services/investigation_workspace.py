@@ -40,6 +40,7 @@ from urllib.parse import urlparse
 import sqlalchemy as sa
 
 from cms.models import AuditLog, Investigation, Subject, User, db
+from cms.services.candidate_quality import assess_finding
 from cms.services.report_findings import finding_payload_key
 from cms.services.subject_service import subject_display_name
 from cms.workflow.actions.registry import ACTION_REGISTRY
@@ -144,6 +145,7 @@ class FindingDTO:
     # A finding that also belongs to a case-wide action does not list it here.
     action_ids: list[str]
     action_labels: list[str]
+    candidate_quality: dict | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -450,6 +452,7 @@ def load_inv_findings(
                 for a_id in sorted(finding_actions_map.get(f.id, []))
                 if a_id in label_icon
             ],
+            candidate_quality=assess_finding(f),
         )
         for f in findings
     ]
