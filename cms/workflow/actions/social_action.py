@@ -8,6 +8,14 @@ from cms.models import db, Subject
 logger = logging.getLogger(__name__)
 
 
+def _display_platform(platform, fallback=None):
+    """Use the detected result platform, with a stable human label."""
+    value = str(platform or fallback or "unknown").strip()
+    if value.casefold() in {"twitter", "x"}:
+        return "X"
+    return value
+
+
 def _normalize_name_query(value):
     """Drop a duplicated leading initial from a person's display name.
 
@@ -136,8 +144,9 @@ def _social_scan(action):
                         seen_sites.add(site)
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
+                        detected_label = _display_platform(platform, site)
                         finding = {
-                            "title": f"{label}: profile active ({site})",
+                            "title": f"{detected_label}: profile active ({site})",
                             "detail": f"Found via Maigret. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",
@@ -165,8 +174,9 @@ def _social_scan(action):
                         seen_sites.add(site)
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
+                        detected_label = _display_platform(platform, site)
                         finding = {
-                            "title": f"{label}: profile active ({site})",
+                            "title": f"{detected_label}: profile active ({site})",
                             "detail": f"Found via Sherlock. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",
