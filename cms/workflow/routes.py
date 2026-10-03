@@ -3329,14 +3329,16 @@ def pv_view(case_id):
         "th": ["align"],
         "td": ["align"],
     }
-    raw_html = (
-        md_lib.markdown(
-            normalize_report_markdown(case.pv_body),
-            extensions=["tables"],
+    report_markdown = normalize_report_markdown(case.pv_body) if case.pv_body else ""
+    # Reports generated before candidate validation messaging was introduced
+    # may still contain the old, misleading sentence.  Correct it at render
+    # time; regeneration will persist the complete current summary.
+    if pending_finding_count and "No findings have been recorded for this case yet." in report_markdown:
+        report_markdown = report_markdown.replace(
+            "No findings have been recorded for this case yet.",
+            "No validated findings are included in this report yet.",
         )
-        if case.pv_body
-        else ""
-    )
+    raw_html = md_lib.markdown(report_markdown, extensions=["tables"]) if report_markdown else ""
     body_html = bleach.clean(raw_html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
 
     # Never let a stored external URL become an image request in a report.  The
