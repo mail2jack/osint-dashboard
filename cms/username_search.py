@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 
 from curl_cffi import requests as curl_requests
 from curl_cffi import CurlError
@@ -31,24 +32,42 @@ DEFAULT_USERNAME_PLATFORMS = {
     "telegram.me",
     "t.me",
 }
+DEFAULT_USERNAME_PLATFORM_NAMES = {
+    "youtube",
+    "facebook",
+    "instagram",
+    "tiktok",
+    "linkedin",
+    "x",
+    "twitter",
+    "reddit",
+    "pinterest",
+    "snapchat",
+    "telegram",
+}
 
 
 def _site_is_in_default_username_scope(site_name, site_info):
     """Return whether a site belongs to the default username allowlist."""
     name = str(site_name or "").casefold().strip()
-    values = [name]
+    if name in DEFAULT_USERNAME_PLATFORM_NAMES:
+        return True
+    hosts = []
     if isinstance(site_info, dict):
         for key in ("url", "url_user", "url_main", "check_uri"):
             value = site_info.get(key)
             if value:
-                values.append(str(value).casefold())
+                hosts.append(urlparse(str(value)).netloc.casefold().split(":", 1)[0].removeprefix("www."))
     else:
         for key in ("url", "url_user", "url_main"):
             value = getattr(site_info, key, None)
             if value:
-                values.append(str(value).casefold())
-    haystack = " ".join(values)
-    return any(domain in haystack for domain in DEFAULT_USERNAME_PLATFORMS)
+                hosts.append(urlparse(str(value)).netloc.casefold().split(":", 1)[0].removeprefix("www."))
+    return any(
+        host == domain or host.endswith("." + domain)
+        for host in hosts
+        for domain in DEFAULT_USERNAME_PLATFORMS
+    )
 
 
 async def check_username_async(client, platform, info, username):
