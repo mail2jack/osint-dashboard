@@ -2,8 +2,11 @@ import logging
 import threading
 import uuid
 from datetime import datetime
+from types import SimpleNamespace
 
 from cms.models import db, SocialAccount
+from cms.services.report_findings import finding_payload_key
+from cms.services.candidate_quality import enrich_finding_quality
 from cms.workflow.models import (
     WorkflowCase,
     WorkflowResearchAction,
@@ -287,14 +290,47 @@ def run_action(action_id):
             return
 
         created = []
+        linked_existing = 0
+        linked_finding_ids = set()
         # A handler (or a mid-run status commit) may have returned the pooled
         # connection and rebound the session to a fresh backend connection;
-        # re-assert the RLS tenant context on whatever connection the finding
-        # inserts below will flush on.
+        # re-assert the RLS tenant context before reading existing findings.
         set_tenant_context(db, tenant_id)
+        existing_findings = (
+            WorkflowFinding.query.filter(
+                WorkflowFinding.tenant_id == tenant_id,
+                WorkflowFinding.case_id == action.case_id,
+                WorkflowFinding.is_deleted == False,  # noqa: E712
+                WorkflowFinding.archived_at.is_(None),
+            ).all()
+        )
+        existing_by_key = {
+            finding_payload_key(finding, include_subject=True): finding
+            for finding in existing_findings
+        }
         for fd in findings_data:
             detail_text = fd.get("detail", "")
             subject_id = fd.get("subject_id")
+            finding_key = finding_payload_key(
+                SimpleNamespace(
+                    title=fd["title"],
+                    content=detail_text or fd["title"],
+                    detail=detail_text,
+                    source_url=fd.get("source_url"),
+                    source_type=fd.get("source_type", action.action_type),
+                    subject_id=subject_id,
+                ),
+                include_subject=True,
+            )
+            existing = existing_by_key.get(finding_key)
+            if existing:
+                if existing.id not in linked_finding_ids:
+                    db.session.add(
+                        WorkflowActionFinding(action_id=action.id, finding_id=existing.id)
+                    )
+                    linked_finding_ids.add(existing.id)
+                linked_existing += 1
+                continue
             finding = WorkflowFinding(
                 id=str(uuid.uuid4()),
                 tenant_id=tenant_id,
@@ -312,8 +348,11 @@ def run_action(action_id):
                 created_by=action_creator_id,
                 created_at=datetime.now(),
             )
+            enrich_finding_quality(finding)
             db.session.add(finding)
             db.session.flush()
+            existing_by_key[finding_key] = finding
+            linked_finding_ids.add(finding.id)
 
             link = WorkflowActionFinding(action_id=action.id, finding_id=finding.id)
             db.session.add(link)
@@ -354,7 +393,10 @@ def run_action(action_id):
 
         action.status = "completed"
         action.completed_at = datetime.now()
-        action.result_summary = f"{len(created)} findings"
+        action.result_summary = (
+            f"{len(created)} new findings"
+            + (f", {linked_existing} existing findings linked" if linked_existing else "")
+        )
         # P1: auto-invoice in the same transaction as the action completion —
         # an invoice failure rolls both back (surfaced as action "error").
         from cms.services.invoice_service import auto_invoice_action_completed

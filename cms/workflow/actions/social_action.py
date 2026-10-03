@@ -8,6 +8,14 @@ from cms.models import db, Subject
 logger = logging.getLogger(__name__)
 
 
+def _display_platform(platform, fallback=None):
+    """Use the detected result platform, with a stable human label."""
+    value = str(platform or fallback or "unknown").strip()
+    if value.casefold() in {"twitter", "x"}:
+        return "X"
+    return value
+
+
 def _normalize_name_query(value):
     """Drop a duplicated leading initial from a person's display name.
 
@@ -27,6 +35,14 @@ def _social_scan(action):
     findings = []
     from cms.social_extractor import detect_platform, MAJOR_SOCIAL_PLATFORMS
     from cms.username_search import search_username, search_username_maigret
+
+    search_scope = "focused"
+    try:
+        snapshot = json.loads(getattr(action, "target_snapshot", "") or "{}")
+        search_scope = snapshot.get("search_scope") or search_scope
+    except (json.JSONDecodeError, TypeError):
+        pass
+    expanded = search_scope == "exotic"
 
     # Collect accounts with their subject context
     accounts_with_subject = []
@@ -120,7 +136,7 @@ def _social_scan(action):
         seen_sites = set()
 
         try:
-            maigret_result = search_username_maigret(username)
+            maigret_result = search_username_maigret(username, expanded=expanded)
             if maigret_result.get("found_count", 0) > 0:
                 for f in maigret_result.get("findings", []):
                     site = f.get("site") or f.get("platform", "")
@@ -128,8 +144,9 @@ def _social_scan(action):
                         seen_sites.add(site)
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
+                        detected_label = _display_platform(platform, site)
                         finding = {
-                            "title": f"{label}: profile active ({site})",
+                            "title": f"{detected_label}: profile active ({site})",
                             "detail": f"Found via Maigret. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",
@@ -149,7 +166,7 @@ def _social_scan(action):
             logger.warning("Maigret search for %s failed: %s", username, e)
 
         try:
-            sherlock_result = search_username(username)
+            sherlock_result = search_username(username, expanded=expanded)
             if sherlock_result.get("found_count", 0) > 0:
                 for f in sherlock_result.get("findings", []):
                     site = f.get("platform") or f.get("site", "")
@@ -157,8 +174,9 @@ def _social_scan(action):
                         seen_sites.add(site)
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
+                        detected_label = _display_platform(platform, site)
                         finding = {
-                            "title": f"{label}: profile active ({site})",
+                            "title": f"{detected_label}: profile active ({site})",
                             "detail": f"Found via Sherlock. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",

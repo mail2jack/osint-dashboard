@@ -110,12 +110,16 @@
 }
 /* Keep consecutive findings easy to scan without introducing loud colours. */
 .finding-group-body > .finding-item:nth-of-type(even) {
-  background: rgba(99,102,241,0.035);
+  background: rgba(99,102,241,0.075);
 }
 @supports (background: color-mix(in srgb, white 50%, black)) {
   .finding-group-body > .finding-item:nth-of-type(even) {
-    background: color-mix(in srgb, var(--bg-card) 97%, var(--accent-primary) 3%);
+    background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
+}
+.finding-group-body > .finding-item + .finding-item::before {
+  content: ""; position: absolute; top: -0.55rem; left: 0; right: 0;
+  border-top: 1px solid var(--border-color); opacity: 0.85;
 }
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 .finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
@@ -521,9 +525,9 @@ input:-webkit-autofill:focus {
 
 {% if findings_pages|default(1, true) > 1 %}
 <div style="display:flex;justify-content:center;align-items:center;gap:.75rem;margin:.75rem 0 1.25rem;">
-  {% if findings_page|default(1, true) > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)-1, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>{% endif %}
+  {% if findings_page|default(1, true) > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)-1, finding_sort=finding_sort, finding_scope=finding_scope, show_archived='1' if show_archived else '') }}">← {{ _('Previous') }}</a>{% endif %}
   <span style="font-size:.8rem;color:var(--text-muted);">{{ _('Page') }} {{ findings_page|default(1, true) }} / {{ findings_pages|default(1, true) }}</span>
-  {% if findings_page|default(1, true) < findings_pages|default(1, true) %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)+1, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>{% endif %}
+  {% if findings_page|default(1, true) < findings_pages|default(1, true) %}<a class="btn-cms small" href="{{ url_for('workflow.case_detail', case_id=case.id, findings_page=findings_page|default(1, true)+1, finding_sort=finding_sort, finding_scope=finding_scope, show_archived='1' if show_archived else '') }}">{{ _('Next') }} →</a>{% endif %}
 </div>
 {% endif %}
 
@@ -614,6 +618,18 @@ input:-webkit-autofill:focus {
       </select>
     </span>
     {% endif %}
+    <form method="GET" style="display:inline-flex;align-items:center;gap:.25rem;margin-left:.35rem;">
+      <input type="hidden" name="findings_page" value="1">
+      {% if show_archived %}<input type="hidden" name="show_archived" value="1">{% endif %}
+      {% if finding_scope %}<input type="hidden" name="finding_scope" value="{{ finding_scope }}">{% endif %}
+      <label for="caseFindingSort" style="font-size:.72rem;color:var(--text-muted);">{{ _('Sort') }}</label>
+      <select id="caseFindingSort" name="finding_sort" onchange="this.form.submit()" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+        <option value="newest" {% if finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest') }}</option>
+        <option value="quality" {% if finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
+        <option value="relevance" {% if finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance') }}</option>
+        <option value="source" {% if finding_sort == 'source' %}selected{% endif %}>{{ _('Source') }}</option>
+      </select>
+    </form>
   </div>
   <div class="workflow-step-body">
     <div id="findingsContainer">

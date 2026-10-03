@@ -70,6 +70,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - uploads:/app/static/uploads
+      - ${BACKUP_DIR_HOST:-./backups}:/app/backups:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,6 +111,39 @@ services:
       - worker
     # Uncomment to enable by default:
     # profiles: []
+
+  health-refresh:
+    build: .
+    command: >-
+      sh -c 'while true; do
+      python3 scripts/health_refresh.py || true;
+      sleep 300;
+      done'
+    environment:
+      FLASK_ENV: production
+      DB_SSL_MODE: require
+      DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD:?Set DB_PASSWORD in .env}@postgres:5432/cms_db?sslmode=require
+      REDIS_URL: redis://redis:6379/0
+      CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      SPIDERFOOT_URL: ${SPIDERFOOT_URL:-http://host.docker.internal:5001}
+      SPIDERFOOT_USERNAME: ${SPIDERFOOT_USERNAME:-admin}
+      SPIDERFOOT_PASSWORD: ${SPIDERFOOT_PASSWORD:-}
+      INSTALL_ID: ${INSTALL_ID:-}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:-}
+      PYTHONUNBUFFERED: 1
+      LOG_FILE: /dev/null
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      disable: true
 
 volumes:
   pgdata:

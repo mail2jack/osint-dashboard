@@ -56,6 +56,16 @@ from cms.services.finding_capture_queue import (
     CaptureRequestRejected,
     enqueue_finding_capture,
 )
+from cms.services.report_evidence import report_screenshots
+from cms.services.report_findings import (
+    deduplicate_report_findings,
+    normalize_report_markdown,
+)
+from cms.services.candidate_quality import (
+    assess_finding,
+    enrich_finding_quality,
+    finding_sort_key,
+)
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -741,6 +751,9 @@ def _finding_json_with_context(f, case=None, subject=None):
             raw = json.loads(raw)
         except Exception:
             raw = None
+    candidate_quality = raw.get("candidate_quality") if isinstance(raw, dict) else None
+    if not candidate_quality:
+        candidate_quality = assess_finding(f)
     return {
         "id": f.id,
         "case_id": f.case_id,
@@ -758,6 +771,7 @@ def _finding_json_with_context(f, case=None, subject=None):
         "content_hash": f.content_hash,
         "integrity_verified": f.verify_integrity() if f.content_hash else None,
         "confidence_level": f.confidence_level,
+        "candidate_quality": candidate_quality,
         "archived_at": f.archived_at.isoformat() if f.archived_at else None,
         "comment": f.comment,
         "include_in_report": f.include_in_report,
@@ -790,6 +804,9 @@ def findings_index():
     f_status = request.args.get("status", "").strip()
     f_report = request.args.get("report", "").strip()  # in|out|all
     f_q = request.args.get("q", "").strip()
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     show_archived = request.args.get("show_archived") == "1"
     page = request.args.get("page", 1, type=int)
     per_page = 50
@@ -851,13 +868,16 @@ def findings_index():
         subject_options = sorted(subj_rows, key=lambda s: (s.name or "").lower())
 
     finding_count = q.count()
-    findings = (
-        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    all_findings = q.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
+        finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort), reverse=False)
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[(page - 1) * per_page : page * per_page]
     case_map = {c.id: c for c in cases}
     for f in findings:
         f._ctx_case = case_map.get(f.case_id)
@@ -882,6 +902,7 @@ def findings_index():
         f_status=f_status,
         f_report=f_report,
         f_q=f_q,
+        finding_sort=finding_sort,
         show_archived=show_archived,
         finding_count=finding_count,
         page=page,
@@ -904,6 +925,9 @@ def findings_api():
     f_status = request.args.get("status", "").strip()
     f_report = request.args.get("report", "").strip()
     f_q = request.args.get("q", "").strip()
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     show_archived = request.args.get("show_archived") == "1"
 
     cid = f_case_id if f_case_id in case_ids else None
@@ -936,13 +960,16 @@ def findings_api():
         )
     page = max(1, request.args.get("page", 1, type=int))
     per_page = max(1, min(request.args.get("per_page", 50, type=int), 200))
-    findings = (
-        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    all_findings = q.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
+        finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort))
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[(page - 1) * per_page : page * per_page]
     case_map = {}
     if findings:
         from cms.models import Case as _Case
@@ -987,6 +1014,7 @@ def findings_api():
             "finding_count": q.count(),
             "page": page,
             "per_page": per_page,
+            "finding_sort": finding_sort,
         }
     )
 
@@ -1279,6 +1307,9 @@ def case_detail(case_id):
     show_archived = request.args.get("show_archived") == "1"
     findings_page = max(1, request.args.get("findings_page", 1, type=int))
     findings_per_page = 25
+    finding_sort = request.args.get("finding_sort", "newest").strip()
+    if finding_sort not in {"newest", "quality", "relevance", "source"}:
+        finding_sort = "newest"
     finding_scope = request.args.get("finding_scope", "").strip()
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
@@ -1322,13 +1353,20 @@ def case_detail(case_id):
     ).count()
     findings_pages = max(1, (findings_total + findings_per_page - 1) // findings_per_page)
     findings_page = min(findings_page, findings_pages)
-    findings = (
-        findings_query.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
-        .order_by(WorkflowFinding.created_at.desc(), WorkflowFinding.id.desc())
-        .offset((findings_page - 1) * findings_per_page)
-        .limit(findings_per_page)
-        .all()
-    )
+    all_findings = findings_query.options(
+        sa.orm.joinedload(WorkflowFinding.finding_screenshots),
+        sa.orm.joinedload(WorkflowFinding.subject),
+    ).all()
+    for finding in all_findings:
+        # Calculate on read as well so historical findings receive the same
+        # explainable quality display as newly created findings.
+        finding.candidate_quality = assess_finding(finding)
+    all_findings.sort(key=lambda finding: finding_sort_key(finding, finding_sort))
+    if finding_sort == "newest":
+        all_findings.reverse()
+    findings = all_findings[
+        (findings_page - 1) * findings_per_page : findings_page * findings_per_page
+    ]
 
     finding_ids = [f.id for f in findings]
     links = (
@@ -1446,6 +1484,7 @@ def case_detail(case_id):
             findings_pages=findings_pages,
             findings_per_page=findings_per_page,
             finding_scope=finding_scope,
+            finding_sort=finding_sort,
             finding_actions=finding_actions,
             investigations=investigations,
             investigations_meta=investigations_meta,
@@ -1558,6 +1597,14 @@ def investigation_detail(case_id, investigation_id):
         1, request.args.get("findings_page", 1, type=int)
     )
     investigation_findings_per_page = 25
+    investigation_finding_sort = request.args.get("finding_sort", "newest").strip()
+    if investigation_finding_sort not in {"newest", "quality", "relevance", "source"}:
+        investigation_finding_sort = "newest"
+    ws.findings.sort(
+        key=lambda finding: finding_sort_key(finding, investigation_finding_sort)
+    )
+    if investigation_finding_sort == "newest":
+        ws.findings.reverse()
     investigation_findings_total = len(ws.findings)
     investigation_candidate_count = sum(
         1
@@ -1679,6 +1726,7 @@ def investigation_detail(case_id, investigation_id):
         investigation_findings_page=investigation_findings_page,
         investigation_findings_pages=investigation_findings_pages,
         investigation_findings_total=investigation_findings_total,
+        investigation_finding_sort=investigation_finding_sort,
         investigation_candidate_count=investigation_candidate_count,
         action_types=action_types,
         subjects_cfg=subjects_cfg,
@@ -2120,6 +2168,7 @@ def import_passive_source_research(case_id, action_id, investigation_id=None):
                 created_by=current_user.id,
                 created_at=datetime.now(UTC),
             )
+            enrich_finding_quality(finding)
             db.session.add(finding)
             db.session.flush()
             db.session.add(
@@ -2752,7 +2801,20 @@ def create_proposals(case_id):
             return jsonify({"error": "Subject is not linked to this case"}), 400
 
     created = []
+    duplicate_action_types = []
     for action_type in action_types:
+        duplicate = WorkflowResearchAction.query.filter(
+            WorkflowResearchAction.tenant_id == current_user.tenant_id,
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.subject_id == subject_id,
+            WorkflowResearchAction.investigation_id == investigation_id,
+            WorkflowResearchAction.action_type == action_type,
+            WorkflowResearchAction.archived_at.is_(None),
+            WorkflowResearchAction.status.in_(["proposal", "pending", "running"]),
+        ).first()
+        if duplicate:
+            duplicate_action_types.append(action_type)
+            continue
         action = WorkflowResearchAction(
             id=str(uuid.uuid4()),
             case_id=case_id,
@@ -2763,6 +2825,7 @@ def create_proposals(case_id):
             label=ACTION_REGISTRY[action_type]["label"],
             status="proposal",
             tenant_id=current_user.tenant_id,
+            created_by=current_user.id,
         )
         action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
         db.session.add(action)
@@ -2784,7 +2847,14 @@ def create_proposals(case_id):
             new_investigation_id=investigation_id,
         )
     db.session.commit()
-    return jsonify({"ok": True, "ids": created, "skipped": skipped})
+    return jsonify(
+        {
+            "ok": True,
+            "ids": created,
+            "skipped": skipped,
+            "duplicate_actions": duplicate_action_types,
+        }
+    )
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/start", methods=["POST"])
@@ -3064,6 +3134,7 @@ def create_manual_finding(case_id):
         source_type="manual",
         created_by=current_user.id,
     )
+    enrich_finding_quality(finding)
     db.session.add(finding)
     db.session.flush()
 
@@ -3249,6 +3320,22 @@ def pv_view(case_id):
         .order_by(WorkflowFinding.created_at)
         .all()
     )
+    findings = deduplicate_report_findings(findings)
+
+    # Candidates are intentionally kept out of the official report until an
+    # investigator validates them.  Still expose their presence here so the
+    # report does not misleadingly suggest that the case has no findings.
+    pending_finding_count = case.findings.filter(
+        WorkflowFinding.is_deleted.is_(False),
+        WorkflowFinding.archived_at.is_(None),
+        sa.or_(
+            WorkflowFinding.status == "candidate",
+            sa.and_(
+                WorkflowFinding.status.is_(None),
+                WorkflowFinding.verified.is_(False),
+            ),
+        ),
+    ).count()
 
     import markdown as md_lib
 
@@ -3287,14 +3374,21 @@ def pv_view(case_id):
         "th": ["align"],
         "td": ["align"],
     }
-    raw_html = md_lib.markdown(case.pv_body or "") if case.pv_body else ""
+    report_markdown = normalize_report_markdown(case.pv_body) if case.pv_body else ""
+    # Reports generated before candidate validation messaging was introduced
+    # may still contain the old, misleading sentence.  Correct it at render
+    # time; regeneration will persist the complete current summary.
+    if pending_finding_count and "No findings have been recorded for this case yet." in report_markdown:
+        report_markdown = report_markdown.replace(
+            "No findings have been recorded for this case yet.",
+            "No validated findings are included in this report yet.",
+        )
+    raw_html = md_lib.markdown(report_markdown, extensions=["tables"]) if report_markdown else ""
     body_html = bleach.clean(raw_html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
 
     # Never let a stored external URL become an image request in a report.  The
     # report helper supplies thumbnails only for files confined to the private
     # screenshot store, while retaining a safe source URL as evidence metadata.
-    from cms.services.report_evidence import report_screenshots
-
     screenshot_evidence = {
         finding.id: report_screenshots(finding) for finding in findings
     }
@@ -3306,6 +3400,7 @@ def pv_view(case_id):
         subjects=subjects,
         investigations=investigations,
         findings=findings,
+        pending_finding_count=pending_finding_count,
         screenshot_evidence=screenshot_evidence,
         body_html=body_html,
     )
@@ -3325,6 +3420,19 @@ def pv_regenerate(case_id):
         .order_by(WorkflowFinding.created_at)
         .all()
     )
+    findings = deduplicate_report_findings(findings)
+
+    pending_finding_count = case.findings.filter(
+        WorkflowFinding.is_deleted.is_(False),
+        WorkflowFinding.archived_at.is_(None),
+        sa.or_(
+            WorkflowFinding.status == "candidate",
+            sa.and_(
+                WorkflowFinding.status.is_(None),
+                WorkflowFinding.verified.is_(False),
+            ),
+        ),
+    ).count()
 
     if findings:
         type_map = {}
@@ -3342,8 +3450,17 @@ def pv_regenerate(case_id):
         ]
     else:
         summary_lines = [
-            "No findings have been recorded for this case yet.",
+            "No validated findings are included in this report yet.",
         ]
+        if pending_finding_count:
+            summary_lines.extend(
+                [
+                    "",
+                    f"{pending_finding_count} candidate finding(s) are awaiting "
+                    "investigator validation. They will appear here after "
+                    "validation and inclusion in the report.",
+                ]
+            )
 
     new_summary = (
         "<!-- pv-summary -->\n" + "\n".join(summary_lines) + "\n<!-- /pv-summary -->"
@@ -3493,6 +3610,80 @@ def batch_delete_findings(case_id):
     )
     db.session.commit()
     return jsonify({"ok": True, "deleted": deleted})
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/investigations/<investigation_id>/findings/finalize-candidates",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def finalize_investigation_candidates(case_id, investigation_id):
+    """Remove unverified candidate findings belonging only to one investigation."""
+    investigation, case = ensure_investigation_access(case_id, investigation_id)
+    if investigation.archived_at is not None:
+        return jsonify({"error": "Investigation is archived"}), 409
+
+    action_ids = {
+        row[0]
+        for row in db.session.query(WorkflowResearchAction.id)
+        .filter(
+            WorkflowResearchAction.tenant_id == current_user.tenant_id,
+            WorkflowResearchAction.case_id == case_id,
+            WorkflowResearchAction.investigation_id == investigation_id,
+            WorkflowResearchAction.archived_at.is_(None),
+        )
+        .all()
+    }
+    if not action_ids:
+        return jsonify({"ok": True, "removed": 0, "skipped_shared": 0})
+
+    scoped_links = WorkflowActionFinding.query.filter(
+        WorkflowActionFinding.action_id.in_(action_ids)
+    ).all()
+    finding_ids = {link.finding_id for link in scoped_links}
+    if not finding_ids:
+        return jsonify({"ok": True, "removed": 0, "skipped_shared": 0})
+
+    all_links = WorkflowActionFinding.query.filter(
+        WorkflowActionFinding.finding_id.in_(finding_ids)
+    ).all()
+    outside_links = {}
+    for link in all_links:
+        if link.action_id not in action_ids:
+            outside_links.setdefault(link.finding_id, set()).add(link.action_id)
+
+    findings = WorkflowFinding.query.filter(
+        WorkflowFinding.tenant_id == current_user.tenant_id,
+        WorkflowFinding.case_id == case_id,
+        WorkflowFinding.id.in_(finding_ids),
+        WorkflowFinding.is_deleted == False,  # noqa: E712
+        WorkflowFinding.archived_at.is_(None),
+        WorkflowFinding.verified.is_(False),
+        sa.or_(WorkflowFinding.status == "candidate", WorkflowFinding.status.is_(None)),
+    ).all()
+    removed = 0
+    skipped_shared = 0
+    for finding in findings:
+        if finding.id in outside_links:
+            skipped_shared += 1
+            continue
+        finding.soft_delete()
+        removed += 1
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="finalize_validation",
+        entity_type="investigation",
+        entity_id=investigation.id,
+        case_id=case_id,
+        description=(
+            f"Finalized investigation validation: removed {removed} candidate findings; "
+            f"skipped {skipped_shared} shared findings"
+        ),
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "removed": removed, "skipped_shared": skipped_shared})
 
 
 # Per-worker (in-process) cooldown to prevent a rapid toggle-back of the

@@ -67,6 +67,20 @@
 .relationship-graph-toolbar button { border:1px solid var(--border-color); border-radius:5px; padding:.25rem .5rem; background:var(--bg-card); color:var(--text-primary); cursor:pointer; font-size:.78rem; }
 .relationship-graph-toolbar button:hover { border-color:var(--accent-primary); color:var(--accent-primary); }
 .relationship-graph-toolbar .graph-zoom-label { margin-left:auto; color:var(--text-muted); font-size:.75rem; }
+.investigation-findings-list .finding-item {
+  padding: 0.75rem 0.75rem 0.75rem 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--bg-card); position: relative;
+}
+.investigation-findings-list .finding-item .finding-content {
+  margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem; white-space: pre-wrap;
+}
+.investigation-findings-list .finding-item .screenshot {
+  margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.78rem; border: 1px dashed var(--border-color);
+}
+.investigation-findings-list .finding-item .screenshot .ss-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.investigation-findings-list .finding-item .screenshot .ss-label { font-weight: 600; color: var(--text-secondary); }
 .relationship-graph-edge { stroke:#94a3b8; stroke-width:1.5; opacity:.8; cursor:pointer; }
 .relationship-graph-edge.is-dimmed, .relationship-graph-node.is-dimmed { opacity:.16; }
 .relationship-graph-edge.is-highlighted { opacity:1; stroke-width:3; }
@@ -83,12 +97,16 @@
 .relationship-graph-legend span { display:inline-flex; align-items:center; gap:.3rem; }
 .relationship-graph-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
 .investigation-findings-list > .finding-item:nth-of-type(even) {
-  background: rgba(99,102,241,0.035);
+  background: rgba(99,102,241,0.075);
 }
 @supports (background: color-mix(in srgb, white 50%, black)) {
   .investigation-findings-list > .finding-item:nth-of-type(even) {
-    background: color-mix(in srgb, var(--bg-card) 97%, var(--accent-primary) 3%);
+    background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
+}
+.investigation-findings-list > .finding-item + .finding-item::before {
+  content: ""; position: absolute; top: -0.55rem; left: 0; right: 0;
+  border-top: 1px solid var(--border-color); opacity: 0.85;
 }
 @media (max-width: 800px) { .relationship-graph-wrap { grid-template-columns:1fr; } }
 </style>
@@ -550,11 +568,21 @@
     {% if can_write and investigation_candidate_count > 0 %}
     <button type="button" id="finalizeInvestigationCandidates" data-candidate-count="{{ investigation_candidate_count }}" style="margin-left:.4rem;background:#b45309;color:#fff;border:none;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;font-size:0.78rem;" title="{{ _('Remove all remaining unverified candidates from this investigation') }}">✅ {{ _('Finish investigation validation') }} ({{ investigation_candidate_count }} {{ _('candidates left') }})</button>
     {% endif %}
+    <form method="GET" style="display:inline-flex;align-items:center;gap:.25rem;margin-left:.35rem;">
+      <input type="hidden" name="findings_page" value="1">
+      <label for="investigationFindingSort" style="font-size:.72rem;color:var(--text-muted);">{{ _('Sort') }}</label>
+      <select id="investigationFindingSort" name="finding_sort" onchange="this.form.submit()" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+        <option value="newest" {% if investigation_finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest') }}</option>
+        <option value="quality" {% if investigation_finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
+        <option value="relevance" {% if investigation_finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance') }}</option>
+        <option value="source" {% if investigation_finding_sort == 'source' %}selected{% endif %}>{{ _('Source') }}</option>
+      </select>
+    </form>
   </div>
   <div class="workflow-step-body">
-    {% if ws.findings %}
+    {% if investigation_findings %}
     <div class="investigation-findings-list" style="display:flex;flex-direction:column;gap:0.75rem;">
-      {% for fd in ws.findings %}
+      {% for fd in investigation_findings %}
       {% with fd=fd %}
       {% include "cms/workflow/_finding_item_readonly.html" %}
       {% endwith %}
@@ -579,6 +607,10 @@
     <span data-narrative-status style="margin-left:.6rem;font-size:.85rem;"></span>
     <div data-narrative-output {% if not inv.ai_narrative %}hidden{% endif %} style="white-space:pre-wrap;margin-top:1rem;padding:1rem;border-left:4px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);line-height:1.55;">{% if inv.ai_narrative %}{{ inv.ai_narrative }}{% endif %}</div>
     {% if inv.ai_narrative %}<a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" style="display:inline-block;margin-top:.6rem;">✏️ Rapport bewerken</a>{% endif %}
+    <div data-investigation-report-link {% if not inv.ai_narrative %}hidden{% endif %} style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border-color);">
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
+      <span style="font-size:.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
+    </div>
     {% if inv.ai_narrative_generated_at %}<div style="font-size:.8rem;color:#777;margin-top:.4rem;">Opgeslagen als interpretatieve samenvatting op {{ inv.ai_narrative_generated_at.strftime('%d-%m-%Y %H:%M') }} ({{ inv.ai_narrative_finding_count or 0 }} findings).</div>{% endif %}
   </div>
 </div>
@@ -866,6 +898,7 @@
     narrativeBtn.addEventListener('click', function () {
       var status = document.querySelector('[data-narrative-status]');
       var output = document.querySelector('[data-narrative-output]');
+      var reportLink = document.querySelector('[data-investigation-report-link]');
       narrativeBtn.disabled = true;
       status.textContent = 'AI maakt het rapport… dit kan ongeveer een minuut duren.';
       fetch('/cms/workflow/api/case/{{ case.id }}/investigations/{{ inv.id }}/ai-research/narrative', {
@@ -888,6 +921,7 @@
         if (data.error) throw new Error(data.error);
         output.textContent = data.narrative;
         output.hidden = false;
+        if (reportLink) reportLink.hidden = false;
         status.textContent = '✅ Verhaal in het bewerkbare rapport geplaatst (' + data.finding_count + ' findings).';
       }).catch(function (e) { status.textContent = '❌ ' + e.message; }).finally(function () { narrativeBtn.disabled = false; });
     });
@@ -971,6 +1005,9 @@ function pollStatus() {
   })
   .catch(function () { /* transient polling error; retry on the next interval */ });
 }
+function refreshFindingView() {
+  window.setTimeout(function () { window.location.reload(); }, 250);
+}
 var investigationPollTimer = null;
 var investigationHasRunning = Object.keys(INITIAL_ACTION_STATES).some(function (id) {
   return INITIAL_ACTION_STATES[id] === 'pending' || INITIAL_ACTION_STATES[id] === 'running';
@@ -988,7 +1025,16 @@ if (finalizeInvestigationCandidatesBtn) finalizeInvestigationCandidatesBtn.addEv
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'Accept': 'application/json'},
     body: '{}'
-  }).then(function (response) { return response.json(); }).then(function (data) {
+  }).then(function (response) {
+    return response.text().then(function (body) {
+      var contentType = response.headers.get('content-type') || '';
+      if (!response.ok || contentType.indexOf('application/json') === -1) {
+        throw new Error('{{ _('The server returned an invalid response. Please refresh and try again.') }}');
+      }
+      try { return JSON.parse(body); }
+      catch (e) { throw new Error('{{ _('The server returned an invalid response. Please refresh and try again.') }}'); }
+    });
+  }).then(function (data) {
     if (!data.ok) throw new Error(data.error || '{{ _('Could not finish investigation validation') }}');
     showToast(data.removed + ' {{ _('unverified candidates removed') }}', 'success');
     window.setTimeout(function () { window.location.reload(); }, 250);

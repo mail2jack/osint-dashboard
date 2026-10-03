@@ -17,12 +17,16 @@
 }
 /* Keep consecutive findings easy to scan without introducing loud colours. */
 .finding-list > .finding-item:nth-of-type(even) {
-  background: rgba(99,102,241,0.035);
+  background: rgba(99,102,241,0.075);
 }
 @supports (background: color-mix(in srgb, white 50%, black)) {
   .finding-list > .finding-item:nth-of-type(even) {
-    background: color-mix(in srgb, var(--bg-card) 97%, var(--accent-primary) 3%);
+    background: color-mix(in srgb, var(--bg-card) 93%, var(--accent-primary) 7%);
   }
+}
+.finding-list > .finding-item + .finding-item::before {
+  content: ""; position: absolute; top: -0.55rem; left: 0; right: 0;
+  border-top: 1px solid var(--border-color); opacity: 0.85;
 }
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 .finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
@@ -176,6 +180,12 @@
     <option value="out" {% if f_report == 'out' %}selected{% endif %}>{{ _('Excluded from report') }}</option>
   </select>
   <input type="text" name="q" value="{{ f_q }}" placeholder="{{ _('Search title/content...') }}" style="min-width:200px;">
+  <select name="finding_sort" title="{{ _('Sort findings') }}" onchange="this.form.submit()">
+    <option value="newest" {% if finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest first') }}</option>
+    <option value="quality" {% if finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
+    <option value="relevance" {% if finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance to subject') }}</option>
+    <option value="source" {% if finding_sort == 'source' %}selected{% endif %}>{{ _('Source / platform') }}</option>
+  </select>
   <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;">
     <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %}> {{ _('Show archived') }}
   </label>
@@ -186,11 +196,11 @@
 {% if finding_count > per_page %}
 <div class="findings-pager">
   {% if page > 1 %}
-  <a href="{{ url_for('workflow.findings_index', page=page-1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">← {{ _('Previous') }}</a>
+  <a href="{{ url_for('workflow.findings_index', page=page-1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, finding_sort=finding_sort, show_archived='1' if show_archived else '') }}" class="btn-cms small">← {{ _('Previous') }}</a>
   {% endif %}
   <span>{{ _('Page') }} {{ page }} / {{ (finding_count / per_page) | round(0, 'ceil') | int }}</span>
   {% if page * per_page < finding_count %}
-  <a href="{{ url_for('workflow.findings_index', page=page+1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">{{ _('Next') }} →</a>
+  <a href="{{ url_for('workflow.findings_index', page=page+1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, finding_sort=finding_sort, show_archived='1' if show_archived else '') }}" class="btn-cms small">{{ _('Next') }} →</a>
   {% endif %}
 </div>
 {% endif %}
@@ -387,6 +397,7 @@ function findingHtml(f) {
         '<span class="badge badge-info" style="margin-left:0.5rem;">' + esc(f.source_type || 'manual') + '</span>' +
         '<span class="badge ' + statusClass + '" style="margin-left:0.25rem;">' + esc(statusLabel) + '</span>' +
         (f.confidence_level ? '<span class="badge ' + confClass + '" style="margin-left:0.25rem;">' + esc(f.confidence_level) + '</span>' : '') +
+        (f.candidate_quality ? '<span class="badge ' + (f.candidate_quality.confidence === 'high' ? 'badge-status-success' : f.candidate_quality.confidence === 'medium' ? 'badge-status-warning' : 'badge-status-default') + '" style="margin-left:0.25rem;cursor:help;" title="' + esc((f.candidate_quality.reasons || []).concat(f.candidate_quality.warnings || []).join('; ')) + '">kwaliteit ' + esc(String(f.candidate_quality.score)) + '/100</span>' : '') +
         (f.content_hash ? '<span class="badge ' + (f.integrity_verified ? 'badge-status-success' : 'badge-status-danger') + '" style="margin-left:0.25rem;cursor:help;" title="' + esc(f.content_hash) + '">🔒 ' + (f.integrity_verified ? '{{ _("Intact") }}' : '{{ _("Tampered") }}') + '</span>' : '') +
       '</div>' +
       '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + verifiedInfo + '</span>' +
