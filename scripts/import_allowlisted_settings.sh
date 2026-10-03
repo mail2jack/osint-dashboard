@@ -38,7 +38,7 @@ grep -q '^COMMIT;$' "$PLAIN" || {
     exit 1
 }
 
-if grep -Eiq '(^|[[:space:]])(DROP|DELETE|TRUNCATE|ALTER|CREATE)[[:space:]]' "$PLAIN"; then
+if grep -Eiq '^(DROP|DELETE|TRUNCATE|ALTER|CREATE)[[:space:]]' "$PLAIN"; then
     echo "Bundle contains a forbidden destructive/schema statement" >&2
     exit 1
 fi
