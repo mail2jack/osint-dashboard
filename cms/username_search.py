@@ -15,6 +15,42 @@ from cms.whatsmyname_utils import get_whatsmyname_sites
 logger = logging.getLogger(__name__)
 
 
+# Default scope for username investigations.  This keeps the first pass
+# useful and reviewable; an expanded scan can be requested explicitly later.
+DEFAULT_USERNAME_PLATFORMS = {
+    "youtube.com",
+    "facebook.com",
+    "instagram.com",
+    "tiktok.com",
+    "linkedin.com",
+    "x.com",
+    "twitter.com",
+    "reddit.com",
+    "pinterest.com",
+    "snapchat.com",
+    "telegram.me",
+    "t.me",
+}
+
+
+def _site_is_in_default_username_scope(site_name, site_info):
+    """Return whether a site belongs to the default username allowlist."""
+    name = str(site_name or "").casefold().strip()
+    values = [name]
+    if isinstance(site_info, dict):
+        for key in ("url", "url_user", "url_main", "check_uri"):
+            value = site_info.get(key)
+            if value:
+                values.append(str(value).casefold())
+    else:
+        for key in ("url", "url_user", "url_main"):
+            value = getattr(site_info, key, None)
+            if value:
+                values.append(str(value).casefold())
+    haystack = " ".join(values)
+    return any(domain in haystack for domain in DEFAULT_USERNAME_PLATFORMS)
+
+
 async def check_username_async(client, platform, info, username):
     url = info["url"]
     finding = {
@@ -207,7 +243,9 @@ PRIORITY_USERNAME_SITES = [
 ]
 
 
-async def search_username_async(username, progress_callback=None, max_sites=150):
+async def search_username_async(
+    username, progress_callback=None, max_sites=150, expanded=False
+):
     sherlock_sites = get_sherlock_sites()
     if not sherlock_sites:
         return {
@@ -217,6 +255,12 @@ async def search_username_async(username, progress_callback=None, max_sites=150)
             "error": "Could not load Sherlock site data",
         }
 
+    if not expanded:
+        sherlock_sites = {
+            k: v
+            for k, v in sherlock_sites.items()
+            if _site_is_in_default_username_scope(k, v)
+        }
     priority = {k: v for k, v in sherlock_sites.items() if k in PRIORITY_USERNAME_SITES}
     remaining = {
         k: v for k, v in sherlock_sites.items() if k not in PRIORITY_USERNAME_SITES
@@ -282,11 +326,13 @@ async def search_username_async(username, progress_callback=None, max_sites=150)
     return result
 
 
-def search_username(username):
-    return asyncio.run(search_username_async(username))
+def search_username(username, *, expanded=False):
+    return asyncio.run(search_username_async(username, expanded=expanded))
 
 
-def search_username_maigret(username, progress_callback=None, max_sites=500):
+def search_username_maigret(
+    username, progress_callback=None, max_sites=500, expanded=False
+):
     try:
         try:
             import maigret.maigret as maigret_module
@@ -315,6 +361,14 @@ def search_username_maigret(username, progress_callback=None, max_sites=500):
             db.sites,
             key=lambda x: getattr(x, "rank", 9999) if hasattr(x, "rank") else 9999,
         )
+        if not expanded:
+            sites_list = [
+                site
+                for site in sites_list
+                if _site_is_in_default_username_scope(
+                    getattr(site, "name", ""), site
+                )
+            ]
         limited_sites = sites_list[:max_sites]
         limited_dict = {site.name: site for site in limited_sites}
 
@@ -526,7 +580,9 @@ _WMN_PRIORITY_CATS = {
 }
 
 
-async def search_username_whatsmyname(username, progress_callback=None, max_sites=500):
+async def search_username_whatsmyname(
+    username, progress_callback=None, max_sites=500, expanded=False
+):
     wmn_sites = get_whatsmyname_sites()
     if not wmn_sites:
         return {
@@ -536,6 +592,12 @@ async def search_username_whatsmyname(username, progress_callback=None, max_site
             "error": "Could not load WhatsMyName site data",
         }
 
+    if not expanded:
+        wmn_sites = {
+            k: v
+            for k, v in wmn_sites.items()
+            if _site_is_in_default_username_scope(k, v)
+        }
     sites_list = sorted(
         wmn_sites.items(),
         key=lambda x: _WMN_PRIORITY_CATS.get(x[1].get("category", ""), 99),
