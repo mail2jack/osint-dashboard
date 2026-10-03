@@ -33,6 +33,37 @@ Productiegegevens worden niet naar staging gekopieerd.
 De applicatie, database en onderzoeksdata van productie blijven logisch
 gescheiden van de licentieserver en back-upopslag.
 
+## Read-only inventaris huidige productie-VPS
+
+Gecontroleerd op 3 oktober 2026 via SSH, zonder wijzigingen aan de server:
+
+- Ubuntu 26.04.1 LTS;
+- 1 vCPU en 1,8 GiB RAM, met circa 0,7 GiB beschikbaar op het moment van de
+  meting;
+- 2 GiB swap, waarvan circa 0,9 GiB in gebruik;
+- 96 GiB rootdisk, waarvan circa 18 GiB in gebruik;
+- systemd-installatie, dus geen Docker-runtime op deze VPS;
+- actieve onderdelen: Nginx, Joost-dashboard, PostgreSQL 18, Redis,
+  licentieserver, SpiderFoot, Tor, fail2ban, Telegram-bot, health-monitor en
+  de onderzoeksworkers;
+- bestaande back-upopslag onder `/opt/osint-dashboard/backups` van circa 1,1
+  GiB.
+
+Deze capaciteit is voldoende voor licentie- en back-updiensten, maar biedt
+weinig marge voor een gelijktijdige stagingomgeving. Daarom geldt vóór de
+herinrichting als technische voorwaarde:
+
+1. staging moet resource-begrensd en logisch gescheiden worden ingericht;
+2. PostgreSQL, Redis en workers mogen de licentieserver of back-upjobs niet
+   verdringen;
+3. na inrichting moeten geheugen, swap, diskgebruik, back-upduur en
+   servicegezondheid tijdens een observatieperiode worden gemeten;
+4. bij structurele geheugendruk moet de VPS eerst worden opgewaardeerd of
+   staging op deze server worden uitgesteld.
+
+De meting is alleen een ontwerpinput. Er zijn tijdens deze inventarisatie geen
+services, DNS-records, gebruikers of productiegegevens gewijzigd.
+
 ## Voorwaarden vóór de overgang
 
 De overgang mag pas plaatsvinden wanneer:
