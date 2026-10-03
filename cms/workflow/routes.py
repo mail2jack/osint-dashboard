@@ -3277,6 +3277,21 @@ def pv_view(case_id):
     )
     findings = deduplicate_report_findings(findings)
 
+    # Candidates are intentionally kept out of the official report until an
+    # investigator validates them.  Still expose their presence here so the
+    # report does not misleadingly suggest that the case has no findings.
+    pending_finding_count = case.findings.filter(
+        WorkflowFinding.is_deleted.is_(False),
+        WorkflowFinding.archived_at.is_(None),
+        sa.or_(
+            WorkflowFinding.status == "candidate",
+            sa.and_(
+                WorkflowFinding.status.is_(None),
+                WorkflowFinding.verified.is_(False),
+            ),
+        ),
+    ).count()
+
     import markdown as md_lib
 
     _ALLOWED_TAGS = [
@@ -3338,6 +3353,7 @@ def pv_view(case_id):
         subjects=subjects,
         investigations=investigations,
         findings=findings,
+        pending_finding_count=pending_finding_count,
         screenshot_evidence=screenshot_evidence,
         body_html=body_html,
     )
@@ -3359,6 +3375,18 @@ def pv_regenerate(case_id):
     )
     findings = deduplicate_report_findings(findings)
 
+    pending_finding_count = case.findings.filter(
+        WorkflowFinding.is_deleted.is_(False),
+        WorkflowFinding.archived_at.is_(None),
+        sa.or_(
+            WorkflowFinding.status == "candidate",
+            sa.and_(
+                WorkflowFinding.status.is_(None),
+                WorkflowFinding.verified.is_(False),
+            ),
+        ),
+    ).count()
+
     if findings:
         type_map = {}
         for f in findings:
@@ -3375,8 +3403,17 @@ def pv_regenerate(case_id):
         ]
     else:
         summary_lines = [
-            "No findings have been recorded for this case yet.",
+            "No validated findings are included in this report yet.",
         ]
+        if pending_finding_count:
+            summary_lines.extend(
+                [
+                    "",
+                    f"{pending_finding_count} candidate finding(s) are awaiting "
+                    "investigator validation. They will appear here after "
+                    "validation and inclusion in the report.",
+                ]
+            )
 
     new_summary = (
         "<!-- pv-summary -->\n" + "\n".join(summary_lines) + "\n<!-- /pv-summary -->"
