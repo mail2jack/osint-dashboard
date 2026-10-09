@@ -99,6 +99,12 @@
         ('findings', 'Findings', '📄', ''),
         ('documents', 'Documents', '📎', ''),
         ('audit_log_entries', 'Audit Log', '📋', 'entries'),
+        ('research_actions_started', 'Research actions', '🔎', 'started'),
+        ('research_credit_units', 'Credit usage', '💳', 'units'),
+        ('findings_dashboard_views', 'Findings dashboard', '📊', 'views'),
+        ('portal_dashboard_views', 'Portal dashboard', '🧑‍💼', 'views'),
+        ('portal_requests_submitted', 'Portal requests', '📨', 'submitted'),
+        ('portal_requests_converted', 'Converted requests', '✅', 'converted'),
     ] %}
     {% set v = stats_7[key][0] %}
     {% set delta = stats_7[key][2] %}
@@ -132,11 +138,11 @@
 <div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;margin-bottom:2rem;">
     <h3 style="margin:0 0 0.5rem;">📈 {{ _('Usage over time') }}</h3>
     <div class="chart-tabs" id="chartTabs">
-        {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log')] %}
+        {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log'),('research_actions_started','Research actions'),('research_credit_units','Credit usage'),('findings_dashboard_views','Findings dashboard'),('portal_requests_submitted','Portal requests')] %}
         <button class="chart-tab {{ 'active' if loop.first }}" data-metric="{{ m }}">{{ lbl }}</button>
         {% endfor %}
     </div>
-    {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log')] %}
+    {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log'),('research_actions_started','Research actions'),('research_credit_units','Credit usage'),('findings_dashboard_views','Findings dashboard'),('portal_requests_submitted','Portal requests')] %}
     {% set vals = chart_data[m] %}
     {% set maxv = vals|max or 1 %}
     <div class="chart-container" data-metric="{{ m }}" style="{{ '' if loop.first else 'display:none;' }}">

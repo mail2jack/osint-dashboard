@@ -12,8 +12,10 @@ class Invitation(db.Model):
     tenant_id = db.Column(
         db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
     )
+    client_id = db.Column(db.String(36), db.ForeignKey("clients.id"), nullable=True, index=True)
     email = db.Column(db.String(255), nullable=False, index=True)
     role = db.Column(db.String(30), nullable=False, default="investigator")
+    is_portal_invitation = db.Column(db.Boolean, nullable=False, default=False, index=True)
     invited_by_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     token = db.Column(db.String(128), unique=True, nullable=False, index=True)
     expires_at = db.Column(db.DateTime, nullable=False)
@@ -27,14 +29,22 @@ class Invitation(db.Model):
 
     @classmethod
     def create_invitation(
-        cls, tenant_id: str, email: str, role: str, invited_by_id: str
+        cls,
+        tenant_id: str,
+        email: str,
+        role: str,
+        invited_by_id: str,
+        client_id: str | None = None,
+        is_portal_invitation: bool = False,
     ) -> "Invitation":
         token = uuid.uuid4().hex + uuid.uuid4().hex
         expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
         inv = cls(
             tenant_id=tenant_id,
+            client_id=client_id,
             email=email.strip().lower(),
             role=role,
+            is_portal_invitation=is_portal_invitation,
             invited_by_id=invited_by_id,
             token=token,
             expires_at=expires_at,

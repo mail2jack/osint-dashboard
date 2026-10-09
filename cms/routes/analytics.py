@@ -63,13 +63,33 @@ def analytics():
         "findings",
         "documents",
         "audit_log_entries",
+        "research_actions_started",
+        "research_actions_completed",
+        "research_credit_units",
+        "findings_dashboard_views",
+        "portal_dashboard_views",
+        "portal_reports_viewed",
+        "portal_invoices_viewed",
+        "portal_documents_downloaded",
+        "portal_requests_submitted",
+        "portal_requests_converted",
     ):
         stats_7[m] = aggregate(days_7, m)
         stats_30[m] = aggregate(days_30, m)
 
     chart_dates = sorted({r.record_date for r in days_30})
     chart_data = {}
-    for m in ("users", "cases", "subjects", "findings", "audit_log_entries"):
+    for m in (
+        "users",
+        "cases",
+        "subjects",
+        "findings",
+        "audit_log_entries",
+        "research_actions_started",
+        "research_credit_units",
+        "findings_dashboard_views",
+        "portal_requests_submitted",
+    ):
         by_date = {}
         for r in days_30:
             if r.metric_name == m:

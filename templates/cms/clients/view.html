@@ -119,6 +119,19 @@
         </div>
         {% endif %}
     </div>
+
+    {% if client.portal_access_enabled and current_user.role in ('senior_investigator','admin','owner') %}
+    <div class="card">
+        <div class="card-header"><h2>🔐 Klantenportaal</h2><span class="badge badge-primary">Actief</span></div>
+        <p style="color:var(--text-secondary);">Geef een contactpersoon alleen toegang tot dit klantdossier. De uitnodiging gebruikt een eenmalige link; de klant kiest daarna zelf een wachtwoord en stelt 2FA in.</p>
+        <form method="post" action="{{ url_for('cms.invite_client_portal_user', client_id=client.id) }}" style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label style="flex:1;min-width:260px;">E-mailadres<input type="email" name="email" required placeholder="klant@example.com"></label>
+            <button class="btn-cms bg-blue" type="submit">Uitnodiging verzenden</button>
+        </form>
+        {% if portal_access %}<ul>{% for access in portal_access %}<li>{{ access.email }} — {{ 'actief' if access.is_active else 'ingetrokken' }}{% if access.accepted_at %}, geaccepteerd{% else %}, wacht op acceptatie{% endif %}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endif %}
     
     <div class="card">
         <div class="card-header"><h2>📍 {{ _('Address(es)') }}</h2></div>

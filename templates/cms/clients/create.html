@@ -49,6 +49,11 @@
         <input type="checkbox" name="is_company" id="is_company" value="1" style="width: auto; margin-right: 0.5rem;" data-change="toggleCompanyFields" {% if submitted_is_company %}checked{% endif %}>
         <label for="is_company" style="display: inline; font-weight: normal;">{{ _('This is a company/organization') }}</label>
     </div>
+    <div class="form-group" style="padding:0.75rem;background:#eef4ff;border-radius:8px;">
+        <input type="checkbox" name="portal_access_enabled" id="portal_access_enabled" value="1" style="width:auto;margin-right:0.5rem;">
+        <label for="portal_access_enabled" style="display:inline;font-weight:600;">Portaltoegang voor deze klant</label>
+        <div style="margin:0.35rem 0 0 1.6rem;color:#5b6478;font-size:.85rem;">Na opslaan kun je een of meer portalcontacten uitnodigen.</div>
+    </div>
     
     <div id="company-fields" style="display: none;">
         <div class="form-group">

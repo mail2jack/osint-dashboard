@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from . import cms_bp
 from ..validation import validate, CreateClientSchema, EditClientSchema
-from ..models import db, Client, Case, AuditLog, Contact, Address
+from ..models import db, Client, Case, AuditLog, Contact, Address, Invitation, ClientPortalAccess
 from ..auth import (
     roles_required,
     staff_required,
@@ -141,7 +141,72 @@ def view_client(client_id: str) -> str:
             client=client,
             cases=cases,
             active_cases_count=active_cases_count,
+            portal_access=ClientPortalAccess.query.filter_by(
+                tenant_id=current_user.tenant_id, client_id=client.id
+            ).order_by(ClientPortalAccess.created_at.desc()).all(),
         )
+
+
+@cms_bp.route("/clients/<client_id>/portal-invite", methods=["POST"])
+@login_required
+@roles_required("admin", "owner", "senior_investigator")
+@rate_limit(STRICT_RATE_LIMIT, key_prefix="client_portal_invite")
+def invite_client_portal_user(client_id: str) -> flask.Response:
+    """Invite a customer contact to the portal for exactly one client."""
+    client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
+    if not client.portal_access_enabled:
+        flash("Schakel portaltoegang eerst in bij deze klant.", "warning")
+        return redirect(url_for("cms.view_client", client_id=client.id))
+
+    email = (request.form.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        flash("Vul een geldig klant-e-mailadres in.", "danger")
+        return redirect(url_for("cms.view_client", client_id=client.id))
+
+    existing = ClientPortalAccess.query.filter_by(
+        tenant_id=current_user.tenant_id, client_id=client.id, email=email, is_active=True
+    ).first()
+    if existing:
+        flash("Voor dit e-mailadres bestaat al actieve portaltoegang.", "info")
+        return redirect(url_for("cms.view_client", client_id=client.id))
+
+    inv = Invitation.create_invitation(
+        tenant_id=current_user.tenant_id,
+        client_id=client.id,
+        email=email,
+        role="portal_viewer",
+        invited_by_id=current_user.id,
+        is_portal_invitation=True,
+    )
+    access = ClientPortalAccess(
+        tenant_id=current_user.tenant_id,
+        client_id=client.id,
+        email=email,
+        role="portal_viewer",
+        created_by_id=current_user.id,
+    )
+    db.session.add(access)
+    db.session.commit()
+
+    accept_url = url_for("auth.accept_invite", token=inv.token, _external=True)
+    from ..email_utils import is_smtp_configured, send_email
+    if is_smtp_configured():
+        subject = f"Uitnodiging voor het klantenportaal van {current_user.tenant.name}"
+        body_html = f"""
+        <html><body style=\"font-family:sans-serif;padding:2rem;\">
+          <h2>Toegang tot uw klantenportaal</h2>
+          <p>U bent uitgenodigd voor het portaal van <strong>{current_user.tenant.name}</strong>.</p>
+          <p>Via deze eenmalige uitnodigingslink maakt u uw eigen wachtwoord aan. Daarna wordt 2FA ingesteld.</p>
+          <p><a href=\"{accept_url}\">Uitnodiging accepteren</a></p>
+          <p>De link is 48 uur geldig.</p>
+        </body></html>
+        """
+        send_email(email, subject, body_html, f"Accepteer uw uitnodiging: {accept_url}")
+        flash(f"Portaluitnodiging verzonden naar {email}.", "success")
+    else:
+        flash(f"Portaluitnodiging aangemaakt. Uitnodigingslink: {accept_url}", "info")
+    return redirect(url_for("cms.view_client", client_id=client.id))
 
 
 @cms_bp.route("/clients/create", methods=["GET", "POST"])
@@ -222,6 +287,7 @@ def create_client() -> flask.Response:
 
         client = Client(name=name)
         client.is_company = bool(data.get("is_company"))
+        client.portal_access_enabled = bool(data.get("portal_access_enabled"))
         db.session.add(client)
         db.session.flush()  # Assign client.id before creating related contacts/addresses
 
@@ -368,6 +434,14 @@ def edit_client(client_id: str) -> flask.Response:
         if new_is_company != client.is_company:
             changes["is_company"] = {"old": client.is_company, "new": new_is_company}
             client.is_company = new_is_company
+
+        new_portal_access = bool(data.get("portal_access_enabled"))
+        if new_portal_access != client.portal_access_enabled:
+            changes["portal_access_enabled"] = {
+                "old": client.portal_access_enabled,
+                "new": new_portal_access,
+            }
+            client.portal_access_enabled = new_portal_access
 
         # Update encrypted fields
         encrypted_fields = [

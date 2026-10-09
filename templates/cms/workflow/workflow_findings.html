@@ -149,6 +149,7 @@
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;" id="registerStatus">{% if has_running %}⏳ {{ _('Running actions — auto-refreshing') }}{% endif %}</p>
   </div>
   <div style="display:flex;align-items:center;gap:0.5rem;">
+    <a href="{{ url_for('workflow.findings_dashboard') }}" class="btn-cms small">📊 {{ _('Dashboard') }}</a>
     <button type="button" id="registerRefreshBtn" class="btn-cms small">🔄 {{ _('Refresh') }}</button>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">{{ _('Cases') }} →</a>
   </div>

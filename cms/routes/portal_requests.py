@@ -1,0 +1,140 @@
+from datetime import date
+
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+
+from . import cms_bp
+from ..auth import roles_required
+from ..models import Case, CaseStatus, Client, Document, PortalRequest, db
+from ..services.usage_metering import record_usage_event
+from ..services.portal_notifications import notify_requester
+
+
+@cms_bp.route("/portal/requests", methods=["GET", "POST"])
+@login_required
+@roles_required("admin", "owner", "senior_investigator", "investigator")
+def portal_requests() -> str:
+    """Review tenant-scoped customer portal requests."""
+    if request.method == "POST":
+        request_id = (request.form.get("request_id") or "").strip()
+        action = (request.form.get("action") or "").strip()
+        intake = PortalRequest.query.filter_by(
+            id=request_id, tenant_id=current_user.tenant_id
+        ).first_or_404()
+
+        if action == "reject":
+            intake.status = "declined"
+            record_usage_event(
+                tenant_id=current_user.tenant_id,
+                metric_name="portal_requests_declined",
+                audit_action="portal.request.declined",
+                entity_type="portal_request",
+                entity_id=intake.id,
+                user_id=current_user.id,
+                description="Portal request declined",
+            )
+            db.session.commit()
+            notify_requester(
+                intake,
+                "Update over uw Iveras-aanvraag",
+                "Uw aanvraag is afgewezen",
+                "Uw aanvraag is door Iveras afgewezen. Neem contact op als u toelichting nodig heeft.",
+                url_for("portal_dashboard", _external=True),
+            )
+            flash("Aanvraag afgewezen.", "info")
+        elif action == "review":
+            intake.status = "in_review"
+            record_usage_event(
+                tenant_id=current_user.tenant_id,
+                metric_name="portal_requests_reviewed",
+                audit_action="portal.request.reviewed",
+                entity_type="portal_request",
+                entity_id=intake.id,
+                user_id=current_user.id,
+                description="Portal request moved to review",
+            )
+            db.session.commit()
+            notify_requester(
+                intake,
+                "Update over uw Iveras-aanvraag",
+                "Uw aanvraag wordt beoordeeld",
+                "Uw aanvraag staat nu in beoordeling bij Iveras.",
+                url_for("portal_dashboard", _external=True),
+            )
+            flash("Aanvraag staat nu in beoordeling.", "success")
+        elif action == "convert":
+            if intake.status == "converted":
+                flash("Deze aanvraag is al omgezet naar een zaak.", "info")
+            elif intake.status == "declined":
+                flash("Een afgewezen aanvraag kan niet meer worden omgezet.", "warning")
+            else:
+                client_id = (request.form.get("client_id") or "").strip()
+                client = Client.query.filter_by(
+                    id=client_id, tenant_id=current_user.tenant_id, is_deleted=False
+                ).first()
+                if not client:
+                    flash("Kies een geldige klant uit dezelfde organisatie.", "error")
+                else:
+                    case_description = intake.question.strip()
+                    if intake.context:
+                        case_description += f"\n\nContext van de klant:\n{intake.context.strip()}"
+                    if intake.deadline:
+                        case_description += f"\n\nGewenste termijn: {intake.deadline.strip()}"
+                    case = Case(
+                        case_number=Case.generate_case_number(current_user.tenant_id),
+                        client_id=client.id,
+                        title=(request.form.get("title") or intake.question[:300]).strip(),
+                        description=case_description,
+                        status=CaseStatus.OPEN.value,
+                        start_date=date.today(),
+                        case_type=intake.request_type,
+                        created_by=current_user.id,
+                    )
+                    db.session.add(case)
+                    intake.status = "converted"
+                    intake.client_id = client.id
+                    db.session.flush()
+                    intake.case_id = case.id
+                    # Keep uploaded intake evidence available in the case while
+                    # retaining its original portal-request link for traceability.
+                    for document in Document.query.filter_by(
+                        portal_request_id=intake.id, is_deleted=False
+                    ).all():
+                        document.case_id = case.id
+                    record_usage_event(
+                        tenant_id=current_user.tenant_id,
+                        metric_name="portal_requests_converted",
+                        audit_action="portal.request.converted",
+                        entity_type="portal_request",
+                        entity_id=intake.id,
+                        user_id=current_user.id,
+                        case_id=case.id,
+                        description="Portal request converted to case",
+                    )
+                    db.session.commit()
+                    notify_requester(
+                        intake,
+                        "Uw Iveras-aanvraag is omgezet",
+                        "Uw aanvraag is omgezet naar een zaak",
+                        f"Uw aanvraag is omgezet naar zaak {case.case_number}.",
+                        url_for("portal_dashboard", _external=True),
+                    )
+                    flash(f"Aanvraag omgezet naar zaak {case.case_number}.", "success")
+        else:
+            flash("Onbekende actie.", "error")
+        return redirect(url_for("cms.portal_requests"))
+
+    requests = (
+        PortalRequest.query.filter_by(tenant_id=current_user.tenant_id)
+        .order_by(PortalRequest.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    clients = (
+        Client.query.filter_by(tenant_id=current_user.tenant_id, is_deleted=False)
+        .order_by(Client.name.asc())
+        .all()
+    )
+    return render_template(
+        "cms/portal_requests.html", portal_requests=requests, clients=clients
+    )

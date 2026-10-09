@@ -260,6 +260,7 @@ input:-webkit-autofill:focus {
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
+    <a href="{{ url_for('cms.staff_case_messages', case_id=case.id) }}" class="btn-cms small">💬 Berichten</a>
     <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
   </div>
@@ -564,6 +565,13 @@ input:-webkit-autofill:focus {
         {% endif %}
         {% if is_paid and info.cost_label %}
         <div class="cost-label" title="Estimated cost per lookup">💰 {{ info.cost_label }}</div>
+        {% endif %}
+        {% if info.cost_class in ('mixed', 'paid') and not info.cost_label %}
+        <div class="cost-label" title="Kostenindicatie; er wordt nog niets afgeschreven">💰 {{ info.credit_units|default(0) }} credit-eenheden{% if info.requires_explicit_consent %} · toestemming nodig{% endif %}</div>
+        {% elif info.cost_class == 'open' %}
+        <div class="cost-label" title="Openbare of gratis bron; er wordt niets afgeschreven">🌐 openbare/gratis bron</div>
+        {% elif info.cost_class == 'local' %}
+        <div class="cost-label" title="Lokale verwerking; er wordt niets afgeschreven">🖥️ lokaal · gratis</div>
         {% endif %}
         <div class="desc">{{ info.label }} run{% if limit > 0 and rem <= 5 and rem > 0 %} — {{ rem }}/{{ limit }} credits left{% elif limit > 0 and rem == 0 %} — 🚫 exhausted{% endif %}{% if paid_locked %} — 🔒 disabled{% endif %}</div>
         {% if limit > 0 %}

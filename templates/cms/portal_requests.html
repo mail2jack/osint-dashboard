@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal-aanvragen</title>
+  <style>
+    body{margin:0;background:#f6f8fc;color:#18223f;font-family:Inter,system-ui,sans-serif}.wrap{max-width:1180px;margin:auto;padding:32px 22px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}.muted{color:#667089}.card{background:#fff;border:1px solid #dfe5f1;border-radius:12px;padding:20px;margin:14px 0;box-shadow:0 4px 14px #17213f0b}.meta{display:flex;gap:12px;flex-wrap:wrap;color:#667089;font-size:.85rem}.badge{display:inline-block;border-radius:99px;padding:4px 9px;background:#eaf0ff;color:#2856c7;font-weight:700;font-size:.78rem}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:15px}button,select,input{font:inherit;padding:9px 11px;border:1px solid #cfd7e7;border-radius:7px;background:#fff}button{cursor:pointer;font-weight:700;color:#2856c7}button.primary{background:#2856c7;color:#fff;border-color:#2856c7}button.danger{color:#a61b1b}.question{white-space:pre-wrap;margin:13px 0;line-height:1.45}.message{white-space:pre-wrap;border-left:3px solid #2856c7;padding-left:10px;margin:10px 0}.flash{padding:12px;border-radius:8px;background:#e7f7f1;color:#087f5b;font-weight:700}.empty{padding:35px;text-align:center;color:#667089}
+  </style>
+</head>
+<body><main class="wrap">
+  <div class="top"><div><div class="muted">Interne intake</div><h1>Portal-aanvragen</h1><p class="muted">Alleen aanvragen van uw eigen organisatie.</p></div><a href="{{ url_for('cms.dashboard') }}">← Terug naar dashboard</a></div>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}{% endwith %}
+  {% for item in portal_requests %}
+  <section class="card">
+    <div class="meta"><span class="badge">{{ {'submitted':'Ontvangen','in_review':'In beoordeling','converted':'Omgezet naar zaak','declined':'Afgewezen'}.get(item.status, item.status) }}</span><span>{{ {'person':'Persoon','organization':'Organisatie','digital_trace':'Digitaal spoor / account','other':'Anders'}.get(item.request_type, item.request_type) }}</span><span>{{ item.created_at.strftime('%d-%m-%Y %H:%M') if item.created_at else '—' }} UTC</span></div>
+    <div class="question">{{ item.question }}{% if item.duplicate_of_id %}<div class="muted"><strong>⚠ Mogelijk dubbele aanvraag</strong> — vergelijk met de eerdere aanvraag voordat u omzet.</div>{% endif %}</div>
+    {% if item.context %}<p class="muted"><strong>Context:</strong> {{ item.context }}</p>{% endif %}
+    {% if item.messages %}<details><summary>Aanvullende informatie ({{ item.messages|length }})</summary>{% for message in item.messages %}<p class="message"><strong>{{ message.author.full_name or message.author.email }}</strong> · {{ message.created_at.strftime('%d-%m-%Y %H:%M') if message.created_at else '—' }} UTC<br>{{ message.message }}</p>{% endfor %}</details>{% endif %}
+    {% if item.documents %}<details><summary>Bijlagen ({{ item.documents|length }})</summary>{% for document in item.documents %}<p><a href="{{ url_for('cms.download_document', document_id=document.id) }}">{{ document.original_filename }}</a> ({{ (document.file_size / 1024)|round(1) }} KB)</p>{% endfor %}</details>{% endif %}
+    {% if item.deadline %}<p class="muted"><strong>Gewenste termijn:</strong> {{ item.deadline }}</p>{% endif %}
+    <div class="actions">
+      {% if item.status not in ('converted','declined') %}
+      <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="request_id" value="{{ item.id }}"><button name="action" value="review">In beoordeling</button><button class="danger" name="action" value="reject">Afwijzen</button></form>
+      <form method="post" class="actions"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="request_id" value="{{ item.id }}"><input type="hidden" name="action" value="convert"><input name="title" placeholder="Titel van de zaak" value="{{ item.question[:80] }}"><select name="client_id" required><option value="">Kies klant</option>{% for client in clients %}<option value="{{ client.id }}">{{ client.name }}</option>{% endfor %}</select><button class="primary" type="submit">Omzetten naar zaak</button></form>
+      {% elif item.status == 'converted' %}<span class="muted">Deze aanvraag is omgezet naar zaak {{ item.case.case_number if item.case else '—' }}.</span>
+      {% else %}<span class="muted">Deze aanvraag is afgewezen.</span>{% endif %}
+    </div>
+  </section>
+  {% else %}<section class="card empty">Er zijn nog geen portal-aanvragen.</section>{% endfor %}
+</main></body></html>

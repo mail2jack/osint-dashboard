@@ -82,8 +82,24 @@ def _has_credits(action_type):
 
 
 def register_action(
-    action_type, label, icon, handler, description="", category="open", cost_label=""
+    action_type,
+    label,
+    icon,
+    handler,
+    description="",
+    category="open",
+    cost_label="",
+    cost_class=None,
+    credit_units=0,
+    requires_explicit_consent=False,
+    providers=None,
+    estimated_cost_eur=None,
 ):
+    """Register an action and descriptive product-cost metadata.
+
+    The metadata does not reserve or consume credits yet; metering is a
+    separate audited change.
+    """
     ACTION_REGISTRY[action_type] = {
         "label": label,
         "icon": icon,
@@ -91,6 +107,11 @@ def register_action(
         "description": description,
         "category": category,
         "cost_label": cost_label,
+        "cost_class": cost_class or category,
+        "credit_units": credit_units,
+        "requires_explicit_consent": requires_explicit_consent,
+        "providers": list(providers or []),
+        "estimated_cost_eur": estimated_cost_eur,
     }
 
 
@@ -402,6 +423,18 @@ def run_action(action_id):
         from cms.services.invoice_service import auto_invoice_action_completed
 
         auto_invoice_action_completed(action)
+        from cms.services.usage_metering import record_usage_event
+
+        record_usage_event(
+            tenant_id=tenant_id,
+            metric_name="research_actions_completed",
+            audit_action="research.action.completed",
+            entity_type="research_action",
+            entity_id=action.id,
+            user_id=getattr(action, "created_by", None),
+            case_id=action.case_id,
+            description=f"Research action completed: {action.result_summary}",
+        )
         db.session.commit()
 
     except Exception as e:

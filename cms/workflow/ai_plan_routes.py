@@ -847,6 +847,15 @@ def investigation_ai_narrative(case_id, investigation_id):
     ).order_by(WorkflowFinding.created_at.asc()).all() if finding_ids else []
     if not findings:
         return jsonify({"error": "Er zijn nog geen findings om samen te vatten"}), 409
+    from cms.services import license as license_service
+
+    if license_service.trial_blocked("ai"):
+        return jsonify({
+            "error": (
+                "AI-rapportage is lokaal niet beschikbaar: deze installatie heeft "
+                "geen geldige licentie. Activeer eerst een lokale licentie."
+            )
+        }), 403
     evidence = []
     for finding in findings[:100]:
         evidence.append({

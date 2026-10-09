@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
@@ -913,6 +914,71 @@ def findings_index():
     )
 
 
+@workflow_bp.route("/findings/dashboard")
+@login_required
+@_investigator_required
+def findings_dashboard():
+    """Show a tenant-safe overview of findings and validation work."""
+    from cms.services.usage_metering import record_usage_event
+
+    case_ids, _ = _findings_accessible_case_ids()
+    findings = (
+        _findings_base_query(case_ids)
+        .filter(WorkflowFinding.archived_at.is_(None))
+        .options(sa.orm.joinedload(WorkflowFinding.subject))
+        .all()
+    )
+    quality_by_id = {}
+    status_counts = Counter()
+    source_counts = Counter()
+    platform_counts = Counter()
+    timeline_counts = Counter()
+    quality_buckets = Counter()
+    report_count = 0
+
+    for finding in findings:
+        status = finding.status or ("verified" if finding.verified else "candidate")
+        status_counts[status] += 1
+        if finding.include_in_report is not False:
+            report_count += 1
+        source = (finding.source_type or "onbekend").strip() or "onbekend"
+        source_counts[source] += 1
+        quality = assess_finding(finding)
+        quality_by_id[finding.id] = quality
+        platform = quality.get("platform")
+        if platform:
+            platform_counts[platform] += 1
+        score = quality.get("score", 0)
+        bucket = "Hoog (60–100)" if score >= 60 else "Middel (45–59)" if score >= 45 else "Laag (0–44)"
+        quality_buckets[bucket] += 1
+        if finding.created_at:
+            timeline_counts[finding.created_at.strftime("%d-%m")] += 1
+
+    timeline = list(reversed(timeline_counts.most_common()))
+    record_usage_event(
+        tenant_id=current_user.tenant_id,
+        metric_name="findings_dashboard_views",
+        audit_action="findings.dashboard.viewed",
+        entity_type="findings_dashboard",
+        user_id=current_user.id,
+        description="Findings dashboard viewed",
+    )
+    db.session.commit()
+    return render_template(
+        "cms/workflow/findings_dashboard.html",
+        total=len(findings),
+        status_counts=status_counts,
+        source_counts=source_counts.most_common(8),
+        platform_counts=platform_counts.most_common(8),
+        quality_buckets=quality_buckets,
+        timeline=timeline[-14:],
+        report_count=report_count,
+        pending_count=status_counts.get("candidate", 0),
+        verified_count=status_counts.get("verified", 0),
+        rejected_count=status_counts.get("rejected", 0),
+    )
+
+
 @workflow_bp.route("/api/findings")
 @login_required
 @_investigator_required
@@ -1643,6 +1709,10 @@ def investigation_detail(case_id, investigation_id):
             "label": cfg["label"],
             "icon": cfg.get("icon"),
             "category": cfg.get("category"),
+            "cost_class": cfg.get("cost_class", cfg.get("category", "open")),
+            "credit_units": cfg.get("credit_units", 0),
+            "requires_explicit_consent": cfg.get("requires_explicit_consent", False),
+            "estimated_cost_eur": cfg.get("estimated_cost_eur"),
         }
         for key, cfg in ACTION_REGISTRY.items()
         if key not in ("photo_analysis", "manual_entry")
@@ -2642,6 +2712,43 @@ def run_action(case_id):
         description=f"Started {action_type} action ({action_scope_label(action)})",
         new_investigation_id=investigation_id,
     )
+    from cms.services.usage_metering import record_usage_event
+
+    action_info = ACTION_REGISTRY[action_type]
+    record_usage_event(
+        tenant_id=current_user.tenant_id,
+        metric_name="research_actions_started",
+        audit_action="research.action.started",
+        entity_type="research_action",
+        entity_id=action.id,
+        user_id=current_user.id,
+        case_id=case_id,
+        description=f"Research action started: {action_info['label']}",
+    )
+    credit_units = int(action_info.get("credit_units") or 0)
+    if credit_units:
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="research_credit_units",
+            audit_action="research.credits.estimated",
+            entity_type="research_action",
+            entity_id=action.id,
+            user_id=current_user.id,
+            case_id=case_id,
+            description=f"Estimated research usage: {credit_units} credit units",
+            amount=credit_units,
+        )
+    if is_paid_action(action_type):
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="paid_research_actions_started",
+            audit_action="research.paid_action.started",
+            entity_type="research_action",
+            entity_id=action.id,
+            user_id=current_user.id,
+            case_id=case_id,
+            description=f"Paid research action started: {action_info['label']}",
+        )
     db.session.commit()
 
     start_action_async(action_id)
@@ -3507,6 +3614,19 @@ def pv_edit(case_id):
         was_empty = not case.pv_body
         case.pv_body = request.form.get("pv_body", "")
         case.pv_updated_at = datetime.now()
+        if request.form.get("action") == "release":
+            if not case.pv_body.strip():
+                flash("Sla eerst een inhoudelijk rapport op voordat je het vrijgeeft.", "error")
+                return redirect(url_for("workflow.pv_edit", case_id=case_id))
+            case.report_status = "released"
+            case.report_released_at = datetime.now(UTC)
+            case.report_released_by = current_user.id
+        elif case.report_status == "released":
+            # Editing a released report creates a new draft until explicitly
+            # released again, preventing half-finished edits from reaching a customer.
+            case.report_status = "draft"
+            case.report_released_at = None
+            case.report_released_by = None
         AuditLog.log(
             user_id=current_user.id,
             action="update",

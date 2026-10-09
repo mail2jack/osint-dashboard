@@ -12,8 +12,11 @@ RUN node build.mjs
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
+ARG INSTALL_DEV_DEPS=0
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-dev.txt .
+RUN if [ "$INSTALL_DEV_DEPS" = "1" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
 
 COPY . .
 RUN python3 -m compileall -q . || true

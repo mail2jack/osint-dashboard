@@ -687,7 +687,7 @@
             {# Paid channels are omitted until the tenant explicitly enables them.
                The server independently enforces this gate on every POST. #}
             {% if at.category != 'paid' or paid_enabled %}
-            <option value="{{ at.key }}"{% if at.icon %} data-icon="{{ at.icon }}"{% endif %}>{{ at.icon or '🔍' }} {{ at.label }} ({{ at.key }})</option>
+            <option value="{{ at.key }}"{% if at.icon %} data-icon="{{ at.icon }}"{% endif %} data-cost-class="{{ at.cost_class|default(at.category|default('open')) }}" data-credit-units="{{ at.credit_units|default(0) }}" data-explicit-consent="{{ '1' if at.requires_explicit_consent else '0' }}" data-estimated-cost="{{ at.estimated_cost_eur if at.estimated_cost_eur is not none else '' }}">{{ at.icon or '🔍' }} {{ at.label }} ({{ at.key }})</option>
             {% endif %}
             {% endfor %}
           </select>
@@ -711,6 +711,9 @@
         <div class="ws-field">
           <label class="lbl" for="wsActionDataValue">{{ _('Data value') }}</label>
           <input type="text" id="wsActionDataValue" name="data_value" placeholder="">
+        </div>
+        <div id="wsActionCostPreview" style="margin-top:.35rem;padding:.55rem .7rem;border:1px solid var(--border-color);border-radius:.45rem;color:var(--text-muted);font-size:.8rem;">
+          Kostenindicatie wordt geladen…
         </div>
         <div class="ws-mode">
           <label><input type="radio" name="mode" value="run" checked> ▶ {{ _('Run now') }}</label>
@@ -779,6 +782,7 @@
   var subjectSel = document.getElementById('wsActionSubject');
   var valueInput = document.getElementById('wsActionDataValue');
   var valueLabel = document.querySelector('label[for="wsActionDataValue"]');
+  var costPreview = document.getElementById('wsActionCostPreview');
   var SUBJECTS = {{ subjects_cfg|tojson }};
   var HINTS = {
     google_dork: { lbl: '{{ _('Dork query') }}', ph: 'site:domein.nl' },
@@ -788,6 +792,24 @@
     var hints = HINTS[typeSel ? typeSel.value : ''];
     if (hints && valueLabel) valueLabel.textContent = hints.lbl;
     if (hints && valueInput) valueInput.placeholder = hints.ph || '';
+  }
+  function refreshCostPreview() {
+    if (!typeSel || !costPreview) return;
+    var option = typeSel.options[typeSel.selectedIndex];
+    if (!option) return;
+    var kind = option.getAttribute('data-cost-class') || 'open';
+    var units = Number(option.getAttribute('data-credit-units') || 0);
+    var consent = option.getAttribute('data-explicit-consent') === '1';
+    var estimated = option.getAttribute('data-estimated-cost');
+    var text = kind === 'local'
+      ? '🖥️ Lokale verwerking — geen externe kosten.'
+      : kind === 'open'
+        ? '🌐 Openbare/gratis bron — geen kostenindicatie.'
+        : '💰 Indicatie: ' + units + ' credit-eenhe' + (units === 1 ? 'id' : 'den') + '.';
+    if (estimated) text += ' Geschat: €' + Number(estimated).toFixed(2) + '.';
+    if (consent) text += ' ⚠️ Expliciete toestemming vereist.';
+    text += ' Er wordt nu nog niets afgeschreven.';
+    costPreview.textContent = text;
   }
   function subjectActionValue(subject, actionType) {
     if (!subject) return '';
@@ -819,7 +841,9 @@
   if (typeSel) {
     typeSel.addEventListener('change', refreshDataValueHint);
     typeSel.addEventListener('change', autofillDataValue);
+    typeSel.addEventListener('change', refreshCostPreview);
     refreshDataValueHint();
+    refreshCostPreview();
   }
   if (subjectSel) subjectSel.addEventListener('change', autofillDataValue);
   // Also fill immediately when the modal already has a selected subject.

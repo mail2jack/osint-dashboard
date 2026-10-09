@@ -27,6 +27,14 @@ services:
     volumes:
       - redis_data:/data
 
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+    expose:
+      - "1025"
+
   wa-service:
     build: wa-service
     ports:
@@ -50,7 +58,7 @@ services:
     ports:
       - "127.0.0.1:${PORT:-5000}:5000"
     environment:
-      FLASK_ENV: production
+      FLASK_ENV: ${FLASK_ENV:-development}
       SPIDERFOOT_URL: ${SPIDERFOOT_URL:-http://host.docker.internal:5001}
       SPIDERFOOT_USERNAME: ${SPIDERFOOT_USERNAME:-admin}
       SPIDERFOOT_PASSWORD: ${SPIDERFOOT_PASSWORD:-}
@@ -66,6 +74,13 @@ services:
       PYTHONUNBUFFERED: 1
       LOG_FILE: /dev/null
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOCAL_DISABLE_ADMIN_2FA: ${LOCAL_DISABLE_ADMIN_2FA:-0}
+      SMTP_SERVER: ${SMTP_SERVER:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-staging@iveras.local}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Iveras Local Staging}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -75,6 +90,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_started
+      mailpit:
         condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health?quick=1"]

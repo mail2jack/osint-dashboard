@@ -421,6 +421,14 @@ def create_cms_module(app: Flask):
                     "twochat_api_key": "TWOCHAT_API_KEY",
                     "hibp_api_key": "HIBP_API_KEY",
                     "twochat_whatsapp_number": "TWOCHAT_WHATSAPP_NUMBER",
+                    # Local SMTP is intentionally supplied through the ignored
+                    # .env file, never committed into source control.
+                    "smtp_server": "SMTP_SERVER",
+                    "smtp_port": "SMTP_PORT",
+                    "smtp_username": "SMTP_USERNAME",
+                    "smtp_password": "SMTP_PASSWORD",
+                    "smtp_from_email": "SMTP_FROM_EMAIL",
+                    "smtp_from_name": "SMTP_FROM_NAME",
                 }
                 for setting_name, env_var in _env_settings.items():
                     existing = Setting.get(setting_name, "")
@@ -431,6 +439,12 @@ def create_cms_module(app: Flask):
                             app.logger.info(
                                 "Migrated %s from .env to Setting table", setting_name
                             )
+                    elif os.environ.get("FLASK_ENV") != "production":
+                        # Local Docker staging may deliberately point at Mailpit;
+                        # keep the local settings aligned after a DB rebuild.
+                        val = os.environ.get(env_var, "")
+                        if val and setting_name.startswith("smtp_"):
+                            Setting.set(setting_name, val)
                 db.session.commit()
             except Exception as e:
                 app.logger.debug("API key migration note: %s", e)

@@ -14,6 +14,9 @@
     Write the report content in Markdown.
     <br>Case details (case number, client, subjects, findings) are automatically added.
   </p>
+  <p style="padding:.65rem .8rem;border-left:4px solid var(--accent-primary);background:var(--bg-secondary);">
+    Status klantportal: <strong>{{ 'Vrijgegeven' if case.report_status == 'released' else 'Concept — nog niet zichtbaar voor de klant' }}</strong>
+  </p>
 
   <details style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;border:1px solid var(--border-color);border-radius:6px;padding:0.5rem 1rem;">
     <summary style="font-weight:600;">📝 Markdown cheat sheet</summary>
@@ -37,7 +40,8 @@
     </div>
     <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
       <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Cancel</a>
-      <button type="submit" class="btn-cms primary">Save and view →</button>
+      <button type="submit" name="action" value="save" class="btn-cms primary">Save draft and view →</button>
+      <button type="submit" name="action" value="release" class="btn-cms" onclick="return confirm('Dit rapport wordt zichtbaar voor de klant. Doorgaan?');">Release to customer portal</button>
     </div>
   </form>
 </div>

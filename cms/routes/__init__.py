@@ -4,7 +4,8 @@ Case Management System - Route Modules
 """
 
 import logging
-from flask import Blueprint, request
+from flask import Blueprint, flash, redirect, request, url_for
+from flask_login import current_user
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,22 @@ def _redirect_to_setup_wizard() -> None:
         pass
 
 
+@cms_bp.before_request
+def _block_portal_only_cms_access():
+    """Keep portal-only customers out of the internal Joost workspace."""
+    if not current_user.is_authenticated:
+        return None
+    tenant = getattr(current_user, "tenant", None)
+    portal_roles = {"portal_admin", "portal_member", "portal_viewer"}
+    if (tenant and tenant.workspace_type == "portal_only") or current_user.role in portal_roles:
+        flash(
+            "Deze klantomgeving heeft alleen toegang tot het klantenportaal.",
+            "info",
+        )
+        return redirect(url_for("portal_dashboard"))
+    return None
+
+
 def register_modules() -> None:
     from . import dashboard  # noqa: F401
     from . import phone  # noqa: F401
@@ -96,6 +113,9 @@ def register_modules() -> None:
     from . import kvk  # noqa: F401
     from . import notifications_api  # noqa: F401
     from . import notifications  # noqa: F401
+    from . import portal_requests  # noqa: F401
+    from . import case_messages  # noqa: F401
+    from . import customer_registrations  # noqa: F401
     from . import translations  # noqa: F401
     from . import statistics  # noqa: F401
     from . import demo  # noqa: F401

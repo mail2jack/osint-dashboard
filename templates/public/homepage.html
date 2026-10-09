@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Iveras helpt organisaties met zorgvuldig OSINT-onderzoek, verificatie en rapportage.">
+  <title>Iveras — Onderzoek met overzicht</title>
+  <style>
+    :root { --ink:#17213f; --muted:#5e6880; --blue:#2856c7; --soft:#eef3ff; --line:#dfe5f1; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#fbfcff; font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.55; }
+    a { color:inherit; }
+    .wrap { width:min(1120px, calc(100% - 40px)); margin:auto; }
+    .nav { display:flex; align-items:center; justify-content:space-between; padding:24px 0; }
+    .brand { display:flex; gap:10px; align-items:center; text-decoration:none; font-weight:800; font-size:1.35rem; letter-spacing:-.03em; }
+    .brand-mark { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; color:#fff; background:var(--ink); }
+    .nav-links { display:flex; gap:26px; align-items:center; color:var(--muted); font-size:.95rem; }
+    .nav-links a { text-decoration:none; }
+    .nav-links a:hover { color:var(--blue); }
+    .button { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:10px; font-weight:700; text-decoration:none; border:1px solid transparent; }
+    .button.primary { color:#fff; background:var(--blue); box-shadow:0 8px 20px rgba(40,86,199,.18); }
+    .button.secondary { color:var(--blue); background:#fff; border-color:var(--line); }
+    .hero { display:grid; grid-template-columns:1.05fr .95fr; gap:72px; align-items:center; padding:76px 0 92px; }
+    .eyebrow { color:var(--blue); font-size:.78rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:650px; margin:14px 0 20px; font-size:clamp(2.8rem, 6vw, 5.2rem); line-height:1.02; letter-spacing:-.065em; }
+    .hero p { max-width:600px; margin:0 0 28px; color:var(--muted); font-size:1.13rem; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; }
+    .hero-card { position:relative; padding:28px; border:1px solid var(--line); border-radius:24px; background:linear-gradient(145deg,#eef3ff,#fff 70%); box-shadow:0 22px 55px rgba(33,54,104,.12); }
+    .hero-card:before { content:""; display:block; width:88px; height:6px; margin-bottom:28px; border-radius:99px; background:var(--blue); }
+    .hero-card h2 { margin:0 0 22px; font-size:1.35rem; }
+    .step { display:flex; gap:14px; align-items:flex-start; padding:15px 0; border-top:1px solid rgba(120,140,180,.22); }
+    .step-number { display:grid; place-items:center; flex:0 0 30px; height:30px; border-radius:50%; color:#fff; background:var(--ink); font-size:.8rem; font-weight:800; }
+    .step strong { display:block; }
+    .step span { color:var(--muted); font-size:.9rem; }
+    .band { padding:74px 0; background:var(--soft); }
+    .section-heading { max-width:650px; margin-bottom:30px; }
+    .section-heading h2 { margin:8px 0 10px; font-size:clamp(2rem,4vw,3rem); line-height:1.05; letter-spacing:-.045em; }
+    .section-heading p { margin:0; color:var(--muted); }
+    .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .card { padding:25px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+    .card-icon { font-size:1.5rem; }
+    .card h3 { margin:16px 0 8px; font-size:1.1rem; }
+    .card p { margin:0; color:var(--muted); font-size:.95rem; }
+    .process { display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:34px; }
+    .process-item { padding:18px 22px 18px 0; border-top:2px solid var(--blue); }
+    .process-item:not(:last-child) { margin-right:22px; }
+    .process-item b { display:block; margin-bottom:6px; }
+    .process-item span { color:var(--muted); font-size:.9rem; }
+    .cta { display:flex; align-items:center; justify-content:space-between; gap:30px; padding:76px 0; }
+    .cta h2 { max-width:620px; margin:0; font-size:clamp(2rem,4vw,3.2rem); line-height:1.05; letter-spacing:-.05em; }
+    footer { padding:24px 0 38px; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem; }
+    @media (max-width:760px) { .nav-links a:not(.button) { display:none; } .hero { grid-template-columns:1fr; gap:34px; padding:48px 0 62px; } .cards,.process { grid-template-columns:1fr; } .process-item:not(:last-child) { margin-right:0; } .cta { align-items:flex-start; flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <header class="wrap nav">
+    <a class="brand" href="/public"><span class="brand-mark">I</span> Iveras</a>
+    <nav class="nav-links" aria-label="Hoofdnavigatie">
+      <a href="#osint">OSINT</a>
+      <a href="#diensten">Diensten</a>
+      <a href="#werkwijze">Werkwijze</a>
+      <a href="#contact">Contact</a>
+      <a class="button secondary" href="/auth/login">Klantportal</a>
+      <a class="button secondary" href="/portal/register">Toegang aanvragen</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="wrap hero">
+      <div>
+        <div class="eyebrow">Iveras OSINT</div>
+        <h1>Van eerste aanwijzing naar controleerbaar onderzoeksrapport.</h1>
+        <p>Joost helpt organisaties om digitale informatie zorgvuldig te verzamelen, verbanden te onderzoeken en bevindingen om te zetten in een bruikbaar rapport.</p>
+        <div class="actions"><a class="button primary" href="#contact">Plan een kennismaking</a><a class="button secondary" href="#voorbeeld">Bekijk een voorbeeld</a></div>
+      </div>
+      <aside class="hero-card" aria-label="Werkwijze in vier stappen">
+        <h2>Van vraag naar inzicht</h2>
+        <div class="step"><span class="step-number">1</span><div><strong>Intake</strong><span>Doel, context en scope scherpstellen.</span></div></div>
+        <div class="step"><span class="step-number">2</span><div><strong>Onderzoek</strong><span>Bronnen gestructureerd en zorgvuldig onderzoeken.</span></div></div>
+        <div class="step"><span class="step-number">3</span><div><strong>Verificatie</strong><span>Findings beoordelen en onderbouwen.</span></div></div>
+        <div class="step"><span class="step-number">4</span><div><strong>Rapportage</strong><span>Heldere resultaten voor de volgende beslissing.</span></div></div>
+      </aside>
+    </section>
+
+    <section class="band" id="diensten"><div class="wrap">
+      <div class="section-heading"><div class="eyebrow">Het platform</div><h2>Van signaal naar onderbouwd inzicht.</h2><p>Een onderzoek is pas waardevol wanneer herkomst, betrouwbaarheid en betekenis duidelijk zijn.</p></div>
+      <div class="cards">
+        <article class="card"><div class="card-icon">🔎</div><h3>OSINT-onderzoek</h3><p>Gestructureerd zoeken naar relevante openbare informatie binnen een afgesproken scope.</p></article>
+        <article class="card"><div class="card-icon">🕸️</div><h3>Relaties en verbanden</h3><p>Breng personen, accounts, organisaties en andere gegevens samen in een begrijpelijk verband.</p></article>
+        <article class="card"><div class="card-icon">✅</div><h3>Verificatie</h3><p>Resultaten onderscheiden, beoordelen en voorzien van bron- en betrouwbaarheidscontext.</p></article>
+        <article class="card"><div class="card-icon">📄</div><h3>Rapportage</h3><p>Een overzichtelijk informatieproduct dat onderzoekers en opdrachtgevers kunnen gebruiken.</p></article>
+      </div>
+    </div></section>
+
+    <section class="wrap" id="osint" style="padding:74px 0 30px;">
+      <div class="section-heading"><div class="eyebrow">Open Source Intelligence</div><h2>Wat is OSINT?</h2><p>OSINT staat voor Open Source Intelligence: het zorgvuldig verzamelen en analyseren van informatie die rechtmatig en openbaar beschikbaar is.</p></div>
+      <div class="cards">
+        <article class="card"><h3>Openbare bronnen</h3><p>Denk aan websites, openbare registers, nieuws, bedrijfsinformatie en publiek zichtbare online profielen.</p></article>
+        <article class="card"><h3>Meer dan zoeken</h3><p>De waarde zit in ordenen, vergelijken, broncontext en het onderscheiden van een aanwijzing van een bewezen gegeven.</p></article>
+        <article class="card"><h3>Altijd in context</h3><p>Een online resultaat is niet automatisch juist. Tijd, bronkwaliteit, identiteit en samenhang bepalen de betekenis.</p></article>
+      </div>
+    </section>
+
+    <section class="band" id="toepassingen"><div class="wrap">
+      <div class="section-heading"><div class="eyebrow">Toepassingen</div><h2>Waar OSINT waarde toevoegt.</h2><p>Dezelfde onderzoeksketen kan voor verschillende zakelijke en maatschappelijke vragen worden ingezet.</p></div>
+      <div class="cards">
+        <article class="card"><div class="card-icon">🧭</div><h3>Online presence</h3><p>Breng bekende namen, gebruikersnamen, profielen en openbare vermeldingen overzichtelijk samen.</p></article>
+        <article class="card"><div class="card-icon">🏢</div><h3>Organisaties en relaties</h3><p>Onderzoek openbare bedrijfsinformatie en maak relevante relaties tussen personen, organisaties en accounts inzichtelijk.</p></article>
+        <article class="card"><div class="card-icon">🛡️</div><h3>Risico en fraude</h3><p>Ondersteun intake, due diligence en fraudeonderzoek met herleidbare bronnen en een controleerbare werkwijze.</p></article>
+      </div>
+    </div></section>
+
+    <section class="wrap" id="zorgvuldig" style="padding:74px 0 30px;">
+      <div class="section-heading"><div class="eyebrow">Zorgvuldig onderzoek</div><h2>Een kandidaat is nog geen conclusie.</h2><p>Joost is ontworpen om onderzoekers te helpen zorgvuldig te werken, niet om menselijke beoordeling te vervangen.</p></div>
+      <div class="process"><div class="process-item"><b>Bron</b><span>Waar komt de informatie vandaan?</span></div><div class="process-item"><b>Specificiteit</b><span>Gaat het om de juiste persoon of organisatie?</span></div><div class="process-item"><b>Samenhang</b><span>Past het resultaat bij andere bekende gegevens?</span></div><div class="process-item"><b>Besluit</b><span>De onderzoeker valideert en bepaalt wat wordt gerapporteerd.</span></div></div>
+    </section>
+
+    <section class="band" id="faq"><div class="wrap">
+      <div class="section-heading"><div class="eyebrow">Veelgestelde vragen</div><h2>OSINT in duidelijke taal.</h2></div>
+      <div class="cards">
+        <article class="card"><h3>Is alle online informatie betrouwbaar?</h3><p>Nee. Daarom worden bronnen, actualiteit, identiteit en onderlinge bevestiging meegewogen.</p></article>
+        <article class="card"><h3>Doet AI zelfstandig conclusies?</h3><p>AI kan helpen structureren en samenvatten. Onderzoeksresultaten blijven onderworpen aan menselijke controle en vrijgave.</p></article>
+        <article class="card"><h3>Wordt privé-informatie verzameld?</h3><p>Onderzoek hoort doelgebonden, proportioneel en binnen de toepasselijke wet- en regelgeving plaats te vinden.</p></article>
+      </div>
+    </div></section>
+
+    <section class="wrap" id="doelgroepen" style="padding:74px 0 30px;">
+      <div class="section-heading"><div class="eyebrow">Voor wie</div><h2>Gebouwd rond echte onderzoeksvragen.</h2><p>Joost ondersteunt teams die informatie moeten kunnen uitleggen, controleren en verantwoord delen.</p></div>
+      <div class="cards">
+        <article class="card"><h3>Recherche en opsporing</h3><p>Werk van eerste aanwijzing naar een controleerbaar dossier met broncontext.</p></article>
+        <article class="card"><h3>Fraude en bedrijfsrecherche</h3><p>Onderzoek personen, organisaties en digitale sporen binnen een afgebakende opdracht.</p></article>
+        <article class="card"><h3>Compliance en due diligence</h3><p>Leg vast wat is onderzocht, welke bronnen zijn gebruikt en welke onzekerheden blijven.</p></article>
+      </div>
+    </section>
+
+    <section class="wrap" id="werkwijze" style="padding:74px 0 30px;">
+      <div class="section-heading"><div class="eyebrow">Onze werkwijze</div><h2>Controle waar die nodig is, snelheid waar het kan.</h2><p>Technologie ondersteunt het onderzoek; de onderzoeker houdt de regie over beoordeling en vrijgave.</p></div>
+      <div class="process"><div class="process-item"><b>Vraag</b><span>We bepalen wat onderzocht moet worden.</span></div><div class="process-item"><b>Bronnen</b><span>We verzamelen informatie met herleidbare bronnen.</span></div><div class="process-item"><b>Beoordeling</b><span>We scheiden kandidaten van gevalideerde resultaten.</span></div><div class="process-item"><b>Resultaat</b><span>We leveren een bruikbaar, controleerbaar rapport.</span></div></div>
+    </section>
+
+    <section class="band" id="voorbeeld"><div class="wrap">
+      <div class="section-heading"><div class="eyebrow">Voorbeeldonderzoek</div><h2>Een onderzoek dat uitlegbaar blijft.</h2><p>De onderzoeker houdt de regie. Joost helpt structureren, vergelijken en rapporteren.</p></div>
+      <div class="cards">
+        <article class="card"><div class="eyebrow">01 · Onderzoeksvraag</div><h3>Online aanwezigheid</h3><p>Een afgebakende vraag met bekende namen, accounts en context als startpunt.</p></article>
+        <article class="card"><div class="eyebrow">02 · Bevindingen</div><h3>Kandidaten met broncontext</h3><p>Resultaten worden als kandidaat verzameld en door de onderzoeker gevalideerd of afgewezen.</p></article>
+        <article class="card"><div class="eyebrow">03 · Rapport</div><h3>Samenvatting en relaties</h3><p>Het eindrapport laat zien wat bekend is, hoe zeker dat is en welke verbanden relevant zijn.</p></article>
+      </div>
+    </div></section>
+
+    <section class="wrap" id="vertrouwen" style="padding:74px 0 30px;">
+      <div class="section-heading"><div class="eyebrow">Vertrouwen en controle</div><h2>AI ondersteunt het werk, maar neemt de beoordeling niet over.</h2><p>Bronnen, validatie en vrijgave blijven zichtbaar onderdeel van de onderzoeksketen.</p></div>
+      <div class="cards">
+        <article class="card"><h3>Bronvermelding</h3><p>Maak zichtbaar waar informatie vandaan komt en wanneer deze is vastgelegd.</p></article>
+        <article class="card"><h3>Menselijke validatie</h3><p>Automatische resultaten blijven kandidaten totdat een onderzoeker ze beoordeelt.</p></article>
+        <article class="card"><h3>Audit trail</h3><p>Leg acties, wijzigingen en rapportvrijgave controleerbaar vast.</p></article>
+      </div>
+    </section>
+
+    <section class="wrap cta" id="contact"><h2>Benieuwd wat een onderzoek voor uw organisatie kan betekenen?</h2><a class="button primary" href="/portal/register">Vraag toegang aan</a><a class="button secondary" href="mailto:info@iveras.com">Neem contact op</a></section>
+  </main>
+  <footer><div class="wrap">© 2026 Iveras · Privacy · Voorwaarden · <a href="/auth/login">Klantportal</a> · <a href="/portal/register">Toegang aanvragen</a></div></footer>
+</body>
+</html>
