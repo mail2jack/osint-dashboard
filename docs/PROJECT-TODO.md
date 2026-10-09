@@ -182,10 +182,10 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 - ✅ SpiderFoot en Tor gecontroleerd op staging.
 - ✅ Back-upscript en geplande back-ups aanwezig.
 - ✅ Back-updecryptie en tijdelijke databasehersteltest uitgevoerd.
-- 🟡 Nieuwe productieomgeving nog één keer gecontroleerd vóór ingebruikname.
+- ✅ Nieuwe productieomgeving nog één keer gecontroleerd vóór ingebruikname; health en containers zijn gezond.
 - 🟡 Alleen default company met één gebruiker overnemen; geen zaken, subjects, dossiers of rapporten.
 - 🟡 API-configuratie gecontroleerd; OpenRouter bewust later invullen indien nodig.
-- 🔵 Licentie-uitgifte en telemetry tussen productie, backupserver en license server testen.
+- ✅ Licentie-uitgifte en telemetry tussen productie en license server gecontroleerd; productie heeft een actieve licentiestatus en recente check-in.
 - 🔵 Restoreprocedure documenteren inclusief sleutelbeheer.
 - 🔵 Monitoring en e-mailmeldingen voor mislukte back-ups testen.
 - 🔵 Productie-releaseproces vastleggen: lokaal → GitHub → gecontroleerde productie-update.

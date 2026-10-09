@@ -27,7 +27,7 @@ release naar productie blijft een afzonderlijk, expliciet besluit.
 
 - Gebruik uitsluitend synthetische testdata bij de laatste portaalcontrole.
 - Controleer echte SMTP-bezorging, wachtwoordherstel en 2FA met een testaccount.
-- Controleer de productie-licentie, telemetry en domein/TLS-configuratie.
+- Productie-licentie, telemetry en TLS-bereikbaarheid gecontroleerd; de productie heeft een actieve licentiestatus en recente check-in.
 - Controleer de geplande back-up, melding bij falen en herstel van een recente
   back-up inclusief sleutelbeheer.
 - Maak een release-commit en pull request; voer productie pas daarna bij met
