@@ -237,6 +237,7 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
         start_date=date.today(),
         status="closed",
         pv_body="# Released report\n\nSynthetic report body.",
+        report_status="released",
     )
     db_session.add(case)
     db_session.flush()
