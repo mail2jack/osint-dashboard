@@ -3612,15 +3612,51 @@ def pv_edit(case_id):
 
     if request.method == "POST":
         was_empty = not case.pv_body
+        action = request.form.get("action")
+        if action == "revoke":
+            if case.report_status == "released":
+                case.report_status = "draft"
+                case.report_released_at = None
+                case.report_released_by = None
+                AuditLog.log(
+                    user_id=current_user.id,
+                    action="update",
+                    entity_type="case",
+                    entity_id=case.id,
+                    ip_address=request.remote_addr,
+                    description=f"Withdrew case report from customer portal: {case.case_number}",
+                )
+                db.session.commit()
+                from cms.services.portal_notifications import notify_case_portal_users
+
+                notify_case_portal_users(
+                    case,
+                    "Uw Iveras-rapport is tijdelijk ingetrokken",
+                    "Rapport tijdelijk niet beschikbaar",
+                    f"Het rapport van zaak {case.case_number} is tijdelijk ingetrokken voor een inhoudelijke update.",
+                    url_for("portal_dashboard", _external=True),
+                )
+                flash("Rapport ingetrokken uit het klantenportaal.", "success")
+            else:
+                flash("Dit rapport was niet vrijgegeven.", "info")
+            return redirect(url_for("workflow.pv_edit", case_id=case_id))
         case.pv_body = request.form.get("pv_body", "")
         case.pv_updated_at = datetime.now()
-        if request.form.get("action") == "release":
+        if action == "release":
             if not case.pv_body.strip():
                 flash("Sla eerst een inhoudelijk rapport op voordat je het vrijgeeft.", "error")
                 return redirect(url_for("workflow.pv_edit", case_id=case_id))
             case.report_status = "released"
             case.report_released_at = datetime.now(UTC)
             case.report_released_by = current_user.id
+            AuditLog.log(
+                user_id=current_user.id,
+                action="release",
+                entity_type="case_report",
+                entity_id=case.id,
+                ip_address=request.remote_addr,
+                description=f"Released case report to customer portal: {case.case_number}",
+            )
         elif case.report_status == "released":
             # Editing a released report creates a new draft until explicitly
             # released again, preventing half-finished edits from reaching a customer.
@@ -3674,6 +3710,17 @@ def pv_edit(case_id):
                 "danger",
             )
             return redirect(url_for("workflow.pv_view", case_id=case_id))
+
+        if action == "release":
+            from cms.services.portal_notifications import notify_case_portal_users
+
+            notify_case_portal_users(
+                case,
+                "Uw Iveras-rapport is beschikbaar",
+                "Uw rapport staat klaar",
+                f"Het rapport van zaak {case.case_number} is vrijgegeven in uw klantenportaal.",
+                url_for("portal_case_report", case_id=case.id, _external=True),
+            )
 
         return redirect(url_for("workflow.pv_view", case_id=case_id))
 

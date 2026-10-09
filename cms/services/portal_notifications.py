@@ -4,7 +4,7 @@ import logging
 from html import escape
 
 from ..email_utils import is_smtp_configured, send_email
-from ..models import Notification, User, db
+from ..models import ClientPortalAccess, Notification, User, db
 
 
 def _create_in_app(user_id: str, tenant_id: str, title: str, message: str, link: str = "") -> None:
@@ -67,6 +67,24 @@ def notify_requester(intake, subject: str, heading: str, message: str, link: str
     result = _send(email, subject, heading, message, link)
     db.session.commit()
     return result
+
+
+def notify_case_portal_users(case, subject: str, heading: str, message: str, link: str = "") -> int:
+    """Notify active portal users linked to a case's client."""
+    access_rows = ClientPortalAccess.query.filter_by(
+        tenant_id=case.tenant_id,
+        client_id=case.client_id,
+        is_active=True,
+    ).all()
+    user_ids = {row.user_id for row in access_rows if row.user_id}
+    users = User.query.filter(User.id.in_(user_ids), User.is_active.is_(True)).all() if user_ids else []
+    sent = 0
+    for user in users:
+        _create_in_app(user.id, case.tenant_id, heading, message, link)
+        if _send(user.email, subject, heading, message, link):
+            sent += 1
+    db.session.commit()
+    return sent
 
 
 def notify_registration_received(registration) -> int:
