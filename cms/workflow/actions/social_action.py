@@ -128,7 +128,6 @@ def _social_scan(action):
             )
             if not username and url:
                 username = url.rstrip("/").split("/")[-1]
-            label = input_platform or username or "unknown"
 
         if not username:
             continue
