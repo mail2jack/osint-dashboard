@@ -110,7 +110,7 @@ def register_system_routes(app: Flask) -> None:
     @login_required
     def portal_dashboard() -> str:
         """Render the authenticated, tenant-scoped portal dashboard MVP."""
-        from cms.models import Case, Client, Invoice, Notification, PortalRequest
+        from cms.models import Case, Client, Document, Invoice, Notification, PortalRequest
         from cms import db
         from cms.services.client_portal import portal_client_ids
         from cms.services.usage_metering import record_usage_event
@@ -155,6 +155,15 @@ def register_system_routes(app: Flask) -> None:
             requests_query = requests_query.filter(PortalRequest.client_id.in_(allowed_client_ids))
             invoices_query = invoices_query.filter(Invoice.client_id.in_(allowed_client_ids))
         cases = cases_query.order_by(Case.updated_at.desc(), Case.created_at.desc()).limit(50).all()
+        public_document_counts = {
+            case.id: Document.query.filter_by(
+                case_id=case.id,
+                tenant_id=current_user.tenant_id,
+                is_deleted=False,
+                classification="public",
+            ).count()
+            for case in cases
+        }
         requests = requests_query.order_by(PortalRequest.created_at.desc()).limit(50).all()
         invoices = invoices_query.filter(Invoice.status.notin_(["draft", "cancelled"])).order_by(Invoice.due_date.desc(), Invoice.created_at.desc()).limit(50).all()
         notifications = (
@@ -184,6 +193,7 @@ def register_system_routes(app: Flask) -> None:
             tenant_name=current_user.tenant.name if current_user.tenant else "",
             submitted=request.args.get("submitted") == "1",
             request_message=request.args.get("request_message") == "1",
+            public_document_counts=public_document_counts,
         )
 
     @app.route("/portal/notifications/<notification_id>/read", methods=["POST"])
