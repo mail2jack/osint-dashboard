@@ -347,6 +347,52 @@ def local_dev_login() -> flask.Response:
     return _complete_2fa_login(user)
 
 
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+@rate_limit(limit=(5, 300), key_prefix="forgot_password_ip")
+def forgot_password() -> flask.Response:
+    """Request a one-time password-reset link without revealing account existence."""
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
+
+        if user and user.is_active:
+            token = user.generate_reset_token()
+            db.session.commit()
+            try:
+                from ..email_utils import send_password_reset_email
+
+                reset_url = url_for("auth.set_password", token=token, _external=True)
+                send_password_reset_email(
+                    user.email,
+                    user.username,
+                    user.full_name,
+                    reset_url,
+                )
+            except Exception:
+                logger.exception("Failed to send password reset email")
+
+            AuditLog.log(
+                user_id=user.id,
+                tenant_id=user.tenant_id,
+                action="password_reset_requested",
+                entity_type="user",
+                entity_id=user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+                description="Password reset requested",
+            )
+            db.session.commit()
+
+        # Keep the response identical for unknown, inactive and active users.
+        flash(
+            "Als er een actief account met dit e-mailadres bestaat, is een herstelmail verzonden.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
+
+    return render_template("cms/forgot_password.html")
+
+
 @auth_bp.route("/logout")
 @login_required
 def logout() -> flask.Response:

@@ -60,7 +60,7 @@ beide.
 - ✅ Uitnodigingsflow technisch getest met een synthetische portal-only klant.
 - ✅ Uitnodigingsmail, uitnodigingslink, klantaccount, 2FA-configuratie en opnieuw inloggen zijn met een synthetische klant lokaal getest; Mailpit-bezorging is bevestigd.
 - ✅ Rollenmodel bepaald: `portal_admin`, `portal_member` en `portal_viewer`; een organisatie behoudt daarnaast de interne tenantrollen.
-- 🔴 Publieke wachtwoordreset ontbreekt nog: de loginpagina biedt geen herstelactie en `/auth/forgot-password` geeft 404. 2FA en sessiebeheer zijn wel synthetisch getest.
+- ✅ Publieke wachtwoordreset toegevoegd en lokaal getest met herstelmail, nieuw wachtwoord, 2FA-login en eenmalige token.
 - 🔵 Klant kan alleen eigen aanvragen, zaken, rapporten en documenten zien.
 - ✅ Autorisatietests uitgevoerd met twee afzonderlijke tenants; klant kan geen zaak, rapport, document of factuur van een andere tenant openen.
 

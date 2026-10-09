@@ -58,6 +58,9 @@
             </div>
             <button type="submit" class="btn-cms primary">{{ _('Login') }}</button>
         </form>
+        <div style="text-align:center;margin-top:0.9rem;font-size:0.9rem;">
+            <a href="{{ url_for('auth.forgot_password') }}" style="color:#16213e;text-decoration:underline;">Wachtwoord vergeten?</a>
+        </div>
         {% if local_dev_login_enabled %}
         <form method="POST" action="{{ url_for('auth.local_dev_login') }}" style="margin-top:1rem;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
