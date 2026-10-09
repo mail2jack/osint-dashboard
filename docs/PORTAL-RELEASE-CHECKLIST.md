@@ -26,7 +26,9 @@ release naar productie blijft een afzonderlijk, expliciet besluit.
 ## Voor productie-openstelling nog expliciet uitvoeren
 
 - Gebruik uitsluitend synthetische testdata bij de laatste portaalcontrole.
-- Controleer echte SMTP-bezorging, wachtwoordherstel en 2FA met een testaccount.
+- Lokale Mailpit-bezorging, wachtwoordherstel, eenmalige resetlink en 2FA zijn
+  met een synthetisch testaccount gecontroleerd; echte SMTP-bezorging blijft een
+  aparte productiecontrole.
 - Productie-licentie, telemetry en TLS-bereikbaarheid gecontroleerd; de productie heeft een actieve licentiestatus en recente check-in.
 - Controleer de geplande back-up, melding bij falen en herstel van een recente
   back-up inclusief sleutelbeheer.
