@@ -21,6 +21,16 @@ function readScopeSelect(overlay) {
   var sel = overlay.querySelector('.scope-select');
   return sel && sel.value ? sel.value : null;
 }
+function mountPickerOverlay(overlay) {
+  document.documentElement.classList.add('picker-open');
+  mountPickerOverlay(overlay);
+}
+function closePickerOverlay(overlay) {
+  overlay.remove();
+  if (!document.querySelector('.picker-overlay')) {
+    document.documentElement.classList.remove('picker-open');
+  }
+}
 
 function showActionPicker(actionType, mode) {
   mode = mode || 'run';
@@ -69,12 +79,12 @@ function showActionPicker(actionType, mode) {
           '<button class="action-btn" data-action="close-warn" style="background:var(--accent-primary);color:#fff;font-weight:600;">Got it</button>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(overlay);
+    mountPickerOverlay(overlay);
     overlay.querySelectorAll('[data-action="close-warn"]').forEach(function(el) {
-      el.onclick = function() { overlay.remove(); };
+      el.onclick = function() { closePickerOverlay(overlay); };
     });
     overlay.addEventListener('click', function(e) {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) closePickerOverlay(overlay);
     });
     return;
   }
@@ -98,14 +108,14 @@ function showActionPicker(actionType, mode) {
         }).join('') + '</div>' +
       '</div>' +
     '</div>';
-  document.body.appendChild(overlay);
+  mountPickerOverlay(overlay);
 
   overlay.querySelectorAll('.picker-item').forEach(function(el) {
     el.addEventListener('click', function() {
       var idx = parseInt(el.dataset.idx);
       if (isNaN(idx)) return;
       var invId = readScopeSelect(overlay);
-      overlay.remove();
+      closePickerOverlay(overlay);
       var item = items[parseInt(el.dataset.idx)];
       var val = item.value;
       var subjectId = item.subject_id;
@@ -116,9 +126,9 @@ function showActionPicker(actionType, mode) {
       }
     });
   });
-  overlay.querySelector('[data-action="close-picker"]').onclick = function() { overlay.remove(); };
+  overlay.querySelector('[data-action="close-picker"]').onclick = function() { closePickerOverlay(overlay); };
   overlay.addEventListener('click', function(e) {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) closePickerOverlay(overlay);
   });
 }
 
@@ -173,7 +183,7 @@ function showEditConfirm(actionType, currentValue, subjectId, mode, invId) {
       '</div>' +
       '<div class="picker-body">' + bodyHtml + '</div>' +
     '</div>';
-  document.body.appendChild(overlay);
+  mountPickerOverlay(overlay);
 
   if (isManual) {
     var titleInput = overlay.querySelector('#manual-title');
@@ -182,7 +192,7 @@ function showEditConfirm(actionType, currentValue, subjectId, mode, invId) {
     overlay.querySelector('[data-action="confirm-manual"]').onclick = function() {
       var t = titleInput.value.trim();
       if (!t) { titleInput.focus(); return; }
-      overlay.remove();
+      closePickerOverlay(overlay);
       fetch('/cms/workflow/api/case/' + CASE_ID + '/manual-finding', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
@@ -205,25 +215,25 @@ function showEditConfirm(actionType, currentValue, subjectId, mode, invId) {
     input.setSelectionRange(0, input.value.length);
     overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
       var inv = readScopeSelect(overlay);
-      overlay.remove();
+      closePickerOverlay(overlay);
       runAction(actionType, input.value.trim() || currentValue, subjectId, 'run', inv);
     };
     overlay.querySelector('[data-action="confirm-propose"]').onclick = function() {
       var inv = readScopeSelect(overlay);
-      overlay.remove();
+      closePickerOverlay(overlay);
       runAction(actionType, input.value.trim() || currentValue, subjectId, 'proposal', inv);
     };
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         var inv = readScopeSelect(overlay);
-        overlay.remove();
+        closePickerOverlay(overlay);
         runAction(actionType, input.value.trim() || currentValue, subjectId, mode, inv);
       }
     });
   }
 
-  overlay.querySelector('[data-action="close-edit"]').onclick = function() { overlay.remove(); };
-  overlay.querySelector('[data-action="cancel-edit"]').onclick = function() { overlay.remove(); };
+  overlay.querySelector('[data-action="close-edit"]').onclick = function() { closePickerOverlay(overlay); };
+  overlay.querySelector('[data-action="cancel-edit"]').onclick = function() { closePickerOverlay(overlay); };
 }
 
 function buildPickerItems(actionType) {
@@ -355,11 +365,11 @@ function showDorkPicker(mode) {
         renderPickerBody() +
       '</div>' +
     '</div>';
-  document.body.appendChild(overlay);
+  mountPickerOverlay(overlay);
 
   // Event: close
-  overlay.querySelector('[data-action="close-dork"]').onclick = function() { overlay.remove(); };
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-action="close-dork"]').onclick = function() { closePickerOverlay(overlay); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closePickerOverlay(overlay); });
 
   // Event: category chips
   overlay.addEventListener('click', function(e) {
@@ -390,7 +400,7 @@ function showDorkPicker(mode) {
         allCats.forEach(function(cat) {
           cat.dorks.forEach(function(d) { if (d.id === dorkId) found = d; });
         });
-        if (found) { overlay.remove(); showDorkVariableForm(found, mode); }
+        if (found) { closePickerOverlay(overlay); showDorkVariableForm(found, mode); }
       });
     });
   }
@@ -453,7 +463,7 @@ function showDorkVariableForm(dork, mode) {
         '</div>' +
       '</div>' +
     '</div>';
-  document.body.appendChild(overlay);
+  mountPickerOverlay(overlay);
 
   function updatePreview() {
     var q = buildPreviewQuery();
@@ -468,15 +478,15 @@ function showDorkVariableForm(dork, mode) {
   });
   updatePreview();
 
-  overlay.querySelector('[data-action="close-dork-var"]').onclick = function() { overlay.remove(); };
-  overlay.querySelector('[data-action="dork-back"]').onclick = function() { overlay.remove(); showDorkPicker(); };
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-action="close-dork-var"]').onclick = function() { closePickerOverlay(overlay); };
+  overlay.querySelector('[data-action="dork-back"]').onclick = function() { closePickerOverlay(overlay); showDorkPicker(); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closePickerOverlay(overlay); });
 
   function finishDork(btnMode) {
     var q = buildPreviewQuery();
     if (!q) return;
     var invId = readScopeSelect(overlay);
-    overlay.remove();
+    closePickerOverlay(overlay);
     var vars = {};
     overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
       vars[inp.dataset.var] = inp.value.trim();
@@ -545,7 +555,7 @@ function showPhotoAnalysisPicker() {
       '</div>' +
     '</div>';
 
-  document.body.appendChild(overlay);
+  mountPickerOverlay(overlay);
 
   var dropZone = document.getElementById('photoDropZone');
   var fileInput = document.getElementById('photoFileInput');
@@ -555,7 +565,7 @@ function showPhotoAnalysisPicker() {
   var analyzeBtn = document.getElementById('photoAnalyzeBtn');
   var selectedFile = null;
 
-  function closeOverlay() { overlay.remove(); }
+  function closeOverlay() { closePickerOverlay(overlay); }
   overlay.querySelectorAll('[data-action="close-photo"]').forEach(function(el) {
     el.onclick = closeOverlay;
   });

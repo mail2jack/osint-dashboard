@@ -91,7 +91,9 @@ def _mk_case_wide_action(case, action_type="google_dork"):
 
 def _latest_action_audit(action_id):
     return (
-        AuditLog.query.filter_by(entity_type="research_action", entity_id=action_id)
+        AuditLog.query.filter_by(
+            entity_type="research_action", entity_id=action_id, action="create"
+        )
         .order_by(AuditLog.id.desc())
         .first()
     )
