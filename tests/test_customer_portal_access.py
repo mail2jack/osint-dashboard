@@ -395,3 +395,71 @@ def test_internal_review_converts_request_and_links_intake_documents(
     assert mark_read.status_code == 302
     db.session.refresh(notification)
     assert notification.is_read is True
+
+
+def test_intake_admin_can_assign_and_route_request_without_general_case_role(
+    app, client, db_session
+):
+    """The dedicated intake role can route work, but a named investigator owns the case."""
+    admin = User.query.filter_by(username="admin").one()
+    intake_admin = User(
+        username="synthetic-intake-admin",
+        email="synthetic-intake-admin@example.test",
+        full_name="Synthetic Intake Admin",
+        role="intake_admin",
+        tenant_id=admin.tenant_id,
+        is_active=True,
+    )
+    investigator = User(
+        username="synthetic-intake-investigator",
+        email="synthetic-intake-investigator@example.test",
+        full_name="Synthetic Intake Investigator",
+        role="investigator",
+        tenant_id=admin.tenant_id,
+        is_active=True,
+    )
+    portal_client = Client(tenant_id=admin.tenant_id, name="Synthetic Routed Client")
+    db_session.add_all([intake_admin, investigator, portal_client])
+    db_session.flush()
+    intake = PortalRequest(
+        tenant_id=admin.tenant_id,
+        submitted_by_id=admin.id,
+        request_type="person",
+        question="Synthetische routeerbare aanvraag",
+    )
+    db_session.add(intake)
+    db_session.commit()
+
+    intake_client = client
+    _login_as(intake_client, intake_admin.id)
+    assert intake_client.get("/cms/portal/requests").status_code == 200
+
+    assign_response = intake_client.post(
+        "/cms/portal/requests",
+        data={
+            "request_id": intake.id,
+            "action": "assign",
+            "assigned_to_id": investigator.id,
+        },
+        follow_redirects=False,
+    )
+    assert assign_response.status_code == 302
+    db_session.refresh(intake)
+    assert intake.assigned_to_id == investigator.id
+
+    convert_response = intake_client.post(
+        "/cms/portal/requests",
+        data={
+            "request_id": intake.id,
+            "action": "convert",
+            "client_id": portal_client.id,
+            "title": "Synthetische gerouteerde zaak",
+            "assigned_to_id": investigator.id,
+        },
+        follow_redirects=False,
+    )
+    assert convert_response.status_code == 302
+    db_session.refresh(intake)
+    assert intake.status == "converted"
+    assert intake.case.assigned_to == investigator.id
+    assert intake.case.lead_investigator_id == investigator.id
