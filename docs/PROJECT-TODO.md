@@ -58,9 +58,9 @@ beide.
 - ✅ Gekozen model: registratieaanvraag met beoordeling; optie voor eenmalig onderzoek of eigen organisatie-tenant.
 - ✅ Architectuur vastgelegd: iedere klant krijgt een portalaccount; alleen organisaties krijgen daarnaast een volledige onderzoekstenant.
 - ✅ Uitnodigingsflow technisch getest met een synthetische portal-only klant.
-- 🟡 E-mailverificatie via uitnodigingslink en 2FA zijn synthetisch getest; echte SMTP-mailbezorging is lokaal bevestigd, browsercheck blijft open.
+- ✅ Uitnodigingsmail, uitnodigingslink, klantaccount, 2FA-configuratie en opnieuw inloggen zijn met een synthetische klant lokaal getest; Mailpit-bezorging is bevestigd.
 - ✅ Rollenmodel bepaald: `portal_admin`, `portal_member` en `portal_viewer`; een organisatie behoudt daarnaast de interne tenantrollen.
-- 🟡 Wachtwoordreset, 2FA en sessiebeheer zijn synthetisch gecontroleerd; echte klantmail is lokaal bevestigd, browsercheck blijft open.
+- 🔴 Publieke wachtwoordreset ontbreekt nog: de loginpagina biedt geen herstelactie en `/auth/forgot-password` geeft 404. 2FA en sessiebeheer zijn wel synthetisch getest.
 - 🔵 Klant kan alleen eigen aanvragen, zaken, rapporten en documenten zien.
 - ✅ Autorisatietests uitgevoerd met twee afzonderlijke tenants; klant kan geen zaak, rapport, document of factuur van een andere tenant openen.
 
