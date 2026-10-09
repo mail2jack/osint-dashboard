@@ -418,6 +418,8 @@ def test_intake_admin_can_assign_and_route_request_without_general_case_role(
         tenant_id=admin.tenant_id,
         is_active=True,
     )
+    intake_admin.set_password("Synthetic123!")
+    investigator.set_password("Synthetic123!")
     portal_client = Client(tenant_id=admin.tenant_id, name="Synthetic Routed Client")
     db_session.add_all([intake_admin, investigator, portal_client])
     db_session.flush()
