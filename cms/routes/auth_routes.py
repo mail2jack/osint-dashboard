@@ -982,6 +982,7 @@ def create_user() -> flask.Response:
         "senior_investigator",
         "investigator",
         "junior_investigator",
+        "intake_admin",
         "viewer",
     ]
     if data["role"] not in valid_roles:

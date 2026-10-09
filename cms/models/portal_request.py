@@ -12,6 +12,7 @@ class PortalRequest(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True)
     submitted_by_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    assigned_to_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True, index=True)
     client_id = db.Column(db.String(36), db.ForeignKey("clients.id"), nullable=True, index=True)
     case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), nullable=True, index=True)
     duplicate_of_id = db.Column(
@@ -32,6 +33,7 @@ class PortalRequest(db.Model):
 
     tenant = db.relationship("Tenant", backref=db.backref("portal_requests", lazy="dynamic"))
     submitted_by = db.relationship("User", foreign_keys=[submitted_by_id])
+    assigned_to = db.relationship("User", foreign_keys=[assigned_to_id])
     client = db.relationship("Client", foreign_keys=[client_id])
     case = db.relationship("Case", foreign_keys=[case_id])
     duplicate_of = db.relationship(

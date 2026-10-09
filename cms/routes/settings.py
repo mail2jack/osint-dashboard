@@ -1282,6 +1282,7 @@ def tenant_change_role(tenant_id: str, user_id: str) -> flask.Response:
         "senior_investigator",
         "investigator",
         "junior_investigator",
+        "intake_admin",
         "viewer",
     }
     if new_role not in valid:

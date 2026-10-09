@@ -5,14 +5,14 @@ from flask_login import current_user, login_required
 
 from . import cms_bp
 from ..auth import roles_required
-from ..models import Case, CaseStatus, Client, Document, PortalRequest, db
+from ..models import Case, CaseStatus, Client, Document, PortalRequest, User, db
 from ..services.usage_metering import record_usage_event
 from ..services.portal_notifications import notify_requester
 
 
 @cms_bp.route("/portal/requests", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "owner", "senior_investigator", "investigator")
+@roles_required("admin", "owner", "intake_admin", "senior_investigator", "investigator")
 def portal_requests() -> str:
     """Review tenant-scoped customer portal requests."""
     if request.method == "POST":
@@ -42,6 +42,27 @@ def portal_requests() -> str:
                 url_for("portal_dashboard", _external=True),
             )
             flash("Aanvraag afgewezen.", "info")
+        elif action == "assign":
+            assigned_to_id = (request.form.get("assigned_to_id") or "").strip()
+            reviewer = User.query.filter_by(
+                id=assigned_to_id, tenant_id=current_user.tenant_id, is_active=True
+            ).first()
+            reviewer_roles = {"owner", "admin", "intake_admin", "senior_investigator", "investigator"}
+            if not reviewer or reviewer.role not in reviewer_roles:
+                flash("Kies een actieve behandelaar uit dezelfde organisatie.", "error")
+            else:
+                intake.assigned_to_id = reviewer.id
+                record_usage_event(
+                    tenant_id=current_user.tenant_id,
+                    metric_name="portal_requests_assigned",
+                    audit_action="portal.request.assigned",
+                    entity_type="portal_request",
+                    entity_id=intake.id,
+                    user_id=current_user.id,
+                    description=f"Portal request assigned to {reviewer.full_name or reviewer.email}",
+                )
+                db.session.commit()
+                flash(f"Aanvraag toegewezen aan {reviewer.full_name or reviewer.email}.", "success")
         elif action == "review":
             intake.status = "in_review"
             record_usage_event(
@@ -75,6 +96,17 @@ def portal_requests() -> str:
                 if not client:
                     flash("Kies een geldige klant uit dezelfde organisatie.", "error")
                 else:
+                    assigned_to_id = (request.form.get("assigned_to_id") or intake.assigned_to_id or "").strip()
+                    handler = User.query.filter_by(
+                        id=assigned_to_id, tenant_id=current_user.tenant_id, is_active=True
+                    ).first() if assigned_to_id else None
+                    handler_roles = {"owner", "admin", "senior_investigator", "investigator", "junior_investigator"}
+                    if current_user.role == "intake_admin" and not handler:
+                        flash("Wijs eerst een onderzoeker toe voordat u de aanvraag omzet naar een zaak.", "warning")
+                        return redirect(url_for("cms.portal_requests"))
+                    if assigned_to_id and (not handler or handler.role not in handler_roles):
+                        flash("Kies een actieve behandelaar uit dezelfde organisatie.", "error")
+                        return redirect(url_for("cms.portal_requests"))
                     case_description = intake.question.strip()
                     if intake.context:
                         case_description += f"\n\nContext van de klant:\n{intake.context.strip()}"
@@ -88,7 +120,9 @@ def portal_requests() -> str:
                         status=CaseStatus.OPEN.value,
                         start_date=date.today(),
                         case_type=intake.request_type,
-                        created_by=current_user.id,
+                        created_by=(handler.id if handler else (None if current_user.role == "intake_admin" else current_user.id)),
+                        assigned_to=handler.id if handler else None,
+                        lead_investigator_id=handler.id if handler else None,
                     )
                     db.session.add(case)
                     intake.status = "converted"
@@ -135,6 +169,14 @@ def portal_requests() -> str:
         .order_by(Client.name.asc())
         .all()
     )
+    reviewer_roles = {"owner", "admin", "intake_admin", "senior_investigator", "investigator", "junior_investigator"}
+    reviewers = (
+        User.query.filter_by(tenant_id=current_user.tenant_id, is_active=True)
+        .filter(User.role.in_(reviewer_roles))
+        .order_by(User.full_name.asc(), User.email.asc())
+        .all()
+    )
+    handlers = [reviewer for reviewer in reviewers if reviewer.role != "intake_admin"]
     return render_template(
-        "cms/portal_requests.html", portal_requests=requests, clients=clients
+        "cms/portal_requests.html", portal_requests=requests, clients=clients, reviewers=reviewers, handlers=handlers
     )

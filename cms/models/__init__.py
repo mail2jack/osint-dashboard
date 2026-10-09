@@ -112,6 +112,7 @@ class UserRole(PyEnum):
     INVESTIGATOR = "investigator"  # Can view and update assigned cases
     JUNIOR_INVESTIGATOR = "junior_investigator"  # Can view and update assigned cases
     VIEWER = "viewer"  # Read-only access
+    INTAKE_ADMIN = "intake_admin"  # Reviews and routes customer portal intake
     PORTAL_ADMIN = "portal_admin"  # Customer portal administrator
     PORTAL_MEMBER = "portal_member"  # Customer portal user
     PORTAL_VIEWER = "portal_viewer"  # Read-only customer portal user
