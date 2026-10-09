@@ -54,3 +54,8 @@ repair_manifests/
 
 # Editor/backup files
 *.bak-*
+*.pre-*
+._*
+.env.before-*
+postgres-tls/
+list.html
