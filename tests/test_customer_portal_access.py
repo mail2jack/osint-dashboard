@@ -446,6 +446,10 @@ def test_intake_admin_can_assign_and_route_request_without_general_case_role(
     assert assign_response.status_code == 302
     db_session.refresh(intake)
     assert intake.assigned_to_id == investigator.id
+    assignment_notification = Notification.query.filter_by(
+        user_id=investigator.id, title="Portal-aanvraag aan u toegewezen"
+    ).one()
+    assert assignment_notification.link.endswith("/cms/portal/requests")
 
     convert_response = intake_client.post(
         "/cms/portal/requests",
@@ -463,3 +467,6 @@ def test_intake_admin_can_assign_and_route_request_without_general_case_role(
     assert intake.status == "converted"
     assert intake.case.assigned_to == investigator.id
     assert intake.case.lead_investigator_id == investigator.id
+    assert Notification.query.filter_by(
+        user_id=investigator.id, title="Nieuwe zaak aan u toegewezen"
+    ).count() == 1

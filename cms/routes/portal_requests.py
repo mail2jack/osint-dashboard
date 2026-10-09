@@ -7,7 +7,7 @@ from . import cms_bp
 from ..auth import roles_required
 from ..models import Case, CaseStatus, Client, Document, PortalRequest, User, db
 from ..services.usage_metering import record_usage_event
-from ..services.portal_notifications import notify_requester
+from ..services.portal_notifications import notify_assigned_reviewer, notify_requester
 
 
 @cms_bp.route("/portal/requests", methods=["GET", "POST"])
@@ -62,6 +62,13 @@ def portal_requests() -> str:
                     description=f"Portal request assigned to {reviewer.full_name or reviewer.email}",
                 )
                 db.session.commit()
+                notify_assigned_reviewer(
+                    intake,
+                    "Nieuwe portal-aanvraag aan u toegewezen",
+                    "Portal-aanvraag aan u toegewezen",
+                    f"De aanvraag '{intake.question[:160]}' staat voor u klaar ter beoordeling.",
+                    url_for("cms.portal_requests", _external=True),
+                )
                 flash(f"Aanvraag toegewezen aan {reviewer.full_name or reviewer.email}.", "success")
         elif action == "review":
             intake.status = "in_review"
@@ -127,6 +134,8 @@ def portal_requests() -> str:
                     db.session.add(case)
                     intake.status = "converted"
                     intake.client_id = client.id
+                    if handler:
+                        intake.assigned_to_id = handler.id
                     db.session.flush()
                     intake.case_id = case.id
                     # Keep uploaded intake evidence available in the case while
@@ -146,6 +155,14 @@ def portal_requests() -> str:
                         description="Portal request converted to case",
                     )
                     db.session.commit()
+                    if handler:
+                        notify_assigned_reviewer(
+                            intake,
+                            "Nieuwe zaak aan u toegewezen",
+                            "Nieuwe zaak aan u toegewezen",
+                            f"De portal-aanvraag is omgezet naar zaak {case.case_number} en aan u toegewezen.",
+                            url_for("cms.view_case", case_id=case.id, _external=True),
+                        )
                     notify_requester(
                         intake,
                         "Uw Iveras-aanvraag is omgezet",

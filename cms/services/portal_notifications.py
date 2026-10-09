@@ -69,6 +69,17 @@ def notify_requester(intake, subject: str, heading: str, message: str, link: str
     return result
 
 
+def notify_assigned_reviewer(intake, subject: str, heading: str, message: str, link: str = "") -> bool:
+    """Notify the internal user who owns the next intake step."""
+    reviewer = getattr(intake, "assigned_to", None)
+    if not reviewer or not reviewer.is_active:
+        return False
+    _create_in_app(reviewer.id, intake.tenant_id, heading, message, link)
+    result = _send(reviewer.email, subject, heading, message, link)
+    db.session.commit()
+    return result
+
+
 def notify_case_portal_users(case, subject: str, heading: str, message: str, link: str = "") -> int:
     """Notify active portal users linked to a case's client."""
     access_rows = ClientPortalAccess.query.filter_by(
