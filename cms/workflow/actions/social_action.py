@@ -99,9 +99,7 @@ def _social_scan(action):
 
     for acct, subject_id in accounts_with_subject:
         username = None
-        label = None
         url = None
-        input_platform = None
 
         if isinstance(acct, str):
             username = acct.strip()
@@ -109,17 +107,11 @@ def _social_scan(action):
                 username = username[1:]
             if subject_id:
                 username = _normalize_name_query(username)
-            label = username
         else:
             url = (
                 getattr(acct, "url", None)
                 if not isinstance(acct, dict)
                 else acct.get("url")
-            )
-            input_platform = (
-                getattr(acct, "platform", None)
-                if not isinstance(acct, dict)
-                else acct.get("platform")
             )
             username = (
                 getattr(acct, "username", None)
