@@ -331,6 +331,49 @@ def delete_document(document_id: str) -> flask.Response:
     return api_success({}, "Document deleted")
 
 
+@cms_bp.route("/documents/<document_id>/classification", methods=["POST"])
+@login_required
+@roles_required("admin", "owner", "senior_investigator")
+def set_document_classification(document_id: str) -> flask.Response:
+    """Publish or withdraw a case document from the customer portal."""
+    document = db.session.get(Document, document_id) or abort(404)
+    ensure_tenant_access(document)
+    if not document.case_id:
+        return api_error("Only case documents can be published to the portal", 400)
+
+    case = db.session.get(Case, document.case_id) or abort(404)
+    ensure_tenant_access(case)
+    if not current_user.can_access_case(case):
+        return api_error("Access denied", 403)
+
+    classification = (request.form.get("classification") or "").strip().lower()
+    if classification not in {"public", "confidential"}:
+        return api_error("Classification must be public or confidential", 400)
+
+    previous = document.classification or "confidential"
+    document.classification = classification
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="document",
+        entity_id=document.id,
+        ip_address=request.remote_addr,
+        case_id=case.id,
+        description=(
+            f"Changed portal visibility for {document.original_filename}: "
+            f"{previous} -> {classification}"
+        ),
+    )
+    db.session.commit()
+    flask.flash(
+        "Document vrijgegeven in het klantenportaal."
+        if classification == "public"
+        else "Document ingetrokken uit het klantenportaal.",
+        "success",
+    )
+    return flask.redirect(flask.url_for("cms.view_case", case_id=case.id))
+
+
 @cms_bp.route("/cases/<case_id>/documents")
 @login_required
 @case_access_required
