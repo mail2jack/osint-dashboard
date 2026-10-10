@@ -1,6 +1,6 @@
 # Joost / Iveras — centrale projecttodo
 
-Laatste bijgewerkt: 9 oktober 2026
+Laatste bijgewerkt: 10 oktober 2026
 Werkafspraak: per beurt werken we aan één actieve werkstroom. Andere punten blijven geparkeerd totdat ze expliciet worden hervat.
 
 ## Actieve focus
@@ -74,6 +74,7 @@ beide.
 - ✅ Voor nu behandelt de tenant-`admin` de intake; toekomstige verbetering: aparte administratieve rol voor portal-intake zonder volledige superadminrechten.
 - ✅ Eenmalige aanvraag leidt tot een geïsoleerde portal-only klantomgeving, niet tot een volledige onderzoekstenant.
 - ✅ Goedkeuring maakt de portal-only klantomgeving en uitnodiging aan; rapport-, document- en factuurweergave zijn lokaal aangesloten en synthetisch getest.
+- ✅ Goedgekeurde eenmalige aanvragen worden als clientgebonden portalopdracht vastgelegd en blijven zichtbaar totdat ze naar een zaak zijn omgezet.
 - ⏸️ Betaalprovider kiezen en echte betaalafhandeling koppelen — bewust opengehouden voor later; factuurweergave werkt al.
 - ✅ Alleen goedgekeurde organisatie-aanvragen krijgen daarnaast een volledige onderzoekstenant.
 - 🟡 UX voor bevestiging na indienen verbeteren.
@@ -90,6 +91,7 @@ beide.
 ### A4. Klantportaal na omzetting naar zaak
 
 - ✅ Portaal toont tenant-scoped zaken.
+- ✅ Productie end-to-end gecontroleerd: registratie, goedkeuring, uitnodiging, login, aanvraagweergave, omzetting naar zaak en klantcommunicatie.
 - ✅ Bepalen welke zaakgegevens de klant mag zien: klant ziet referentie, onderwerp, klantstatus, datum, vrijgegeven rapporten en documenten.
 - ✅ Status van de zaak tonen met begrijpelijke klanttaal.
 - ✅ Rapporten alleen tonen wanneer ze door de onderzoeker zijn vrijgegeven.
@@ -110,6 +112,7 @@ beide.
 - ✅ Audit logging gecontroleerd: acties worden vastgelegd zonder volledige berichtinhoud of onderzoekswaarden.
 - ✅ Back-updecompressie, archiefintegriteit en tijdelijk databaseherstel voor portaldata getest.
 - ✅ Lokale productiechecklist vastgelegd in [PORTAL-RELEASE-CHECKLIST.md](PORTAL-RELEASE-CHECKLIST.md); productie-openstelling blijft apart besluit.
+- ✅ Portal-entrypoint `/portal` verwijst naar het echte tenantgebonden dashboard; de oude synthetische demopagina is uit de productieflow gehaald.
 
 ---
 
