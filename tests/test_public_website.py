@@ -1,5 +1,7 @@
 """Public website, legal pages and crawl-control contract tests."""
 
+from xml.etree import ElementTree
+
 
 def test_public_homepage_has_seo_metadata(client):
     response = client.get("/public")
@@ -59,7 +61,12 @@ def test_public_crawl_controls_exclude_private_surfaces(client):
     sitemap = client.get("/sitemap.xml")
     assert sitemap.status_code == 200
     xml = sitemap.get_data(as_text=True)
-    assert "https://iveras.com/" in xml
-    assert "https://iveras.com/contact" in xml
-    assert "/cms/" not in xml
-    assert "/portal/" not in xml
+    locations = {
+        element.text
+        for element in ElementTree.fromstring(xml).iter()
+        if element.tag.endswith("}loc")
+    }
+    assert "https://iveras.com/" in locations
+    assert "https://iveras.com/contact" in locations
+    assert all("/cms/" not in location for location in locations)
+    assert all("/portal/" not in location for location in locations)
