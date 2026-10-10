@@ -11,6 +11,14 @@ def test_public_homepage_has_seo_metadata(client):
     assert 'href="/privacy"' in body
 
 
+def test_public_domain_root_serves_public_homepage(client):
+    response = client.get("/", base_url="https://iveras.com")
+    assert response.status_code == 200
+    assert "Van eerste aanwijzing naar controleerbaar onderzoeksrapport." in response.get_data(
+        as_text=True
+    )
+
+
 def test_public_legal_pages_are_available(client):
     for path, marker in (
         ("/privacy", "Privacyverklaring"),
@@ -51,7 +59,7 @@ def test_public_crawl_controls_exclude_private_surfaces(client):
     sitemap = client.get("/sitemap.xml")
     assert sitemap.status_code == 200
     xml = sitemap.get_data(as_text=True)
-    assert "https://iveras.com/public" in xml
+    assert "https://iveras.com/" in xml
     assert "https://iveras.com/contact" in xml
     assert "/cms/" not in xml
     assert "/portal/" not in xml

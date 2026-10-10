@@ -51,8 +51,15 @@ def _portal_profile_complete(client) -> bool:
 def register_system_routes(app: Flask) -> None:
     """Register system-level routes on the Flask app."""
 
+    def _public_site_hosts() -> set[str]:
+        configured = os.environ.get("PUBLIC_SITE_HOSTS", "iveras.com,www.iveras.com")
+        return {host.strip().lower() for host in configured.split(",") if host.strip()}
+
     @app.route("/")
     def index() -> flask.Response:
+        host = (request.host or "").split(":", 1)[0].lower()
+        if host in _public_site_hosts():
+            return public_homepage()
         return redirect(url_for("cms.dashboard"))
 
     @app.route("/public")
@@ -89,7 +96,7 @@ def register_system_routes(app: Flask) -> None:
         site_url = os.environ.get("PUBLIC_SITE_URL", "https://iveras.com").rstrip("/")
         body = (
             "User-agent: *\n"
-            "Allow: /public\n"
+            "Allow: /\n"
             "Allow: /privacy\n"
             "Allow: /voorwaarden\n"
             "Allow: /cookies\n"
@@ -105,7 +112,7 @@ def register_system_routes(app: Flask) -> None:
     def public_sitemap() -> Response:
         """Expose only public, indexable pages in the XML sitemap."""
         site_url = os.environ.get("PUBLIC_SITE_URL", "https://iveras.com").rstrip("/")
-        urls = ("/public", "/privacy", "/voorwaarden", "/cookies", "/contact")
+        urls = ("/", "/privacy", "/voorwaarden", "/cookies", "/contact")
         body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         body += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         for path in urls:
