@@ -96,7 +96,7 @@ beide.
 - ✅ Status van de zaak tonen met begrijpelijke klanttaal.
 - ✅ Rapporten alleen tonen wanneer ze door de onderzoeker zijn vrijgegeven.
 - 🔵 Bevindingen niet automatisch volledig aan de klant tonen.
-- 🟡 Download van definitieve rapporten beveiligen en auditen.
+- ✅ Download van definitieve rapporten is klant- en tenantgebonden, alleen beschikbaar na vrijgave en wordt geaudit.
 - 🔵 Klant kan vragen stellen over een lopende zaak zonder rechtstreeks interne velden te wijzigen.
 - ✅ Notificatiecentrum voor aanvragen en statuswijzigingen; meldingen zijn gebruikers- en tenantgebonden en kunnen als gelezen worden gemarkeerd.
 - ✅ Klantportaal getest met een synthetische klanttenant.

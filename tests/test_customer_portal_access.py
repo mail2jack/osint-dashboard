@@ -10,6 +10,7 @@ from cms.models import (
     CustomerRegistrationRequest,
     ClientPortalAccess,
     Document,
+    AuditLog,
     Invitation,
     Invoice,
     InvoiceItem,
@@ -308,6 +309,14 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     report_response = client.get(f"/portal/cases/{case.id}/report")
     assert report_response.status_code == 200
     assert "Synthetic report body" in report_response.get_data(as_text=True)
+    report_download = client.get(f"/portal/cases/{case.id}/report/download")
+    assert report_download.status_code == 200
+    assert report_download.mimetype == "text/html"
+    assert "attachment" in report_download.headers["Content-Disposition"]
+    assert "Synthetic report body" in report_download.get_data(as_text=True)
+    assert AuditLog.query.filter_by(
+        action="portal.report.downloaded", entity_id=case.id, user_id=customer.id
+    ).count() == 1
 
     documents_response = client.get(f"/portal/cases/{case.id}/documents")
     assert documents_response.status_code == 200
@@ -343,6 +352,7 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
 
     _login_as(client, other_user.id)
     assert client.get(f"/portal/cases/{case.id}/report").status_code == 404
+    assert client.get(f"/portal/cases/{case.id}/report/download").status_code == 404
     assert client.get(f"/portal/cases/{case.id}/documents").status_code == 404
     assert client.get(f"/portal/documents/{document.id}/download").status_code == 404
     assert client.get(f"/portal/invoices/{invoice.id}").status_code == 404

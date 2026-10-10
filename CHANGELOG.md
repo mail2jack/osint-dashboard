@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Vrijgegeven rapporten kunnen vanuit het klantportaal veilig worden gedownload
+  als HTML-bijlage; tenant-/klanttoegang, vrijgavestatus en audit logging worden
+  opnieuw gecontroleerd bij iedere download.
 - Portal-aanvragen tonen na indienen een referentie en duidelijke statustoelichting;
   interne behandelaars kunnen aanvragen expliciet accepteren en aanvullende klantinformatie
   zet de aanvraag zichtbaar terug naar de beoordelingsstap.
