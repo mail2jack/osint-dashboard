@@ -684,9 +684,14 @@ def register_system_routes(app: Flask) -> None:
                 safe_original = secure_filename(filename) or f"bijlage.{file_ext}"
                 unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
                 relative_dir = f"uploads/portal-requests/{intake.id}"
-                upload_dir = os.path.join(current_app.root_path, "static", relative_dir)
+                upload_dir = safe_join(current_app.root_path, "static", relative_dir)
+                if not upload_dir:
+                    abort(400)
                 os.makedirs(upload_dir, exist_ok=True)
-                upload.save(os.path.join(upload_dir, unique_filename))
+                upload_path = safe_join(upload_dir, unique_filename)
+                if not upload_path:
+                    abort(400)
+                upload.save(upload_path)
                 db.session.add(
                     Document(
                         tenant_id=current_user.tenant_id,
@@ -694,7 +699,7 @@ def register_system_routes(app: Flask) -> None:
                         filename=unique_filename,
                         original_filename=safe_original,
                         mime_type=upload.content_type,
-                        file_size=os.path.getsize(os.path.join(upload_dir, unique_filename)),
+                        file_size=os.path.getsize(upload_path),
                         storage_path=f"{relative_dir}/{unique_filename}",
                         storage_type="local",
                         document_type="portal_request_attachment",
