@@ -90,6 +90,29 @@ def portal_requests() -> str:
                 url_for("portal_dashboard", _external=True),
             )
             flash("Aanvraag staat nu in beoordeling.", "success")
+        elif action == "accept":
+            if intake.status in ("converted", "declined"):
+                flash("Deze aanvraag kan niet meer worden geaccepteerd.", "warning")
+            else:
+                intake.status = "accepted"
+                record_usage_event(
+                    tenant_id=current_user.tenant_id,
+                    metric_name="portal_requests_accepted",
+                    audit_action="portal.request.accepted",
+                    entity_type="portal_request",
+                    entity_id=intake.id,
+                    user_id=current_user.id,
+                    description="Portal request accepted",
+                )
+                db.session.commit()
+                notify_requester(
+                    intake,
+                    "Uw Iveras-aanvraag is geaccepteerd",
+                    "Uw aanvraag is geaccepteerd",
+                    "Uw aanvraag is geaccepteerd. Iveras maakt de vervolgstap nu in orde.",
+                    url_for("portal_dashboard", _external=True),
+                )
+                flash("Aanvraag geaccepteerd.", "success")
         elif action == "convert":
             if intake.status == "converted":
                 flash("Deze aanvraag is al omgezet naar een zaak.", "info")

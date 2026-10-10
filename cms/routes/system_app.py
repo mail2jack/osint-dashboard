@@ -198,7 +198,7 @@ def register_system_routes(app: Flask) -> None:
             notifications=notifications,
             portal_clients=portal_clients,
             tenant_name=current_user.tenant.name if current_user.tenant else "",
-            submitted=request.args.get("submitted") == "1",
+            submitted=request.args.get("submitted"),
             request_message=request.args.get("request_message") == "1",
             public_document_counts=public_document_counts,
         )
@@ -361,6 +361,70 @@ def register_system_routes(app: Flask) -> None:
             "public/portal_report.html", case=case, report_html=report_html
         )
 
+    @app.route("/portal/cases/<case_id>/report/download")
+    @login_required
+    @rate_limit(limit=(20, 300), key_prefix="portal_report_download")
+    def portal_case_report_download(case_id: str):
+        """Download a released report without exposing internal case data."""
+        import html
+        import io
+        import bleach
+        import markdown as md_lib
+        from flask import send_file
+
+        from cms.models import Case, db
+        from cms.services.client_portal import portal_can_access_client
+        from cms.services.report_findings import normalize_report_markdown
+        from cms.services.usage_metering import record_usage_event
+
+        case = Case.query.filter_by(
+            id=case_id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+        ).first_or_404()
+        if not portal_can_access_client(current_user, case.client_id):
+            abort(404)
+        if not case.pv_body or case.report_status != "released":
+            return render_template(
+                "public/portal_unavailable.html",
+                title="Rapport nog niet beschikbaar",
+                message="De onderzoeker heeft het rapport nog niet vrijgegeven.",
+            ), 404
+
+        raw_html = md_lib.markdown(
+            normalize_report_markdown(case.pv_body), extensions=["tables"]
+        )
+        report_html = bleach.clean(
+            raw_html,
+            tags=[
+                "p", "br", "strong", "em", "a", "ul", "ol", "li", "h1",
+                "h2", "h3", "h4", "h5", "h6", "code", "pre", "blockquote",
+                "hr", "table", "thead", "tbody", "tr", "th", "td",
+            ],
+            attributes={"a": ["href", "title"], "th": ["align"], "td": ["align"]},
+        )
+        document = f"""<!doctype html>
+<html lang=\"nl\"><head><meta charset=\"utf-8\"><title>Rapport {html.escape(case.case_number)}</title>
+<style>body{{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;line-height:1.5;color:#17213f}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #dfe5f1;padding:8px;text-align:left}}a{{color:#2856c7}}</style></head>
+<body><h1>Rapport {html.escape(case.case_number)}</h1><p>{html.escape(case.title)} · vrijgegeven rapport</p>{report_html}</body></html>"""
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_reports_downloaded",
+            audit_action="portal.report.downloaded",
+            entity_type="case_report",
+            entity_id=case.id,
+            case_id=case.id,
+            user_id=current_user.id,
+            description="Customer downloaded a released case report",
+        )
+        db.session.commit()
+        return send_file(
+            io.BytesIO(document.encode("utf-8")),
+            mimetype="text/html",
+            as_attachment=True,
+            download_name=f"rapport-{case.case_number}.html",
+        )
+
     @app.route("/portal/cases/<case_id>/documents")
     @login_required
     def portal_case_documents(case_id: str) -> str:
@@ -391,7 +455,7 @@ def register_system_routes(app: Flask) -> None:
     @login_required
     def portal_case_messages(case_id: str) -> str:
         """Secure two-way chat between a portal customer and the case handler."""
-        from cms.models import AuditLog, Case, CaseMessage, db
+        from cms.models import AuditLog, Case, CaseMessage, Notification, db
         from cms.services.client_portal import portal_can_access_client
         from cms.routes.case_messages import _notify_staff
 
@@ -443,6 +507,13 @@ def register_system_routes(app: Flask) -> None:
             case_id=case.id,
             sender_role="staff",
             is_read=False,
+        ).update({"is_read": True}, synchronize_session=False)
+        Notification.query.filter(
+            Notification.tenant_id == case.tenant_id,
+            Notification.user_id == current_user.id,
+            Notification.category == "case_updates",
+            Notification.is_read.is_(False),
+            Notification.link.like(f"%/portal/cases/{case.id}/messages"),
         ).update({"is_read": True}, synchronize_session=False)
         db.session.commit()
         return render_template(
@@ -608,7 +679,7 @@ def register_system_routes(app: Flask) -> None:
                 f"Er is een nieuwe aanvraag ingediend door {current_user.email}.",
                 url_for("cms.portal_requests", _external=True),
             )
-            return redirect(url_for("portal_dashboard", submitted="1"))
+            return redirect(url_for("portal_dashboard", submitted=portal_request.id))
 
         allowed_client_ids = portal_client_ids(current_user)
         portal_clients = Client.query.filter(Client.id.in_(allowed_client_ids)).order_by(Client.name).all() if allowed_client_ids is not None else []
@@ -741,6 +812,9 @@ def register_system_routes(app: Flask) -> None:
                     user_id=current_user.id,
                     description="Customer added information to a portal request",
                 )
+            # Make the workflow state visible to the requester: new customer
+            # information is now waiting for internal review.
+            intake.status = "additional_info"
             db.session.commit()
             notify_tenant_admins(
                 intake,

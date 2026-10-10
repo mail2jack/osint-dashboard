@@ -6,10 +6,12 @@ from pathlib import Path
 
 from cms.models import (
     Case,
+    CaseMessage,
     Client,
     CustomerRegistrationRequest,
     ClientPortalAccess,
     Document,
+    AuditLog,
     Invitation,
     Invoice,
     InvoiceItem,
@@ -167,6 +169,13 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
         submitted_by_id=customer.id,
         question="Synthetische aanvullende aanvraag",
     ).one()
+    assert request_response.headers["Location"].endswith(
+        f"/portal/dashboard?submitted={intake.id}"
+    )
+    confirmation = auth_client.get(request_response.headers["Location"])
+    assert confirmation.status_code == 200
+    assert f"Referentie: {intake.id[:8]}" in confirmation.get_data(as_text=True)
+    assert "Ontvangen" in confirmation.get_data(as_text=True)
     duplicate_response = auth_client.post(
         "/portal/new-request",
         data={
@@ -198,6 +207,8 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
         request_id=intake.id,
         author_user_id=customer.id,
     ).one().message == "Extra synthetische informatie."
+    db.session.refresh(intake)
+    assert intake.status == "additional_info"
     attachment = Document.query.filter_by(portal_request_id=intake.id).one()
     assert attachment.original_filename == "context.pdf"
     download_response = auth_client.get(
@@ -212,13 +223,13 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
 
 
 def test_portal_customer_can_access_released_content_and_not_other_tenant(
-    app, client, db_session
+    app, client, db_session, monkeypatch
 ):
     """Released portal content is visible only to its own customer tenant."""
     tenant = Tenant(
         name="Synthetische Portal Klant",
         slug="synthetic-portal-customer",
-        workspace_type="portal_only",
+        workspace_type="full",
         subscription_status="trialing",
         join_code="SYN-PORTAL-1",
     )
@@ -238,6 +249,16 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     portal_client = Client(tenant_id=tenant.id, name="Synthetic Portal Client")
     db_session.add(portal_client)
     db_session.flush()
+    db_session.add(
+        ClientPortalAccess(
+            tenant_id=tenant.id,
+            client_id=portal_client.id,
+            user_id=customer.id,
+            email=customer.email,
+            role="portal_viewer",
+            is_active=True,
+        )
+    )
 
     case = Case(
         tenant_id=tenant.id,
@@ -249,8 +270,20 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
         pv_body="# Released report\n\nSynthetic report body.",
         report_status="released",
     )
+    staff = User(
+        username="synthetic-case-handler",
+        email="synthetic-case-handler@example.test",
+        full_name="Synthetic Case Handler",
+        role="investigator",
+        is_active=True,
+        is_super_admin=False,
+    )
+    staff.set_password("Synthetic123!")
+    tenant.users.append(staff)
     db_session.add(case)
     db_session.flush()
+    case.lead_investigator_id = staff.id
+    db_session.commit()
 
     relative_path = f"uploads/cases/{case.id}/synthetic.txt"
     file_path = Path(app.root_path) / "static" / relative_path
@@ -299,6 +332,14 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     report_response = client.get(f"/portal/cases/{case.id}/report")
     assert report_response.status_code == 200
     assert "Synthetic report body" in report_response.get_data(as_text=True)
+    report_download = client.get(f"/portal/cases/{case.id}/report/download")
+    assert report_download.status_code == 200
+    assert report_download.mimetype == "text/html"
+    assert "attachment" in report_download.headers["Content-Disposition"]
+    assert "Synthetic report body" in report_download.get_data(as_text=True)
+    assert AuditLog.query.filter_by(
+        action="portal.report.downloaded", entity_id=case.id, user_id=customer.id
+    ).count() == 1
 
     documents_response = client.get(f"/portal/cases/{case.id}/documents")
     assert documents_response.status_code == 200
@@ -311,6 +352,51 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     invoice_response = client.get(f"/portal/invoices/{invoice.id}")
     assert invoice_response.status_code == 200
     assert "SYN-2026-0001" in invoice_response.get_data(as_text=True)
+
+    monkeypatch.setattr("cms.routes.case_messages._send", lambda *args, **kwargs: None)
+    customer_message = client.post(
+        f"/portal/cases/{case.id}/messages",
+        data={"message": "Een synthetische klantvraag."},
+        follow_redirects=False,
+    )
+    assert customer_message.status_code == 302
+    assert CaseMessage.query.filter_by(
+        case_id=case.id, sender_user_id=customer.id, sender_role="customer",
+        message="Een synthetische klantvraag.",
+    ).count() == 1
+    staff_notification = Notification.query.filter_by(
+        user_id=staff.id, title="Nieuw klantbericht"
+    ).one()
+    assert staff_notification.is_read is False
+
+    _login_as(client, staff.id)
+    staff_page = client.get(f"/cms/workflow/case/{case.id}/messages")
+    assert staff_page.status_code == 200
+    assert "Een synthetische klantvraag." in staff_page.get_data(as_text=True)
+    db_session.refresh(staff_notification)
+    assert staff_notification.is_read is True
+    staff_message = client.post(
+        f"/cms/workflow/case/{case.id}/messages",
+        data={"message": "Een synthetisch antwoord van de behandelaar."},
+        follow_redirects=False,
+    )
+    assert staff_message.status_code == 302
+    assert CaseMessage.query.filter_by(
+        case_id=case.id, sender_user_id=staff.id, sender_role="staff",
+        message="Een synthetisch antwoord van de behandelaar.",
+    ).count() == 1
+
+    _login_as(client, customer.id)
+    customer_page = client.get(f"/portal/cases/{case.id}/messages")
+    assert customer_page.status_code == 200
+    assert "Een synthetisch antwoord van de behandelaar." in customer_page.get_data(as_text=True)
+    customer_notification = Notification.query.filter_by(
+        user_id=customer.id, title="Nieuw bericht van Iveras"
+    ).one()
+    assert customer_notification.is_read is True
+    assert AuditLog.query.filter_by(
+        action="case.message.sent", case_id=case.id
+    ).count() == 2
 
     other_tenant = Tenant(
         name="Andere Synthetische Tenant",
@@ -334,6 +420,7 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
 
     _login_as(client, other_user.id)
     assert client.get(f"/portal/cases/{case.id}/report").status_code == 404
+    assert client.get(f"/portal/cases/{case.id}/report/download").status_code == 404
     assert client.get(f"/portal/cases/{case.id}/documents").status_code == 404
     assert client.get(f"/portal/documents/{document.id}/download").status_code == 404
     assert client.get(f"/portal/invoices/{invoice.id}").status_code == 404
@@ -405,6 +492,66 @@ def test_internal_review_converts_request_and_links_intake_documents(
     assert mark_read.status_code == 302
     db.session.refresh(notification)
     assert notification.is_read is True
+
+
+def test_public_registration_rate_limit_blocks_repeated_submissions(client):
+    """Public intake must stop automated repeated submissions per source IP."""
+    from cms.rate_limiting import _api_rate_limits
+
+    _api_rate_limits.clear()
+    try:
+        responses = [
+            client.post(
+                "/portal/register",
+                data={
+                    "organization_name": "Synthetic Rate Limit Test",
+                    "contact_name": "Synthetic User",
+                    "email": f"rate-limit-{index}@example.test",
+                    "registration_type": "other",
+                },
+            )
+            for index in range(6)
+        ]
+        assert [response.status_code for response in responses[:5]] == [200] * 5
+        assert responses[5].status_code == 429
+        assert responses[5].get_json()["error"] == "Rate limit exceeded"
+        assert responses[5].headers["Retry-After"]
+    finally:
+        _api_rate_limits.clear()
+
+
+def test_internal_reviewer_can_accept_request_and_customer_sees_status(
+    auth_client, db_session
+):
+    reviewer = User.query.filter_by(username="admin").one()
+    portal_client = Client(
+        tenant_id=reviewer.tenant_id,
+        name="Synthetic Accepted Client",
+    )
+    db_session.add(portal_client)
+    db_session.flush()
+    intake = PortalRequest(
+        tenant_id=reviewer.tenant_id,
+        submitted_by_id=reviewer.id,
+        client_id=portal_client.id,
+        request_type="other",
+        question="Synthetische geaccepteerde aanvraag",
+        status="submitted",
+    )
+    db_session.add(intake)
+    db_session.commit()
+
+    response = auth_client.post(
+        "/cms/portal/requests",
+        data={"request_id": intake.id, "action": "accept"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    db_session.refresh(intake)
+    assert intake.status == "accepted"
+    assert Notification.query.filter_by(
+        title="Uw aanvraag is geaccepteerd"
+    ).count() == 1
 
 
 def test_intake_admin_can_assign_and_route_request_without_general_case_role(

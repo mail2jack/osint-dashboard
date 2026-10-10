@@ -125,6 +125,34 @@ def test_backup_verifier_and_alert_scripts_parse():
     assert snapshot.returncode == 0, snapshot.stderr
 
 
+def test_backup_notifications_make_failure_state_and_utc_explicit():
+    """Backup mail templates must distinguish failed runs and use UTC."""
+    completion = (ROOT / "scripts/backup_completion_email.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'choices=("success", "failed")' in completion
+    assert 'datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")' in completion
+    assert '("Fouten", str(args.errors))' in completion
+    assert '("Waarschuwingen", str(args.warnings))' in completion
+    assert 'not user.email.strip().lower().endswith("@localhost")' in completion
+
+
+def test_backup_failure_alert_is_safe_without_smtp_recipient():
+    """The DR failure hook must still exit cleanly when email is not configured."""
+    result = subprocess.run(
+        ["bash", str(ROOT / "scripts/backup_verification_alert.sh")],
+        env={key: value for key, value in os.environ.items() if key != "BACKUP_VERIFY_ALERT_EMAIL"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    alert_source = (ROOT / "scripts/backup_verification_alert.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "OSINT disaster-recovery verification failed" in alert_source
+
+
 def test_verifier_does_not_restore_to_production():
     source = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
     assert "DR_VERIFY_DATABASE_URL" in source

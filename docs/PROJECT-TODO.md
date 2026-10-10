@@ -77,8 +77,8 @@ beide.
 - ✅ Goedgekeurde eenmalige aanvragen worden als clientgebonden portalopdracht vastgelegd en blijven zichtbaar totdat ze naar een zaak zijn omgezet.
 - ⏸️ Betaalprovider kiezen en echte betaalafhandeling koppelen — bewust opengehouden voor later; factuurweergave werkt al.
 - ✅ Alleen goedgekeurde organisatie-aanvragen krijgen daarnaast een volledige onderzoekstenant.
-- 🟡 UX voor bevestiging na indienen verbeteren.
-- 🟡 Statussen definitief maken: ingediend, in beoordeling, aanvullende informatie, geaccepteerd, afgewezen, omgezet.
+- ✅ Bevestiging na indienen toont een aanvraagreferentie en de eerstvolgende status.
+- ✅ Statussen definitief gemaakt en consistent zichtbaar: ontvangen, in beoordeling, aanvullende informatie, geaccepteerd, afgewezen en omgezet naar zaak.
 - ✅ E-mailmelding bij nieuwe aanvraag naar platformbeheerders en bevestiging naar de aanvrager.
 - ✅ E-mailmelding bij statuswijziging naar de aanvrager.
 - ✅ Flow “Andere vraag” handmatig getest via website en klantregistraties; voor nu akkoord bevonden.
@@ -96,8 +96,8 @@ beide.
 - ✅ Status van de zaak tonen met begrijpelijke klanttaal.
 - ✅ Rapporten alleen tonen wanneer ze door de onderzoeker zijn vrijgegeven.
 - 🔵 Bevindingen niet automatisch volledig aan de klant tonen.
-- 🟡 Download van definitieve rapporten beveiligen en auditen.
-- 🔵 Klant kan vragen stellen over een lopende zaak zonder rechtstreeks interne velden te wijzigen.
+- ✅ Download van definitieve rapporten is klant- en tenantgebonden, alleen beschikbaar na vrijgave en wordt geaudit.
+- ✅ Klant kan vragen stellen over een lopende zaak via een tenantgebonden berichtenkanaal zonder interne velden te wijzigen; klant en behandelaar krijgen notificaties en gelezen-statussen worden bijgewerkt.
 - ✅ Notificatiecentrum voor aanvragen en statuswijzigingen; meldingen zijn gebruikers- en tenantgebonden en kunnen als gelezen worden gemarkeerd.
 - ✅ Klantportaal getest met een synthetische klanttenant.
 - ✅ Portal-only klant en CMS-blokkade getest; rapport, documentdownload, factuurweergave en cross-tenant afscherming end-to-end getest.
@@ -107,8 +107,8 @@ beide.
 - ✅ Basis tenant-isolatie aanwezig; negatieve autorisatietests voor rapporten, documenten en facturen geslaagd.
 - ✅ Portal-only gebruikers worden naar het klantenportaal beperkt en niet toegelaten tot de interne CMS-werkomgeving.
 - ✅ Rapportweergave, factuurweergave en documentdownloads worden usage-gemeten en geaudit.
-- ✅ CSRF en rate limiting zijn op portalregistratie, aanvraag-, bericht-, profiel-, notificatie- en downloadacties aangesloten; handmatige brute-force- en browsercontrole blijven open.
-- 🔵 Geen productiegegevens gebruiken in portaaltests.
+- ✅ CSRF en rate limiting zijn op portalregistratie, aanvraag-, bericht-, profiel-, notificatie- en downloadacties aangesloten; geautomatiseerde herhaalde-aanvraagcontrole is toegevoegd.
+- ✅ Geen productiegegevens gebruiken in portaaltests; laatste geautomatiseerde tests gebruiken uitsluitend synthetische data.
 - ✅ Audit logging gecontroleerd: acties worden vastgelegd zonder volledige berichtinhoud of onderzoekswaarden.
 - ✅ Back-updecompressie, archiefintegriteit en tijdelijk databaseherstel voor portaldata getest.
 - ✅ Lokale productiechecklist vastgelegd in [PORTAL-RELEASE-CHECKLIST.md](PORTAL-RELEASE-CHECKLIST.md); productie-openstelling blijft apart besluit.
@@ -190,8 +190,8 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 - 🟡 Alleen default company met één gebruiker overnemen; geen zaken, subjects, dossiers of rapporten.
 - 🟡 API-configuratie gecontroleerd; OpenRouter bewust later invullen indien nodig.
 - ✅ Licentie-uitgifte en telemetry tussen productie en license server gecontroleerd; productie heeft een actieve licentiestatus en recente check-in.
-- 🔵 Restoreprocedure documenteren inclusief sleutelbeheer.
-- 🔵 Monitoring en e-mailmeldingen voor mislukte back-ups testen.
+- ✅ Restoreprocedure documenteren inclusief sleutelbeheer in [PORTAL-RESTORE-RUNBOOK.md](PORTAL-RESTORE-RUNBOOK.md).
+- ✅ Monitoring en e-mailmeldingen voor mislukte back-ups gecontroleerd; een gesimuleerde DR-failure-alert is via de productie-appcontainer naar de beheerder verzonden.
 - ✅ Productie-releaseproces vastgelegd: lokaal → GitHub → groene verplichte controles → gecontroleerde productie-update.
 - 🔵 Geen directe wijzigingen op productie zonder expliciet akkoord.
 

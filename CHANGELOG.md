@@ -10,6 +10,25 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Gecontroleerde productie-alerttest uitgevoerd: een gesimuleerde DR-foutmelding
+  is via de echte SMTP-configuratie naar de beheerder verzonden; er is geen
+  back-up of applicatiedata gewijzigd.
+- Backup- en DR-notificatiepaden hebben regressietests voor failed-status,
+  UTC-tijd, fout-/waarschuwingsaantallen, localhost-filtering en veilig gedrag
+  wanneer SMTP-alerting niet is ingesteld.
+- Portal- en herstelrunbook toegevoegd met geïsoleerde verificatie, expliciete
+  restore-goedkeuring, sleutelbeheer en foutmeldingsgedrag.
+- Geautomatiseerde regressietest toegevoegd die herhaalde publieke aanvragen
+  na vijf pogingen per bron-IP blokkeert.
+- Klant en behandelaar kunnen beveiligd berichten uitwisselen bij een lopende zaak;
+  beide kanten krijgen een melding, berichten worden als gelezen gemarkeerd bij openen
+  en de uitwisseling wordt geaudit zonder interne findings bloot te geven.
+- Vrijgegeven rapporten kunnen vanuit het klantportaal veilig worden gedownload
+  als HTML-bijlage; tenant-/klanttoegang, vrijgavestatus en audit logging worden
+  opnieuw gecontroleerd bij iedere download.
+- Portal-aanvragen tonen na indienen een referentie en duidelijke statustoelichting;
+  interne behandelaars kunnen aanvragen expliciet accepteren en aanvullende klantinformatie
+  zet de aanvraag zichtbaar terug naar de beoordelingsstap.
 - Approved one-off customer registrations now create a client-scoped portal
   request that preserves the original question and remains visible until an
   investigator converts it into a case (PR #238).
