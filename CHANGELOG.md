@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Klant en behandelaar kunnen beveiligd berichten uitwisselen bij een lopende zaak;
+  beide kanten krijgen een melding, berichten worden als gelezen gemarkeerd bij openen
+  en de uitwisseling wordt geaudit zonder interne findings bloot te geven.
 - Vrijgegeven rapporten kunnen vanuit het klantportaal veilig worden gedownload
   als HTML-bijlage; tenant-/klanttoegang, vrijgavestatus en audit logging worden
   opnieuw gecontroleerd bij iedere download.

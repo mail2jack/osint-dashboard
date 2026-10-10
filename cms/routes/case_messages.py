@@ -74,5 +74,12 @@ def staff_case_messages(case_id):
         return redirect(url_for("cms.staff_case_messages", case_id=case.id))
     messages = CaseMessage.query.filter_by(tenant_id=case.tenant_id, case_id=case.id).order_by(CaseMessage.created_at.asc()).all()
     CaseMessage.query.filter_by(tenant_id=case.tenant_id, case_id=case.id, sender_role="customer", is_read=False).update({"is_read": True}, synchronize_session=False)
+    Notification.query.filter(
+        Notification.tenant_id == case.tenant_id,
+        Notification.user_id == current_user.id,
+        Notification.category == "case_updates",
+        Notification.is_read.is_(False),
+        Notification.link.like(f"%/cms/workflow/case/{case.id}/messages"),
+    ).update({"is_read": True}, synchronize_session=False)
     db.session.commit()
     return render_template("cms/workflow/workflow_case_messages.html", case=case, messages=messages)

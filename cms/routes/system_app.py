@@ -455,7 +455,7 @@ def register_system_routes(app: Flask) -> None:
     @login_required
     def portal_case_messages(case_id: str) -> str:
         """Secure two-way chat between a portal customer and the case handler."""
-        from cms.models import AuditLog, Case, CaseMessage, db
+        from cms.models import AuditLog, Case, CaseMessage, Notification, db
         from cms.services.client_portal import portal_can_access_client
         from cms.routes.case_messages import _notify_staff
 
@@ -507,6 +507,13 @@ def register_system_routes(app: Flask) -> None:
             case_id=case.id,
             sender_role="staff",
             is_read=False,
+        ).update({"is_read": True}, synchronize_session=False)
+        Notification.query.filter(
+            Notification.tenant_id == case.tenant_id,
+            Notification.user_id == current_user.id,
+            Notification.category == "case_updates",
+            Notification.is_read.is_(False),
+            Notification.link.like(f"%/portal/cases/{case.id}/messages"),
         ).update({"is_read": True}, synchronize_session=False)
         db.session.commit()
         return render_template(

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from cms.models import (
     Case,
+    CaseMessage,
     Client,
     CustomerRegistrationRequest,
     ClientPortalAccess,
@@ -222,13 +223,13 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
 
 
 def test_portal_customer_can_access_released_content_and_not_other_tenant(
-    app, client, db_session
+    app, client, db_session, monkeypatch
 ):
     """Released portal content is visible only to its own customer tenant."""
     tenant = Tenant(
         name="Synthetische Portal Klant",
         slug="synthetic-portal-customer",
-        workspace_type="portal_only",
+        workspace_type="full",
         subscription_status="trialing",
         join_code="SYN-PORTAL-1",
     )
@@ -248,6 +249,16 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     portal_client = Client(tenant_id=tenant.id, name="Synthetic Portal Client")
     db_session.add(portal_client)
     db_session.flush()
+    db_session.add(
+        ClientPortalAccess(
+            tenant_id=tenant.id,
+            client_id=portal_client.id,
+            user_id=customer.id,
+            email=customer.email,
+            role="portal_viewer",
+            is_active=True,
+        )
+    )
 
     case = Case(
         tenant_id=tenant.id,
@@ -259,8 +270,20 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
         pv_body="# Released report\n\nSynthetic report body.",
         report_status="released",
     )
+    staff = User(
+        username="synthetic-case-handler",
+        email="synthetic-case-handler@example.test",
+        full_name="Synthetic Case Handler",
+        role="investigator",
+        is_active=True,
+        is_super_admin=False,
+    )
+    staff.set_password("Synthetic123!")
+    tenant.users.append(staff)
     db_session.add(case)
     db_session.flush()
+    case.lead_investigator_id = staff.id
+    db_session.commit()
 
     relative_path = f"uploads/cases/{case.id}/synthetic.txt"
     file_path = Path(app.root_path) / "static" / relative_path
@@ -329,6 +352,51 @@ def test_portal_customer_can_access_released_content_and_not_other_tenant(
     invoice_response = client.get(f"/portal/invoices/{invoice.id}")
     assert invoice_response.status_code == 200
     assert "SYN-2026-0001" in invoice_response.get_data(as_text=True)
+
+    monkeypatch.setattr("cms.routes.case_messages._send", lambda *args, **kwargs: None)
+    customer_message = client.post(
+        f"/portal/cases/{case.id}/messages",
+        data={"message": "Een synthetische klantvraag."},
+        follow_redirects=False,
+    )
+    assert customer_message.status_code == 302
+    assert CaseMessage.query.filter_by(
+        case_id=case.id, sender_user_id=customer.id, sender_role="customer",
+        message="Een synthetische klantvraag.",
+    ).count() == 1
+    staff_notification = Notification.query.filter_by(
+        user_id=staff.id, title="Nieuw klantbericht"
+    ).one()
+    assert staff_notification.is_read is False
+
+    _login_as(client, staff.id)
+    staff_page = client.get(f"/cms/workflow/case/{case.id}/messages")
+    assert staff_page.status_code == 200
+    assert "Een synthetische klantvraag." in staff_page.get_data(as_text=True)
+    db_session.refresh(staff_notification)
+    assert staff_notification.is_read is True
+    staff_message = client.post(
+        f"/cms/workflow/case/{case.id}/messages",
+        data={"message": "Een synthetisch antwoord van de behandelaar."},
+        follow_redirects=False,
+    )
+    assert staff_message.status_code == 302
+    assert CaseMessage.query.filter_by(
+        case_id=case.id, sender_user_id=staff.id, sender_role="staff",
+        message="Een synthetisch antwoord van de behandelaar.",
+    ).count() == 1
+
+    _login_as(client, customer.id)
+    customer_page = client.get(f"/portal/cases/{case.id}/messages")
+    assert customer_page.status_code == 200
+    assert "Een synthetisch antwoord van de behandelaar." in customer_page.get_data(as_text=True)
+    customer_notification = Notification.query.filter_by(
+        user_id=customer.id, title="Nieuw bericht van Iveras"
+    ).one()
+    assert customer_notification.is_read is True
+    assert AuditLog.query.filter_by(
+        action="case.message.sent", case_id=case.id
+    ).count() == 2
 
     other_tenant = Tenant(
         name="Andere Synthetische Tenant",

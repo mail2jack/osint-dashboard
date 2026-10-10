@@ -97,7 +97,7 @@ beide.
 - ✅ Rapporten alleen tonen wanneer ze door de onderzoeker zijn vrijgegeven.
 - 🔵 Bevindingen niet automatisch volledig aan de klant tonen.
 - ✅ Download van definitieve rapporten is klant- en tenantgebonden, alleen beschikbaar na vrijgave en wordt geaudit.
-- 🔵 Klant kan vragen stellen over een lopende zaak zonder rechtstreeks interne velden te wijzigen.
+- ✅ Klant kan vragen stellen over een lopende zaak via een tenantgebonden berichtenkanaal zonder interne velden te wijzigen; klant en behandelaar krijgen notificaties en gelezen-statussen worden bijgewerkt.
 - ✅ Notificatiecentrum voor aanvragen en statuswijzigingen; meldingen zijn gebruikers- en tenantgebonden en kunnen als gelezen worden gemarkeerd.
 - ✅ Klantportaal getest met een synthetische klanttenant.
 - ✅ Portal-only klant en CMS-blokkade getest; rapport, documentdownload, factuurweergave en cross-tenant afscherming end-to-end getest.
