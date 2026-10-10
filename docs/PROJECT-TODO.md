@@ -43,13 +43,14 @@ beide.
 - ✅ Publieke homepage beschikbaar via `/public`.
 - ✅ Uitleg over OSINT, werkwijze, doelgroepen, privacy en FAQ.
 - ✅ Navigatie naar login en portaal.
-- 🟡 Teksten redigeren naar definitieve bedrijfspositionering.
+- ✅ Teksten redigeren naar een consistente bedrijfspositionering.
 - 🔵 Definitieve huisstijl bepalen: logo, kleuren, typografie en beeldtaal.
 - 🔵 Definitieve contact- en conversiepagina toevoegen.
 - 🔵 Dienstenpagina maken met duidelijke afbakening van wat wel en niet wordt onderzocht.
-- 🔵 Privacy-, cookie- en juridische teksten laten aansluiten op de definitieve dienstverlening.
-- 🔵 SEO-basis: paginatitels, beschrijvingen, sitemap en zoekmachine-instellingen.
-- 🔵 Publieke site voorbereiden voor productiehosting op de nieuwe productie-VPS.
+- ✅ Publieke privacy-, cookie- en juridische pagina’s toegevoegd; definitieve juridische review blijft nodig.
+- ✅ SEO-basis: paginatitels, beschrijvingen, canonical metadata, sitemap en robots-instellingen.
+- 🟡 Publieke site lokaal getest en voorbereid; productiehosting en definitief domein moeten nog worden vrijgegeven.
+- ✅ Juridische bedrijfsgegevens bevestigd: Iveras, KvK 92717144, Charlotte de Bourbonstraat 67, 2628 BN Delft.
 
 ### A2. Klantregistratie en toegang
 

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>{% if page == 'privacy' %}Privacyverklaring{% elif page == 'terms' %}Algemene voorwaarden{% else %}Cookiebeleid{% endif %} — Iveras</title>
+  <meta name="description" content="{% if page == 'privacy' %}Lees hoe Iveras persoonsgegevens verwerkt en beveiligt.{% elif page == 'terms' %}De algemene voorwaarden voor de diensten van Iveras.{% else %}Informatie over cookies en vergelijkbare technieken op Iveras.{% endif %}">
+  <link rel="canonical" href="{{ request.url }}">
+  <style>
+    :root{--ink:#17213f;--muted:#5e6880;--blue:#2856c7;--line:#dfe5f1;--soft:#eef3ff}
+    *{box-sizing:border-box}body{margin:0;background:#fbfcff;color:var(--ink);font:16px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .wrap{width:min(860px,calc(100% - 40px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;padding:24px 0}.brand{font-weight:800;text-decoration:none;color:var(--ink);font-size:1.25rem}.top a:last-child{color:var(--blue);font-weight:700;text-decoration:none}
+    article{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(24px,5vw,52px);margin:28px 0 70px;box-shadow:0 12px 35px rgba(33,54,104,.06)}
+    .eyebrow{color:var(--blue);font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.05;letter-spacing:-.06em;margin:10px 0 8px}h2{margin:34px 0 8px;line-height:1.2}p,ul{color:var(--muted)}.notice{background:var(--soft);border-left:4px solid var(--blue);padding:14px 18px;margin:24px 0}.updated{color:var(--muted);font-size:.9rem}a{color:var(--blue)}footer{border-top:1px solid var(--line);padding:24px 0 38px;color:var(--muted);font-size:.9rem}
+  </style>
+</head>
+<body>
+  <header class="wrap top"><a class="brand" href="/public">Iveras</a><a href="/public">← Terug naar website</a></header>
+  <main class="wrap"><article>
+    {% if page == 'privacy' %}
+      <div class="eyebrow">Transparantie</div><h1>Privacyverklaring</h1>
+      <p class="updated">Laatst bijgewerkt: 10 oktober 2026</p>
+      <div class="notice"><strong>Belangrijk:</strong> deze publieke verklaring beschrijft de hoofdlijnen. Laat de definitieve verantwoordelijke, contactgegevens, verwerkers en bewaartermijnen vóór livegang juridisch en privacyrechtelijk controleren.</div>
+      <h2>Wie is verantwoordelijk?</h2><p>Iveras, een eenmanszaak ingeschreven bij de Kamer van Koophandel onder nummer <strong>92717144</strong>, is verantwoordelijk voor de verwerking van persoonsgegevens via deze website, het klantportaal en de dienstverlening.</p><p>Vestigingsadres: Charlotte de Bourbonstraat 67, 2628 BN Delft. Voor privacyvragen kunt u contact opnemen via <a href="mailto:info@iveras.com">info@iveras.com</a>.</p>
+      <h2>Welke gegevens verwerken wij?</h2><p>Afhankelijk van uw contact met Iveras kunnen wij naam, organisatie, contactgegevens, aanvraaginformatie, portalaccountgegevens, berichten, documenten, factuurgegevens en technische beveiligingsgegevens verwerken.</p>
+      <h2>Waarom verwerken wij deze gegevens?</h2><ul><li>om contact- en toegangsaanvragen te behandelen;</li><li>om opdrachten, berichten, documenten en rapporten in het portaal beschikbaar te maken;</li><li>om de beveiliging, betrouwbaarheid en audittrail van de dienst te bewaken;</li><li>om wettelijke verplichtingen na te leven en geschillen te behandelen.</li></ul>
+      <h2>Onderzoek en openbare bronnen</h2><p>Een OSINT-opdracht wordt doelgebonden en binnen een afgesproken scope uitgevoerd. Bevindingen worden niet automatisch aan klanten vrijgegeven; rapporten en documenten worden afzonderlijk beoordeeld en vrijgegeven.</p>
+      <h2>Delen en bewaartermijnen</h2><p>Wij delen gegevens alleen wanneer dat nodig is voor de afgesproken dienstverlening, een ingeschakelde verwerker dit vereist of de wet dit verplicht. Bewaartermijnen hangen af van de soort gegevens, de opdracht en wettelijke verplichtingen; deze worden per proces vastgesteld en periodiek beoordeeld.</p>
+      <h2>Uw rechten</h2><p>U kunt, binnen de wettelijke voorwaarden, inzage, correctie, verwijdering, beperking, overdraagbaarheid of bezwaar vragen. Neem hiervoor contact op via <a href="mailto:info@iveras.com">info@iveras.com</a>. U kunt ook een klacht indienen bij de Autoriteit Persoonsgegevens.</p>
+      <h2>Beveiliging</h2><p>Iveras gebruikt onder meer toegangsbeperking, tenantisolatie, logging, versleuteling waar passend en beveiligde verbindingen. Geen enkele internetdienst kan absolute veiligheid garanderen.</p>
+    {% elif page == 'terms' %}
+      <div class="eyebrow">Afspraken</div><h1>Algemene voorwaarden</h1>
+      <p class="updated">Laatst bijgewerkt: 10 oktober 2026</p>
+      <div class="notice"><strong>Concept voor publicatie:</strong> deze voorwaarden moeten vóór commerciële livegang worden aangevuld met de juridische entiteit, vestigingsplaats, prijsafspraken, aansprakelijkheidslimieten en toepasselijk recht.</div>
+      <h2>1. Dienstverlening</h2><p>Iveras levert, afhankelijk van de opdracht, OSINT-onderzoek, informatieproducten, rapportage en toegang tot een beveiligd klantportaal. De precieze scope, planning en prijs worden per opdracht bevestigd.</p>
+      <h2>2. Opdrachten</h2><p>Een aanvraag via de website of het portaal is geen automatische aanvaarding van een opdracht. Iveras beoordeelt de aanvraag en bevestigt afzonderlijk of en onder welke voorwaarden de opdracht wordt uitgevoerd.</p>
+      <h2>3. Gebruik van het portaal</h2><p>De klant houdt inloggegevens vertrouwelijk, gebruikt het portaal rechtmatig en verstrekt geen gegevens waarvoor geen passende grondslag of bevoegdheid bestaat. Iveras mag toegang tijdelijk beperken bij misbruik, beveiligingsrisico of onderhoud.</p>
+      <h2>4. Onderzoeksresultaten</h2><p>Openbare informatie kan onvolledig, verouderd of onjuist zijn. Bevindingen zijn geen zelfstandig bewijs. De afgesproken rapportage beschrijft bronnen, onzekerheden en de grenzen van het onderzoek.</p>
+      <h2>5. Vertrouwelijkheid en gegevens</h2><p>Partijen behandelen vertrouwelijke informatie zorgvuldig. Persoonsgegevens worden verwerkt volgens de privacyverklaring en, wanneer nodig, aanvullende verwerkers- of onderzoeksafspraken.</p>
+      <h2>6. Betaling en annulering</h2><p>Prijs, betalingstermijn, eventuele voorschotten en annuleringsvoorwaarden worden in de opdrachtbevestiging of offerte vastgelegd.</p>
+      <h2>7. Contact</h2><p>Iveras, KvK 92717144, Charlotte de Bourbonstraat 67, 2628 BN Delft. Vragen over een opdracht kunnen worden gesteld via het portaal of via <a href="mailto:info@iveras.com">info@iveras.com</a>.</p>
+    {% else %}
+      <div class="eyebrow">Transparantie</div><h1>Cookiebeleid</h1>
+      <p class="updated">Laatst bijgewerkt: 10 oktober 2026</p>
+      <h2>Functionele cookies</h2><p>De website en het portaal gebruiken noodzakelijke cookies voor sessies, beveiliging en het onthouden van uw cookievoorkeur. Zonder deze cookies kan inloggen of veilig gebruik van het portaal niet goed werken.</p>
+      <h2>Analyse en marketing</h2><p>De publieke website gebruikt in deze versie geen advertentiecookies of trackingcookies. Er worden daarom geen marketingprofielen opgebouwd via deze website.</p>
+      <h2>Uw keuze</h2><p>U kunt cookies blokkeren via uw browser. Het blokkeren van noodzakelijke cookies kan onderdelen van het portaal onbruikbaar maken.</p>
+      <h2>Vragen</h2><p>Heeft u vragen over cookies of vergelijkbare technieken? Mail <a href="mailto:info@iveras.com">info@iveras.com</a>.</p>
+    {% endif %}
+  </article></main>
+  <footer><div class="wrap">Iveras · KvK 92717144 · Charlotte de Bourbonstraat 67, 2628 BN Delft · <a href="/privacy">Privacy</a> · <a href="/voorwaarden">Voorwaarden</a> · <a href="/cookies">Cookies</a> · <a href="/portal/register">Toegang aanvragen</a></div></footer>
+</body>
+</html>

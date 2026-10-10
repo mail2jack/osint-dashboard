@@ -1,6 +1,6 @@
 # Publieke website en klantportal — plan
 
-**Status:** ontwerp, fase 1
+**Status:** fase 2 geïmplementeerd op lokale staging; productiepublicatie volgt na review
 **Datum:** 2026-10-03
 **Scope:** publieke Iveras-website en beveiligde klantomgeving naast Joost
 
@@ -134,11 +134,15 @@ onafhankelijk evolueren.
 
 ### Fase 2 — publieke website
 
-- contentstructuur en visuele stijl;
-- responsive pagina's;
-- contact/demoformulier;
-- juridische pagina's en analyticsbeleid;
-- lokale test en review.
+- ✅ contentstructuur en visuele stijl;
+- ✅ responsive homepage en publieke registratieflow;
+- ✅ publieke privacyverklaring, algemene voorwaarden en cookiebeleid;
+- ✅ juridische links vanaf de homepage;
+- ✅ SEO-basis: metadata, canonical URL, Open Graph, robots.txt en sitemap.xml;
+- ✅ lokale test en review (3 publieke-websitetests groen);
+- 🟡 definitieve juridische review; juridische entiteitsgegevens zijn bevestigd:
+  Iveras, KvK 92717144, Charlotte de Bourbonstraat 67, 2628 BN Delft;
+- 🔵 productiepublicatie op het definitieve publieke domein.
 
 ### Fase 3 — portal-MVP
 
@@ -175,7 +179,13 @@ Deze keuzes blokkeren fase 1 niet, maar zijn nodig vóór bouw van het portal:
 
 ## 10. Eerstvolgende uitvoerbare stap
 
-Maak een klikbaar scherm- en gebruikersstroomontwerp voor drie kernschermen:
+Laat vóór productiepublicatie de juridische entiteit, het vestigingsadres,
+privacycontact en eventuele verwerkers/retentieperioden bevestigen. Daarna kan
+de publieke site op het definitieve domein worden gepubliceerd. De lokale
+staging-versie bevat nu de volledige publieke route- en SEO-basis.
+
+Voor verdere productontwikkeling blijft het klikbare scherm- en
+gebruikersstroomontwerp voor drie kernschermen relevant:
 
 1. publieke homepage;
 2. portal-dashboard;

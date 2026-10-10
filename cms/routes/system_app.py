@@ -14,7 +14,18 @@ import uuid
 from datetime import datetime, timezone
 
 import flask
-from flask import Flask, request, jsonify, render_template, redirect, url_for, g, abort, current_app
+from flask import (
+    Flask,
+    Response,
+    abort,
+    current_app,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user, login_required
 from werkzeug.utils import safe_join, secure_filename
 from cms.rate_limiting import rate_limit
@@ -47,7 +58,60 @@ def register_system_routes(app: Flask) -> None:
     @app.route("/public")
     def public_homepage() -> str:
         """Render the public website prototype without changing the CMS root."""
-        return render_template("public/homepage.html")
+        return render_template(
+            "public/homepage.html",
+            public_site_url=os.environ.get("PUBLIC_SITE_URL", "https://iveras.com"),
+        )
+
+    @app.route("/contact")
+    def public_contact() -> str:
+        """Explain the available customer routes before intake."""
+        return render_template("public/contact.html")
+
+    @app.route("/privacy")
+    def public_privacy() -> str:
+        """Public privacy notice for the marketing site and portal intake."""
+        return render_template("public/legal.html", page="privacy")
+
+    @app.route("/voorwaarden")
+    def public_terms() -> str:
+        """Public general terms page; final legal review remains required."""
+        return render_template("public/legal.html", page="terms")
+
+    @app.route("/cookies")
+    def public_cookies() -> str:
+        """Explain the limited cookie use on the public site and portal."""
+        return render_template("public/legal.html", page="cookies")
+
+    @app.route("/robots.txt")
+    def public_robots() -> Response:
+        """Keep private application and portal routes out of search engines."""
+        site_url = os.environ.get("PUBLIC_SITE_URL", "https://iveras.com").rstrip("/")
+        body = (
+            "User-agent: *\n"
+            "Allow: /public\n"
+            "Allow: /privacy\n"
+            "Allow: /voorwaarden\n"
+            "Allow: /cookies\n"
+            "Allow: /contact\n"
+            "Disallow: /auth/\n"
+            "Disallow: /cms/\n"
+            "Disallow: /portal/\n"
+            f"Sitemap: {site_url}/sitemap.xml\n"
+        )
+        return Response(body, mimetype="text/plain")
+
+    @app.route("/sitemap.xml")
+    def public_sitemap() -> Response:
+        """Expose only public, indexable pages in the XML sitemap."""
+        site_url = os.environ.get("PUBLIC_SITE_URL", "https://iveras.com").rstrip("/")
+        urls = ("/public", "/privacy", "/voorwaarden", "/cookies", "/contact")
+        body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        body += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        for path in urls:
+            body += f"  <url><loc>{site_url}{path}</loc></url>\n"
+        body += "</urlset>\n"
+        return Response(body, mimetype="application/xml")
 
     @app.route("/portal")
     @login_required

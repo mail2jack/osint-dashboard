@@ -4,6 +4,13 @@
 
 Planned changes for the next release.
 
+### Added
+- Publieke juridische pagina’s voor privacy, algemene voorwaarden en cookies.
+- SEO-basis voor de publieke homepage met canonical metadata, Open Graph,
+  `robots.txt` en een sitemap die alleen publieke pagina’s bevat.
+- Regressietests voor publieke routes en het uitsluiten van CMS- en portalroutes
+  uit zoekmachine-indexering.
+
 ## [3.8.0] — 2026-10-10
 
 This release consolidates the validated portal, workflow, AI/findings and
