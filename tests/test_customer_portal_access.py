@@ -69,6 +69,12 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
         email="synthetic-customer@example.test",
     ).one()
     assert portal_access.user_id is None
+    portal_request = PortalRequest.query.filter_by(
+        tenant_id=tenant.id,
+        client_id=invitation.client_id,
+    ).one()
+    assert portal_request.status == "submitted"
+    assert portal_request.question == "Testregistratie zonder productiegegevens."
 
     response = auth_client.post(
         f"/auth/accept-invite/{invitation.token}",
