@@ -23,7 +23,7 @@ function readScopeSelect(overlay) {
 }
 function mountPickerOverlay(overlay) {
   document.documentElement.classList.add('picker-open');
-  mountPickerOverlay(overlay);
+  document.body.appendChild(overlay);
 }
 function closePickerOverlay(overlay) {
   overlay.remove();

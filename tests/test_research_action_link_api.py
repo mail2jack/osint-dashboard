@@ -89,10 +89,10 @@ def _mk_case_wide_action(case, action_type="google_dork"):
     return action
 
 
-def _latest_action_audit(action_id):
+def _latest_action_audit(action_id, action="create"):
     return (
         AuditLog.query.filter_by(
-            entity_type="research_action", entity_id=action_id, action="create"
+            entity_type="research_action", entity_id=action_id, action=action
         )
         .order_by(AuditLog.id.desc())
         .first()
@@ -227,7 +227,7 @@ class TestLinkUnlinkEndpoints:
         )
         assert resp.status_code == 200
         assert db.session.get(ResearchAction, action.id).investigation_id == inv.id
-        audit = _latest_action_audit(action.id)
+        audit = _latest_action_audit(action.id, "link")
         assert audit.action == "link"
         assert audit.old_values["investigation_id"] is None
         assert audit.new_values["investigation_id"] == inv.id
@@ -306,7 +306,7 @@ class TestLinkUnlinkEndpoints:
         )
         assert resp.status_code == 200
         assert db.session.get(ResearchAction, action.id).investigation_id is None
-        audit = _latest_action_audit(action.id)
+        audit = _latest_action_audit(action.id, "unlink")
         assert audit.action == "unlink"
         assert audit.old_values["investigation_id"] == inv.id
         assert audit.new_values["investigation_id"] is None
