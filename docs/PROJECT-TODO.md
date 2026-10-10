@@ -107,8 +107,8 @@ beide.
 - ✅ Basis tenant-isolatie aanwezig; negatieve autorisatietests voor rapporten, documenten en facturen geslaagd.
 - ✅ Portal-only gebruikers worden naar het klantenportaal beperkt en niet toegelaten tot de interne CMS-werkomgeving.
 - ✅ Rapportweergave, factuurweergave en documentdownloads worden usage-gemeten en geaudit.
-- ✅ CSRF en rate limiting zijn op portalregistratie, aanvraag-, bericht-, profiel-, notificatie- en downloadacties aangesloten; handmatige brute-force- en browsercontrole blijven open.
-- 🔵 Geen productiegegevens gebruiken in portaaltests.
+- ✅ CSRF en rate limiting zijn op portalregistratie, aanvraag-, bericht-, profiel-, notificatie- en downloadacties aangesloten; geautomatiseerde herhaalde-aanvraagcontrole is toegevoegd.
+- ✅ Geen productiegegevens gebruiken in portaaltests; laatste geautomatiseerde tests gebruiken uitsluitend synthetische data.
 - ✅ Audit logging gecontroleerd: acties worden vastgelegd zonder volledige berichtinhoud of onderzoekswaarden.
 - ✅ Back-updecompressie, archiefintegriteit en tijdelijk databaseherstel voor portaldata getest.
 - ✅ Lokale productiechecklist vastgelegd in [PORTAL-RELEASE-CHECKLIST.md](PORTAL-RELEASE-CHECKLIST.md); productie-openstelling blijft apart besluit.
@@ -190,7 +190,7 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 - 🟡 Alleen default company met één gebruiker overnemen; geen zaken, subjects, dossiers of rapporten.
 - 🟡 API-configuratie gecontroleerd; OpenRouter bewust later invullen indien nodig.
 - ✅ Licentie-uitgifte en telemetry tussen productie en license server gecontroleerd; productie heeft een actieve licentiestatus en recente check-in.
-- 🔵 Restoreprocedure documenteren inclusief sleutelbeheer.
+- ✅ Restoreprocedure documenteren inclusief sleutelbeheer in [PORTAL-RESTORE-RUNBOOK.md](PORTAL-RESTORE-RUNBOOK.md).
 - 🔵 Monitoring en e-mailmeldingen voor mislukte back-ups testen.
 - ✅ Productie-releaseproces vastgelegd: lokaal → GitHub → groene verplichte controles → gecontroleerde productie-update.
 - 🔵 Geen directe wijzigingen op productie zonder expliciet akkoord.

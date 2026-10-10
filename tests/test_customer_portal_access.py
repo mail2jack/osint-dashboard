@@ -494,6 +494,32 @@ def test_internal_review_converts_request_and_links_intake_documents(
     assert notification.is_read is True
 
 
+def test_public_registration_rate_limit_blocks_repeated_submissions(client):
+    """Public intake must stop automated repeated submissions per source IP."""
+    from cms.rate_limiting import _api_rate_limits
+
+    _api_rate_limits.clear()
+    try:
+        responses = [
+            client.post(
+                "/portal/register",
+                data={
+                    "organization_name": "Synthetic Rate Limit Test",
+                    "contact_name": "Synthetic User",
+                    "email": f"rate-limit-{index}@example.test",
+                    "registration_type": "other",
+                },
+            )
+            for index in range(6)
+        ]
+        assert [response.status_code for response in responses[:5]] == [200] * 5
+        assert responses[5].status_code == 429
+        assert responses[5].get_json()["error"] == "Rate limit exceeded"
+        assert responses[5].headers["Retry-After"]
+    finally:
+        _api_rate_limits.clear()
+
+
 def test_internal_reviewer_can_accept_request_and_customer_sees_status(
     auth_client, db_session
 ):

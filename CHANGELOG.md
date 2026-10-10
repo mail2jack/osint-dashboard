@@ -10,6 +10,10 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Portal- en herstelrunbook toegevoegd met geïsoleerde verificatie, expliciete
+  restore-goedkeuring, sleutelbeheer en foutmeldingsgedrag.
+- Geautomatiseerde regressietest toegevoegd die herhaalde publieke aanvragen
+  na vijf pogingen per bron-IP blokkeert.
 - Klant en behandelaar kunnen beveiligd berichten uitwisselen bij een lopende zaak;
   beide kanten krijgen een melding, berichten worden als gelezen gemarkeerd bij openen
   en de uitwisseling wordt geaudit zonder interne findings bloot te geven.
