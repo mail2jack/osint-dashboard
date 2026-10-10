@@ -15,6 +15,7 @@ from ..models import (
     ClientPortalAccess,
     CustomerRegistrationRequest,
     Invitation,
+    PortalRequest,
     Tenant,
     db,
 )
@@ -304,6 +305,30 @@ def customer_registrations() -> str:
                     role="portal_viewer",
                     invited_by_id=current_user.id,
                     is_portal_invitation=True,
+                )
+                # Preserve the original one-off research request in the
+                # customer's portal.  The registration creates access before
+                # the customer accepts the invitation, so the reviewing user
+                # is the initial submitter; the request remains client-scoped
+                # and is visible to the invited portal user after login.
+                db.session.add(
+                    PortalRequest(
+                        tenant_id=tenant.id,
+                        submitted_by_id=current_user.id,
+                        client_id=client.id,
+                        request_type="other",
+                        question=(
+                            registration.message.strip()
+                            if registration.message and registration.message.strip()
+                            else "Eenmalig OSINT-onderzoek aangevraagd."
+                        ),
+                        context=(
+                            f"Aanvraag via de publieke website door {registration.contact_name}."
+                        ),
+                        status="submitted",
+                        created_at=registration.created_at or now,
+                        updated_at=now,
+                    )
                 )
             registration.status = "approved"
             registration.reviewed_by_id = current_user.id
