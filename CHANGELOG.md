@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Gecontroleerde productie-alerttest uitgevoerd: een gesimuleerde DR-foutmelding
+  is via de echte SMTP-configuratie naar de beheerder verzonden; er is geen
+  back-up of applicatiedata gewijzigd.
 - Backup- en DR-notificatiepaden hebben regressietests voor failed-status,
   UTC-tijd, fout-/waarschuwingsaantallen, localhost-filtering en veilig gedrag
   wanneer SMTP-alerting niet is ingesteld.

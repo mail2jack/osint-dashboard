@@ -191,7 +191,7 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 - 🟡 API-configuratie gecontroleerd; OpenRouter bewust later invullen indien nodig.
 - ✅ Licentie-uitgifte en telemetry tussen productie en license server gecontroleerd; productie heeft een actieve licentiestatus en recente check-in.
 - ✅ Restoreprocedure documenteren inclusief sleutelbeheer in [PORTAL-RESTORE-RUNBOOK.md](PORTAL-RESTORE-RUNBOOK.md).
-- 🟡 Monitoring en e-mailmeldingen voor mislukte back-ups geautomatiseerd gecontroleerd; een echte SMTP-failure-drill op productie blijft nog open.
+- ✅ Monitoring en e-mailmeldingen voor mislukte back-ups gecontroleerd; een gesimuleerde DR-failure-alert is via de productie-appcontainer naar de beheerder verzonden.
 - ✅ Productie-releaseproces vastgelegd: lokaal → GitHub → groene verplichte controles → gecontroleerde productie-update.
 - 🔵 Geen directe wijzigingen op productie zonder expliciet akkoord.
 
