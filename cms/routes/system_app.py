@@ -7,13 +7,34 @@ Registered directly on the Flask app (not the CMS blueprint).
 
 import json
 import logging
+import os
+import re
 import signal
+import uuid
+from datetime import datetime, timezone
 
 import flask
-from flask import Flask, request, jsonify, render_template, redirect, url_for, g
-from flask_login import login_required
+from flask import Flask, request, jsonify, render_template, redirect, url_for, g, abort, current_app
+from flask_login import current_user, login_required
+from werkzeug.utils import safe_join, secure_filename
+from cms.rate_limiting import rate_limit
 
 logger = logging.getLogger(__name__)
+
+
+def _portal_profile_complete(client) -> bool:
+    """Return whether the customer card has the minimum portal details."""
+    required_fields = (
+        "contact_person",
+        "contact_email",
+        "contact_phone",
+        "address_street",
+        "address_number",
+        "address_postal",
+        "address_city",
+        "address_country",
+    )
+    return all(bool(getattr(client, field, None)) for field in required_fields)
 
 
 def register_system_routes(app: Flask) -> None:
@@ -22,6 +43,761 @@ def register_system_routes(app: Flask) -> None:
     @app.route("/")
     def index() -> flask.Response:
         return redirect(url_for("cms.dashboard"))
+
+    @app.route("/public")
+    def public_homepage() -> str:
+        """Render the public website prototype without changing the CMS root."""
+        return render_template("public/homepage.html")
+
+    @app.route("/portal")
+    def portal_prototype() -> str:
+        """Render the synthetic-data customer portal prototype."""
+        return render_template("public/portal.html")
+
+    @app.route("/portal/register", methods=["GET", "POST"])
+    @rate_limit(limit=(5, 300), key_prefix="customer_registration")
+    def portal_customer_registration() -> str:
+        """Public registration request; it never creates access directly."""
+        from cms.models import CustomerRegistrationRequest, db
+
+        if request.method == "POST":
+            organization_name = (request.form.get("organization_name") or "").strip()
+            contact_name = (request.form.get("contact_name") or "").strip()
+            email = (request.form.get("email") or "").strip().lower()
+            registration_type = (request.form.get("registration_type") or "one_off").strip()
+            phone = (request.form.get("phone") or "").strip() or None
+            message = (request.form.get("message") or "").strip() or None
+            if registration_type not in {"one_off", "organization", "other"}:
+                registration_type = "one_off"
+            if not organization_name or not contact_name or "@" not in email:
+                return render_template(
+                    "public/portal_register.html",
+                    error="Vul organisatie, contactpersoon en een geldig e-mailadres in.",
+                    form=request.form,
+                ), 400
+            existing = CustomerRegistrationRequest.query.filter(
+                CustomerRegistrationRequest.email == email,
+                CustomerRegistrationRequest.status.in_(["submitted", "in_review", "approved"]),
+            ).first()
+            if existing:
+                return render_template(
+                    "public/portal_register.html",
+                    error="Voor dit e-mailadres staat al een aanvraag open.",
+                    form=request.form,
+                ), 409
+            db.session.add(
+                CustomerRegistrationRequest(
+                    organization_name=organization_name,
+                    registration_type=registration_type,
+                    contact_name=contact_name,
+                    email=email,
+                    phone=phone,
+                    message=message,
+                    status="submitted",
+                )
+            )
+            db.session.commit()
+            from cms.services.portal_notifications import notify_registration_received
+            registration = CustomerRegistrationRequest.query.filter_by(
+                email=email, status="submitted"
+            ).order_by(CustomerRegistrationRequest.created_at.desc()).first()
+            if registration:
+                notify_registration_received(registration)
+            return render_template("public/portal_register.html", submitted=True)
+        return render_template("public/portal_register.html", form={})
+
+    @app.route("/portal/dashboard")
+    @login_required
+    def portal_dashboard() -> str:
+        """Render the authenticated, tenant-scoped portal dashboard MVP."""
+        from cms.models import Case, Client, Document, Invoice, Notification, PortalRequest
+        from cms import db
+        from cms.services.client_portal import portal_client_ids
+        from cms.services.usage_metering import record_usage_event
+
+        allowed_client_ids = portal_client_ids(current_user)
+        portal_clients = []
+        if allowed_client_ids is not None:
+            portal_clients = (
+                Client.query.filter(
+                    Client.id.in_(allowed_client_ids),
+                    Client.is_deleted.is_(False),
+                )
+                .order_by(Client.name)
+                .all()
+            )
+        if allowed_client_ids is not None:
+            profile_client = (
+                Client.query.filter(
+                    Client.id.in_(allowed_client_ids),
+                    Client.is_deleted.is_(False),
+                )
+                .order_by(Client.name)
+                .all()
+            )
+            profile_client = next(
+                (
+                    client
+                    for client in profile_client
+                    if not _portal_profile_complete(client)
+                ),
+                None,
+            )
+            if profile_client and request.args.get("profile_saved") != "1":
+                return redirect(
+                    url_for("portal_client_profile", client_id=profile_client.id)
+                )
+        cases_query = Case.query.filter_by(tenant_id=current_user.tenant_id, is_deleted=False).filter(Case.archived_at.is_(None))
+        requests_query = PortalRequest.query.filter_by(tenant_id=current_user.tenant_id)
+        invoices_query = Invoice.query.filter_by(tenant_id=current_user.tenant_id, is_deleted=False)
+        if allowed_client_ids is not None:
+            cases_query = cases_query.filter(Case.client_id.in_(allowed_client_ids))
+            requests_query = requests_query.filter(PortalRequest.client_id.in_(allowed_client_ids))
+            invoices_query = invoices_query.filter(Invoice.client_id.in_(allowed_client_ids))
+        cases = cases_query.order_by(Case.updated_at.desc(), Case.created_at.desc()).limit(50).all()
+        public_document_counts = {
+            case.id: Document.query.filter_by(
+                case_id=case.id,
+                tenant_id=current_user.tenant_id,
+                is_deleted=False,
+                classification="public",
+            ).count()
+            for case in cases
+        }
+        requests = requests_query.order_by(PortalRequest.created_at.desc()).limit(50).all()
+        invoices = invoices_query.filter(Invoice.status.notin_(["draft", "cancelled"])).order_by(Invoice.due_date.desc(), Invoice.created_at.desc()).limit(50).all()
+        notifications = (
+            Notification.query.filter_by(
+                tenant_id=current_user.tenant_id, user_id=current_user.id
+            )
+            .order_by(Notification.created_at.desc())
+            .limit(20)
+            .all()
+        )
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_dashboard_views",
+            audit_action="portal.dashboard.viewed",
+            entity_type="portal_dashboard",
+            user_id=current_user.id,
+            description="Customer portal dashboard viewed",
+        )
+        db.session.commit()
+        return render_template(
+            "public/portal_dashboard.html",
+            cases=cases,
+            portal_requests=requests,
+            invoices=invoices,
+            notifications=notifications,
+            portal_clients=portal_clients,
+            tenant_name=current_user.tenant.name if current_user.tenant else "",
+            submitted=request.args.get("submitted") == "1",
+            request_message=request.args.get("request_message") == "1",
+            public_document_counts=public_document_counts,
+        )
+
+    @app.route("/portal/notifications/<notification_id>/read", methods=["POST"])
+    @login_required
+    @rate_limit(limit=(30, 60), key_prefix="portal_notification_read")
+    def portal_notification_read(notification_id: str):
+        """Mark one own portal notification as read."""
+        from cms import db
+        from cms.models import Notification
+
+        notification = Notification.query.filter_by(
+            id=notification_id,
+            tenant_id=current_user.tenant_id,
+            user_id=current_user.id,
+        ).first_or_404()
+        notification.is_read = True
+        db.session.commit()
+        return redirect(url_for("portal_dashboard"))
+
+    @app.route("/portal/profile/<client_id>", methods=["GET", "POST"])
+    @login_required
+    @rate_limit(limit=(20, 300), key_prefix="portal_profile")
+    def portal_client_profile(client_id: str) -> str:
+        """Let a portal customer complete only their own customer card."""
+        from cms import db
+        from cms.encryption_utils import encryptor
+        from cms.models import AuditLog, Client
+        from cms.services.client_portal import portal_can_access_client
+
+        client = Client.query.filter_by(
+            id=client_id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+        ).first_or_404()
+        if not portal_can_access_client(current_user, client.id):
+            abort(404)
+
+        encrypted_fields = {
+            "contact_person",
+            "contact_email",
+            "contact_phone",
+            "address_street",
+            "address_number",
+            "address_postal",
+            "address_city",
+            "address_country",
+            "vat_number",
+        }
+
+        def display_value(field: str) -> str:
+            value = getattr(client, field) or ""
+            if field in encrypted_fields and value:
+                try:
+                    return encryptor.decrypt(value)
+                except Exception:
+                    return ""
+            return value
+
+        if request.method == "POST":
+            fields = {
+                "contact_person": (request.form.get("contact_person") or "").strip(),
+                "contact_email": (request.form.get("contact_email") or "").strip().lower(),
+                "contact_phone": (request.form.get("contact_phone") or "").strip(),
+                "address_street": (request.form.get("address_street") or "").strip(),
+                "address_number": (request.form.get("address_number") or "").strip(),
+                "address_postal": (request.form.get("address_postal") or "").strip(),
+                "address_city": (request.form.get("address_city") or "").strip(),
+                "address_country": (request.form.get("address_country") or "").strip(),
+                "vat_number": (request.form.get("vat_number") or "").strip(),
+            }
+            required = (
+                "contact_person",
+                "contact_email",
+                "contact_phone",
+                "address_street",
+                "address_number",
+                "address_postal",
+                "address_city",
+                "address_country",
+            )
+            if any(not fields[field] for field in required) or "@" not in fields["contact_email"]:
+                return render_template(
+                    "public/portal_profile.html",
+                    client=client,
+                    form=fields,
+                    error="Vul alle gemarkeerde contact- en adresgegevens in.",
+                ), 400
+
+            for field, value in fields.items():
+                setattr(client, field, encryptor.encrypt(value) if value else None)
+            AuditLog.log(
+                tenant_id=current_user.tenant_id,
+                user_id=current_user.id,
+                action="portal.client_profile_updated",
+                entity_type="client",
+                entity_id=client.id,
+                description="Customer completed their portal profile",
+            )
+            db.session.commit()
+            return redirect(url_for("portal_dashboard", profile_saved="1"))
+
+        return render_template(
+            "public/portal_profile.html",
+            client=client,
+            form={field: display_value(field) for field in encrypted_fields},
+        )
+
+    @app.route("/portal/cases/<case_id>/report")
+    @login_required
+    def portal_case_report(case_id: str) -> str:
+        """Show only the released report for a case in the customer portal."""
+        import bleach
+        import markdown as md_lib
+
+        from cms.models import Case, db
+        from cms.services.client_portal import portal_can_access_client
+        from cms.services.report_findings import normalize_report_markdown
+        from cms.services.usage_metering import record_usage_event
+
+        case = Case.query.filter_by(
+            id=case_id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+        ).first_or_404()
+        if not portal_can_access_client(current_user, case.client_id):
+            return render_template("public/portal_unavailable.html", title="Geen toegang", message="Dit dossier is niet aan uw klantprofiel gekoppeld."), 404
+        if not case.pv_body or case.report_status != "released":
+            return render_template(
+                "public/portal_unavailable.html",
+                title="Rapport nog niet beschikbaar",
+                message="De onderzoeker heeft het rapport nog niet vrijgegeven.",
+            ), 404
+
+        raw_html = md_lib.markdown(
+            normalize_report_markdown(case.pv_body), extensions=["tables"]
+        )
+        report_html = bleach.clean(
+            raw_html,
+            tags=[
+                "p", "br", "strong", "em", "a", "ul", "ol", "li", "h1",
+                "h2", "h3", "h4", "h5", "h6", "code", "pre", "blockquote",
+                "hr", "table", "thead", "tbody", "tr", "th", "td",
+            ],
+            attributes={"a": ["href", "title"], "th": ["align"], "td": ["align"]},
+        )
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_reports_viewed",
+            audit_action="portal.report.viewed",
+            entity_type="case_report",
+            entity_id=case.id,
+            case_id=case.id,
+            user_id=current_user.id,
+            description="Customer viewed a released case report",
+        )
+        db.session.commit()
+        return render_template(
+            "public/portal_report.html", case=case, report_html=report_html
+        )
+
+    @app.route("/portal/cases/<case_id>/documents")
+    @login_required
+    def portal_case_documents(case_id: str) -> str:
+        """List only documents explicitly published to the customer portal."""
+        from cms.models import Case, Document
+        from cms.services.client_portal import portal_can_access_client
+
+        case = Case.query.filter_by(
+            id=case_id, tenant_id=current_user.tenant_id, is_deleted=False
+        ).first_or_404()
+        if not portal_can_access_client(current_user, case.client_id):
+            abort(404)
+        documents = (
+            Document.query.filter_by(
+                case_id=case_id,
+                tenant_id=current_user.tenant_id,
+                is_deleted=False,
+                classification="public",
+            )
+            .order_by(Document.created_at.desc())
+            .all()
+        )
+        return render_template(
+            "public/portal_documents.html", case_id=case_id, documents=documents
+        )
+
+    @app.route("/portal/cases/<case_id>/messages", methods=["GET", "POST"])
+    @login_required
+    def portal_case_messages(case_id: str) -> str:
+        """Secure two-way chat between a portal customer and the case handler."""
+        from cms.models import AuditLog, Case, CaseMessage, db
+        from cms.services.client_portal import portal_can_access_client
+        from cms.routes.case_messages import _notify_staff
+
+        case = Case.query.filter_by(
+            id=case_id, tenant_id=current_user.tenant_id, is_deleted=False
+        ).first_or_404()
+        if not portal_can_access_client(current_user, case.client_id):
+            return render_template(
+                "public/portal_unavailable.html",
+                title="Geen toegang",
+                message="Dit dossier is niet aan uw klantprofiel gekoppeld.",
+            ), 404
+
+        if request.method == "POST":
+            text = (request.form.get("message") or "").strip()
+            if not text:
+                flask.flash("Schrijf eerst een bericht.", "error")
+            else:
+                message = CaseMessage(
+                    tenant_id=case.tenant_id,
+                    case_id=case.id,
+                    sender_user_id=current_user.id,
+                    sender_role="customer",
+                    message=text,
+                )
+                db.session.add(message)
+                db.session.flush()
+                _notify_staff(case, text)
+                AuditLog.log(
+                    user_id=current_user.id,
+                    tenant_id=case.tenant_id,
+                    action="case.message.sent",
+                    entity_type="case_message",
+                    entity_id=message.id,
+                    case_id=case.id,
+                    description="Portal customer sent a message to the case handler",
+                )
+                db.session.commit()
+                flask.flash("Bericht naar de behandelaar verzonden.", "success")
+            return redirect(url_for("portal_case_messages", case_id=case.id))
+
+        messages = (
+            CaseMessage.query.filter_by(tenant_id=case.tenant_id, case_id=case.id)
+            .order_by(CaseMessage.created_at.asc())
+            .all()
+        )
+        CaseMessage.query.filter_by(
+            tenant_id=case.tenant_id,
+            case_id=case.id,
+            sender_role="staff",
+            is_read=False,
+        ).update({"is_read": True}, synchronize_session=False)
+        db.session.commit()
+        return render_template(
+            "public/portal_case_messages.html", case=case, messages=messages
+        )
+
+    @app.route("/portal/documents/<document_id>/download")
+    @login_required
+    def portal_document_download(document_id: str):
+        """Download a document only when it is explicitly portal-visible."""
+        import os
+        from flask import abort, current_app, send_file
+
+        from cms.models import Document
+        from cms.models import Case
+        from cms.services.client_portal import portal_can_access_client
+        from cms.services.usage_metering import record_usage_event
+        from cms import db
+
+        document = Document.query.filter_by(
+            id=document_id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+            classification="public",
+        ).first_or_404()
+        case = Case.query.filter_by(id=document.case_id, tenant_id=current_user.tenant_id, is_deleted=False).first_or_404()
+        if not portal_can_access_client(current_user, case.client_id):
+            abort(404)
+        if not document.storage_path:
+            abort(404)
+        storage_path = (document.storage_path or "").replace("\\", "/")
+        if not (
+            storage_path.startswith("uploads/cases/")
+            or storage_path.startswith("uploads/portal-requests/")
+        ):
+            abort(404)
+        static_root = os.path.join(current_app.root_path, "static")
+        file_path = safe_join(static_root, storage_path)
+        if not file_path or not os.path.isfile(file_path):
+            abort(404)
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_documents_downloaded",
+            audit_action="portal.document.downloaded",
+            entity_type="document",
+            entity_id=document.id,
+            user_id=current_user.id,
+            description="Customer downloaded a published document",
+        )
+        db.session.commit()
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=document.original_filename,
+        )
+
+    @app.route("/portal/invoices/<invoice_id>")
+    @login_required
+    def portal_invoice(invoice_id: str) -> str:
+        """Show a tenant-scoped, customer-visible invoice."""
+        from cms.models import Invoice, db
+        from cms.services.client_portal import portal_client_ids
+        from cms.services.usage_metering import record_usage_event
+
+        invoice = Invoice.query.filter_by(
+            id=invoice_id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+        ).filter(Invoice.status.notin_(["draft", "cancelled"])).first_or_404()
+        allowed_client_ids = portal_client_ids(current_user)
+        if allowed_client_ids is not None and invoice.client_id not in allowed_client_ids:
+            from flask import abort
+            abort(404)
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_invoices_viewed",
+            audit_action="portal.invoice.viewed",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            user_id=current_user.id,
+            description="Customer viewed an invoice",
+        )
+        db.session.commit()
+        return render_template("public/portal_invoice.html", invoice=invoice)
+
+    @app.route("/portal/new-request", methods=["GET", "POST"])
+    @login_required
+    @rate_limit(limit=(10, 300), key_prefix="portal_new_request")
+    def portal_request_prototype() -> str:
+        """Submit a tenant-scoped customer intake request."""
+        from cms.models import PortalRequest, db
+        from cms.models import Client
+        from cms.services.client_portal import portal_client_ids
+        from cms.services.usage_metering import record_usage_event
+
+        if request.method == "POST":
+            request_type = (request.form.get("request_type") or "").strip()
+            question = (request.form.get("question") or "").strip()
+            context = (request.form.get("context") or "").strip() or None
+            deadline = (request.form.get("deadline") or "").strip() or None
+            allowed_types = {"person", "organization", "digital_trace", "other"}
+            allowed_client_ids = portal_client_ids(current_user)
+            requested_client_id = (request.form.get("client_id") or "").strip() or None
+            if allowed_client_ids is not None and not requested_client_id and len(allowed_client_ids) == 1:
+                requested_client_id = allowed_client_ids[0]
+            if allowed_client_ids is not None and requested_client_id not in allowed_client_ids:
+                return render_template("public/portal_request.html", error="Kies een geldige klantrelatie.", form=request.form, portal_clients=Client.query.filter(Client.id.in_(allowed_client_ids)).order_by(Client.name).all()), 400
+            if request_type not in allowed_types or not question:
+                return render_template(
+                    "public/portal_request.html",
+                    error="Kies een geldig type en vul de onderzoeksvraag in.",
+                    form=request.form,
+                    portal_clients=Client.query.filter(Client.id.in_(allowed_client_ids)).order_by(Client.name).all() if allowed_client_ids is not None else [],
+                ), 400
+
+            portal_request = PortalRequest(
+                tenant_id=current_user.tenant_id,
+                submitted_by_id=current_user.id,
+                client_id=requested_client_id,
+                request_type=request_type,
+                question=question,
+                context=context,
+                deadline=deadline,
+                status="submitted",
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+            normalized_question = re.sub(r"\s+", " ", question.casefold()).strip()
+            recent_requests = (
+                PortalRequest.query.filter_by(
+                    tenant_id=current_user.tenant_id,
+                    submitted_by_id=current_user.id,
+                )
+                .filter(PortalRequest.status != "declined")
+                .order_by(PortalRequest.created_at.desc())
+                .limit(50)
+                .all()
+            )
+            for previous in recent_requests:
+                previous_question = re.sub(
+                    r"\s+", " ", (previous.question or "").casefold()
+                ).strip()
+                if previous_question and previous_question == normalized_question:
+                    portal_request.duplicate_of_id = previous.id
+                    break
+            db.session.add(portal_request)
+            db.session.flush()
+            record_usage_event(
+                tenant_id=current_user.tenant_id,
+                metric_name="portal_requests_submitted",
+                audit_action="portal.request.submitted",
+                entity_type="portal_request",
+                entity_id=portal_request.id,
+                user_id=current_user.id,
+                description="Customer portal request submitted",
+            )
+            db.session.commit()
+            from cms.services.portal_notifications import notify_tenant_admins
+            notify_tenant_admins(
+                portal_request,
+                "Nieuwe klantaanvraag in Iveras",
+                "Nieuwe portal-aanvraag",
+                f"Er is een nieuwe aanvraag ingediend door {current_user.email}.",
+                url_for("cms.portal_requests", _external=True),
+            )
+            return redirect(url_for("portal_dashboard", submitted="1"))
+
+        allowed_client_ids = portal_client_ids(current_user)
+        portal_clients = Client.query.filter(Client.id.in_(allowed_client_ids)).order_by(Client.name).all() if allowed_client_ids is not None else []
+        return render_template("public/portal_request.html", form={}, portal_clients=portal_clients)
+
+    @app.route("/portal/requests/<request_id>/message", methods=["GET", "POST"])
+    @login_required
+    @rate_limit(limit=(20, 300), key_prefix="portal_request_message")
+    def portal_request_message(request_id: str) -> str:
+        """Allow a portal customer to add information to their own request."""
+        from cms import db
+        from cms.models import Document, PortalRequest, PortalRequestMessage
+        from cms.image_validation import validate_upload
+        from cms.services.client_portal import portal_can_access_client
+        from cms.services.portal_notifications import notify_tenant_admins
+        from cms.services.usage_metering import record_usage_event
+
+        intake = PortalRequest.query.filter_by(
+            id=request_id, tenant_id=current_user.tenant_id
+        ).first_or_404()
+        if not portal_can_access_client(current_user, intake.client_id):
+            abort(404)
+        if intake.status in ("converted", "declined"):
+            return render_template(
+                "public/portal_request_message.html",
+                intake=intake,
+                attachments=Document.query.filter_by(
+                    portal_request_id=intake.id, tenant_id=current_user.tenant_id, is_deleted=False
+                ).order_by(Document.created_at.desc()).all(),
+                error="Deze aanvraag kan geen aanvullende informatie meer ontvangen.",
+            ), 400
+        if request.method == "POST":
+            message = (request.form.get("message") or "").strip()
+            upload = request.files.get("file")
+            filename = (upload.filename or "").strip() if upload else ""
+            if not message and not filename:
+                return render_template(
+                    "public/portal_request_message.html",
+                    intake=intake,
+                    attachments=Document.query.filter_by(
+                        portal_request_id=intake.id, tenant_id=current_user.tenant_id, is_deleted=False
+                    ).order_by(Document.created_at.desc()).all(),
+                    error="Vul aanvullende informatie in of voeg een bestand toe.",
+                ), 400
+            if len(message) > 10000:
+                return render_template(
+                        "public/portal_request_message.html",
+                        intake=intake,
+                        attachments=[],
+                        error="Het bericht mag maximaal 10.000 tekens bevatten.",
+                ), 400
+            if filename:
+                allowed_extensions = {"pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx", "txt", "csv"}
+                if "." not in filename or filename.rsplit(".", 1)[1].lower() not in allowed_extensions:
+                    return render_template(
+                        "public/portal_request_message.html",
+                        intake=intake,
+                        attachments=[],
+                        error="Dit bestandstype is niet toegestaan. Gebruik pdf, document-, spreadsheet-, tekst- of afbeeldingsbestanden.",
+                    ), 400
+                file_ext = filename.rsplit(".", 1)[1].lower()
+                valid, detected = validate_upload(upload, file_ext)
+                if not valid:
+                    return render_template(
+                        "public/portal_request_message.html",
+                        intake=intake,
+                        attachments=[],
+                        error=f"Het bestand lijkt niet overeen te komen met de extensie ({detected or 'onbekend formaat'}).",
+                    ), 400
+                upload.seek(0, 2)
+                file_size = upload.tell()
+                upload.seek(0)
+                if file_size > 16 * 1024 * 1024:
+                    return render_template(
+                        "public/portal_request_message.html",
+                        intake=intake,
+                        attachments=[],
+                        error="Een bestand mag maximaal 16 MB groot zijn.",
+                    ), 400
+                safe_original = secure_filename(filename) or f"bijlage.{file_ext}"
+                unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+                relative_dir = f"uploads/portal-requests/{intake.id}"
+                upload_dir = safe_join(current_app.root_path, "static", relative_dir)
+                if not upload_dir:
+                    abort(400)
+                os.makedirs(upload_dir, exist_ok=True)
+                upload_path = safe_join(upload_dir, unique_filename)
+                if not upload_path:
+                    abort(400)
+                upload.save(upload_path)
+                db.session.add(
+                    Document(
+                        tenant_id=current_user.tenant_id,
+                        portal_request_id=intake.id,
+                        filename=unique_filename,
+                        original_filename=safe_original,
+                        mime_type=upload.content_type,
+                        file_size=os.path.getsize(upload_path),
+                        storage_path=f"{relative_dir}/{unique_filename}",
+                        storage_type="local",
+                        document_type="portal_request_attachment",
+                        classification="confidential",
+                        uploaded_by=current_user.id,
+                    )
+                )
+                record_usage_event(
+                    tenant_id=current_user.tenant_id,
+                    metric_name="portal_request_attachments_uploaded",
+                    audit_action="portal.request.attachment_uploaded",
+                    entity_type="portal_request",
+                    entity_id=intake.id,
+                    user_id=current_user.id,
+                    description="Customer uploaded a portal request attachment",
+                )
+            if message:
+                db.session.add(
+                    PortalRequestMessage(
+                        tenant_id=current_user.tenant_id,
+                        request_id=intake.id,
+                        author_user_id=current_user.id,
+                        message=message,
+                    )
+                )
+                record_usage_event(
+                    tenant_id=current_user.tenant_id,
+                    metric_name="portal_request_messages_added",
+                    audit_action="portal.request.message_added",
+                    entity_type="portal_request",
+                    entity_id=intake.id,
+                    user_id=current_user.id,
+                    description="Customer added information to a portal request",
+                )
+            db.session.commit()
+            notify_tenant_admins(
+                intake,
+                "Aanvullende informatie bij portal-aanvraag",
+                "Nieuwe informatie bij een klantaanvraag",
+                f"De klant heeft aanvullende informatie toegevoegd aan aanvraag {intake.id}.",
+                url_for("cms.portal_requests", _external=True),
+            )
+            return redirect(url_for("portal_dashboard", request_message="1"))
+        return render_template(
+            "public/portal_request_message.html",
+            intake=intake,
+            attachments=Document.query.filter_by(
+                portal_request_id=intake.id, tenant_id=current_user.tenant_id, is_deleted=False
+            ).order_by(Document.created_at.desc()).all(),
+        )
+
+    @app.route("/portal/requests/<request_id>/documents/<document_id>/download")
+    @login_required
+    @rate_limit(limit=(60, 60), key_prefix="portal_request_document_download")
+    def portal_request_document_download(request_id: str, document_id: str):
+        """Download an attachment belonging to the authenticated customer's request."""
+        from flask import send_file
+
+        from cms import db
+        from cms.models import Document, PortalRequest
+        from cms.services.client_portal import portal_can_access_client
+        from cms.services.usage_metering import record_usage_event
+
+        intake = PortalRequest.query.filter_by(
+            id=request_id, tenant_id=current_user.tenant_id
+        ).first_or_404()
+        if not portal_can_access_client(current_user, intake.client_id):
+            abort(404)
+        document = Document.query.filter_by(
+            id=document_id,
+            portal_request_id=intake.id,
+            tenant_id=current_user.tenant_id,
+            is_deleted=False,
+        ).first_or_404()
+        if not document.storage_path:
+            abort(404)
+        storage_path = (document.storage_path or "").replace("\\", "/")
+        if not storage_path.startswith("uploads/portal-requests/"):
+            abort(404)
+        static_root = os.path.join(current_app.root_path, "static")
+        file_path = safe_join(static_root, storage_path)
+        if not file_path or not os.path.isfile(file_path):
+            abort(404)
+        record_usage_event(
+            tenant_id=current_user.tenant_id,
+            metric_name="portal_request_attachments_downloaded",
+            audit_action="portal.request.attachment_downloaded",
+            entity_type="document",
+            entity_id=document.id,
+            user_id=current_user.id,
+            description="Customer downloaded a portal request attachment",
+        )
+        db.session.commit()
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=document.original_filename,
+        )
 
     @app.route("/api/version", methods=["GET"])
     @login_required

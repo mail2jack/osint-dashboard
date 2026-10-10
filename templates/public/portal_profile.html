@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iveras Portal — Klantkaart</title>
+  <style>
+    /* Correct the profile form grid selector; keep the layout usable on desktop and mobile. */
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    :root{--ink:#17213f;--muted:#667089;--blue:#2856c7;--line:#dfe5f1;--error:#a61b1b}*{box-sizing:border-box}body{margin:0;background:#f8faff;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.top{background:var(--ink);color:#fff}.topbar,.wrap{width:min(820px,calc(100% - 40px));margin:auto}.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0}.top a{color:#fff;text-decoration:none}.page{padding:42px 0 70px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}.eyebrow{color:var(--blue);font-size:.75rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.card h1{font-size:clamp(2rem,4vw,3rem);line-height:1.05;letter-spacing:-.05em;margin:8px 0 12px}.intro{color:var(--muted);line-height:1.55}..grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;font-weight:700;margin:16px 0 7px}input{width:100%;padding:12px;border:1px solid #cfd7e7;border-radius:8px;font:inherit;color:var(--ink)}input:focus{outline:2px solid #c8d6ff;border-color:var(--blue)}.required{color:#a61b1b}.error{padding:12px;border-radius:8px;background:#fff0f0;border:1px solid #f0b5b5;color:var(--error);font-weight:700;margin:18px 0}.actions{display:flex;gap:10px;margin-top:24px}.button{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:11px 16px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--blue);cursor:pointer}button.button{background:var(--blue);color:#fff;border-color:var(--blue)}.hint{color:var(--muted);font-size:.85rem;font-weight:400}@media(max-width:650px){.grid{grid-template-columns:1fr}.topbar{gap:12px;flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="topbar"><a href="{{ url_for('portal_dashboard') }}">← Iveras Portal</a><a href="{{ url_for('auth.logout') }}">Uitloggen</a></div></header>
+  <main class="wrap page"><section class="card">
+    <div class="eyebrow">Eerste keer inloggen</div>
+    <h1>Vul uw klantkaart aan</h1>
+    <p class="intro">Controleer en vul uw gegevens aan. Deze informatie helpt ons om uw aanvragen, rapporten en facturen correct aan uw organisatie te koppelen. Velden met een <span class="required">*</span> zijn verplicht.</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Organisatie</label>
+      <input value="{{ client.name }}" readonly>
+      <div class="grid">
+        <div><label for="contact_person">Contactpersoon <span class="required">*</span></label><input id="contact_person" name="contact_person" required value="{{ form.get('contact_person','') }}"></div>
+        <div><label for="contact_email">E-mailadres <span class="required">*</span></label><input id="contact_email" name="contact_email" type="email" required value="{{ form.get('contact_email','') }}"></div>
+        <div><label for="contact_phone">Telefoonnummer <span class="required">*</span></label><input id="contact_phone" name="contact_phone" required value="{{ form.get('contact_phone','') }}"></div>
+        <div><label for="vat_number">BTW-nummer <span class="hint">(optioneel)</span></label><input id="vat_number" name="vat_number" value="{{ form.get('vat_number','') }}"></div>
+        <div><label for="address_street">Straat <span class="required">*</span></label><input id="address_street" name="address_street" required value="{{ form.get('address_street','') }}"></div>
+        <div><label for="address_number">Huisnummer <span class="required">*</span></label><input id="address_number" name="address_number" required value="{{ form.get('address_number','') }}"></div>
+        <div><label for="address_postal">Postcode <span class="required">*</span></label><input id="address_postal" name="address_postal" required value="{{ form.get('address_postal','') }}"></div>
+        <div><label for="address_city">Plaats <span class="required">*</span></label><input id="address_city" name="address_city" required value="{{ form.get('address_city','') }}"></div>
+        <div><label for="address_country">Land <span class="required">*</span></label><input id="address_country" name="address_country" required value="{{ form.get('address_country','Nederland') }}"></div>
+      </div>
+      <div class="actions"><button class="button" type="submit">Klantkaart opslaan</button></div>
+    </form>
+  </section></main>
+</body></html>

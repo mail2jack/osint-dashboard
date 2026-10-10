@@ -1,0 +1,30 @@
+# Local-only Docker staging overrides. Never use this file for production.
+services:
+  postgres:
+    command: ["postgres", "-c", "ssl=off"]
+
+  wa-service:
+    ports: !override
+      - "127.0.0.1:3002:3001"
+
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_DEV_DEPS: "1"
+    environment:
+      FLASK_ENV: development
+      DB_SSL_MODE: disable
+      DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable
+
+  worker:
+    environment:
+      FLASK_ENV: development
+      DB_SSL_MODE: disable
+      DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable
+
+  health-refresh:
+    environment:
+      FLASK_ENV: development
+      DB_SSL_MODE: disable
+      DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable

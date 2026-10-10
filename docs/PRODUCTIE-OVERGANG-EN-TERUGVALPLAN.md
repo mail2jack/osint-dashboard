@@ -5,6 +5,18 @@
 **Productie:** `joost.iveras.com`  
 **Nieuwe productie kandidaat:** `staging.joost.iveras.com`
 
+## Vastgestelde huidige routing
+
+Read-only gecontroleerd op 3 oktober 2026:
+
+- `joost.iveras.com` → `136.144.209.108` (huidige productie; latere
+  backup/licentie/stagingserver);
+- `staging.joost.iveras.com` → `136.144.211.112` (huidige staging; latere
+  productie).
+
+Deze adressen zijn een controlepunt voor de overgang en mogen niet als
+permanente configuratie worden verondersteld zonder een nieuwe DNS-controle.
+
 ## Doelarchitectuur
 
 De huidige stagingserver wordt na goedkeuring de nieuwe productieserver. De
@@ -12,11 +24,64 @@ huidige productieserver blijft voorlopig bestaan en krijgt daarna een andere
 rol:
 
 - licentieserver;
-- tijdelijke tweede omgeving voor gecontroleerde tests;
-- later eventueel opslaglocatie voor versleutelde back-ups.
+- stagingomgeving voor gecontroleerde tests;
+- opslaglocatie voor versleutelde back-ups.
+
+De stagingomgeving op deze server gebruikt uitsluitend synthetische testdata.
+Productiegegevens worden niet naar staging gekopieerd.
 
 De applicatie, database en onderzoeksdata van productie blijven logisch
 gescheiden van de licentieserver en back-upopslag.
+
+## Read-only inventaris huidige productie-VPS
+
+Gecontroleerd op 3 oktober 2026 via SSH, zonder wijzigingen aan de server:
+
+- Ubuntu 26.04.1 LTS;
+- 1 vCPU en 1,8 GiB RAM, met circa 0,7 GiB beschikbaar op het moment van de
+  meting;
+- 2 GiB swap, waarvan circa 0,9 GiB in gebruik;
+- 96 GiB rootdisk, waarvan circa 18 GiB in gebruik;
+- systemd-installatie, dus geen Docker-runtime op deze VPS;
+- actieve onderdelen: Nginx, Joost-dashboard, PostgreSQL 18, Redis,
+  licentieserver, SpiderFoot, Tor, fail2ban, Telegram-bot, health-monitor en
+  de onderzoeksworkers;
+- bestaande back-upopslag onder `/opt/osint-dashboard/backups` van circa 1,1
+  GiB.
+
+Deze capaciteit is voldoende voor licentie- en back-updiensten, maar biedt
+weinig marge voor een gelijktijdige stagingomgeving. Daarom geldt vóór de
+herinrichting als technische voorwaarde:
+
+1. staging moet resource-begrensd en logisch gescheiden worden ingericht;
+2. PostgreSQL, Redis en workers mogen de licentieserver of back-upjobs niet
+   verdringen;
+3. na inrichting moeten geheugen, swap, diskgebruik, back-upduur en
+   servicegezondheid tijdens een observatieperiode worden gemeten;
+4. bij structurele geheugendruk moet de VPS eerst worden opgewaardeerd of
+   staging op deze server worden uitgesteld.
+
+De huidige Compose-configuratie van staging start PostgreSQL, Redis, de app,
+de worker en de WhatsApp-service. Er staan daarin nog geen expliciete
+CPU- of geheugenlimieten. Die limieten moeten onderdeel worden van de aparte
+staging-inrichting; ze worden niet zonder capaciteitsmeting op de bestaande
+productieomgeving toegepast.
+
+De meting is alleen een ontwerpinput. Er zijn tijdens deze inventarisatie geen
+services, DNS-records, gebruikers of productiegegevens gewijzigd.
+
+### Healthcheck-waarneming tijdens de preflight
+
+Op 3 oktober 2026 gaf de stagingomgeving:
+
+- `/health?quick=1`: HTTP 200 in circa 76 ms;
+- `/api/v1/health`: HTTP 200 in circa 49 ms;
+- `/health`: functioneel succesvol, maar soms meer dan 20 seconden door de
+  volledige externe service- en migratiecontrole.
+
+Voor beschikbaarheidsmonitoring en de migratie-smoke test gebruiken we daarom
+de snelle readiness-route. De volledige `/health`-controle blijft geschikt
+voor periodieke diagnostiek, maar niet als korte liveness-probe achter Nginx.
 
 ## Voorwaarden vóór de overgang
 
@@ -53,7 +118,8 @@ De overgang mag pas plaatsvinden wanneer:
 
 1. Korte onderhoudsperiode aankondigen.
 2. Laatste back-up van de bronomgeving maken.
-3. Productiedata en goedgekeurde configuratie overzetten.
+3. Een lege productieomgeving opbouwen met alleen de goedgekeurde technische
+   configuratie, API-instellingen, default company en één nieuw account.
 4. DNS naar de nieuwe productieserver laten wijzen.
 5. HTTPS, login, 2FA, case-aanmaak en health-check testen.
 6. Externe integraties en licentiecontrole testen.
@@ -93,7 +159,10 @@ onderzoeksworkflow of een kritieke integratie niet betrouwbaar werkt.
 
 Voor de daadwerkelijke overgang moet de eigenaar nog expliciet bevestigen:
 
-- welke tenant(s), gebruikers en dossiers meegaan;
+- bevestigen dat alleen de lege default company en
+  `ivan.versteegh@protonmail.com` worden aangemaakt;
+- bevestigen dat geen cases, clients, subjects, findings, onderzoeken,
+  rapporten of testdata meegaan;
 - wanneer de onderhoudsperiode mag plaatsvinden;
 - welke API-sleutels productie mag gebruiken;
 - hoe lang de oude productieomgeving als terugval beschikbaar blijft;

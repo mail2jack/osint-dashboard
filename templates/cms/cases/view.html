@@ -448,6 +448,18 @@
                 <td><span class="badge badge-{{ doc.classification }}">{{ doc.classification or 'confidential' }}</span></td>
                 <td>
                     <a href="{{ url_for('cms.download_document', document_id=doc.id) }}" class="btn-cms small teal">{{ _('⬇️') }}</a>
+                    {% if current_user.role in ('admin', 'owner', 'senior_investigator') %}
+                    <form method="post" action="{{ url_for('cms.set_document_classification', document_id=doc.id) }}" style="display:inline-flex;gap:.25rem;align-items:center;margin-left:.25rem;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if doc.classification == 'public' %}
+                        <input type="hidden" name="classification" value="confidential">
+                        <button type="submit" class="btn-cms small bg-gray" title="{{ _('Withdraw from customer portal') }}">{{ _('↩️ Portal intrekken') }}</button>
+                        {% else %}
+                        <input type="hidden" name="classification" value="public">
+                        <button type="submit" class="btn-cms small bg-blue" title="{{ _('Publish to customer portal') }}">{{ _('🌐 Vrijgeven') }}</button>
+                        {% endif %}
+                    </form>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

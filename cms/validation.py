@@ -474,6 +474,7 @@ class BulkAddSubjectsSchema(BaseModel):
 class CreateClientSchema(BaseModel):
     name: str = ""
     is_company: Any = None
+    portal_access_enabled: Any = None
     confirm_duplicate: Any = None
     contact_person: str | None = None
     contact_email: str | None = None
@@ -493,6 +494,7 @@ class CreateClientSchema(BaseModel):
 class EditClientSchema(BaseModel):
     name: str | None = None
     is_company: Any = None
+    portal_access_enabled: Any = None
     contact_person: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None

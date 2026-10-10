@@ -1,0 +1,51 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Findings dashboard') }} — {{ _('Workflow') }}{% endblock %}
+{% block content %}
+<style>
+.fd-head{display:flex;justify-content:space-between;align-items:end;gap:1rem;flex-wrap:wrap;margin:1.25rem 0}.fd-head h1{margin:0}.fd-head p{margin:.3rem 0 0;color:var(--text-muted);font-size:.85rem}.fd-actions{display:flex;gap:.5rem}.fd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1rem}.fd-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:1rem}.fd-card .label{color:var(--text-muted);font-size:.78rem}.fd-card .value{font-size:1.8rem;font-weight:700;margin-top:.2rem}.fd-card .hint{color:var(--text-muted);font-size:.75rem}.fd-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}.fd-panel{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:1rem}.fd-panel h2{font-size:1rem;margin:0 0 1rem}.fd-row{display:flex;align-items:center;gap:.65rem;margin:.6rem 0;font-size:.82rem}.fd-row .name{width:130px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fd-bar{height:10px;flex:1;border-radius:99px;background:var(--bg-secondary);overflow:hidden}.fd-bar span{display:block;height:100%;border-radius:99px;background:var(--accent-primary)}.fd-count{width:35px;text-align:right;font-weight:600}.fd-timeline{display:flex;align-items:end;gap:.4rem;height:150px;padding-top:1rem}.fd-day{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:end;height:100%;gap:.25rem;font-size:.68rem;color:var(--text-muted)}.fd-day .column{width:100%;max-width:30px;min-height:2px;border-radius:5px 5px 0 0;background:#7c3aed}.fd-day strong{font-size:.7rem;color:var(--text-primary)}.fd-empty{color:var(--text-muted);font-size:.85rem;padding:.5rem 0}.fd-footer{display:flex;justify-content:flex-end;margin-top:.5rem}@media(max-width:850px){.fd-grid{grid-template-columns:repeat(2,1fr)}.fd-layout{grid-template-columns:1fr}}@media(max-width:500px){.fd-grid{grid-template-columns:1fr 1fr}.fd-card .value{font-size:1.4rem}.fd-row .name{width:95px}}
+</style>
+
+<div class="fd-head">
+  <div><h1>📊 Findings dashboard</h1><p>Overzicht van zichtbare findings binnen jouw toegankelijke zaken.</p></div>
+  <div class="fd-actions"><a class="btn-cms small" href="{{ url_for('workflow.findings_index') }}">📋 Lijstweergave</a></div>
+</div>
+
+<div class="fd-grid">
+  <div class="fd-card"><div class="label">Totaal findings</div><div class="value">{{ total }}</div><div class="hint">niet gearchiveerd</div></div>
+  <div class="fd-card"><div class="label">Te valideren</div><div class="value">{{ pending_count }}</div><div class="hint">candidate</div></div>
+  <div class="fd-card"><div class="label">Geverifieerd</div><div class="value">{{ verified_count }}</div><div class="hint">door onderzoeker beoordeeld</div></div>
+  <div class="fd-card"><div class="label">Rapportkandidaten</div><div class="value">{{ report_count }}</div><div class="hint">niet uitgesloten</div></div>
+</div>
+
+<div class="fd-layout">
+  <section class="fd-panel"><h2>Status</h2>
+    {% set status_total = total or 1 %}
+    {% for key, label in [('candidate','Kandidaat'),('verified','Geverifieerd'),('rejected','Afgewezen'),('superseded','Vervangen')] %}
+    <div class="fd-row"><span class="name">{{ label }}</span><div class="fd-bar"><span style="width:{{ ((status_counts.get(key, 0) / status_total) * 100)|round(1) }}%"></span></div><span class="fd-count">{{ status_counts.get(key, 0) }}</span></div>
+    {% endfor %}
+  </section>
+  <section class="fd-panel"><h2>Kwaliteitssignaal</h2>
+    {% set quality_total = total or 1 %}
+    {% for key in ['Hoog (60–100)','Middel (45–59)','Laag (0–44)'] %}
+    <div class="fd-row"><span class="name">{{ key }}</span><div class="fd-bar"><span style="width:{{ ((quality_buckets.get(key, 0) / quality_total) * 100)|round(1) }}%"></span></div><span class="fd-count">{{ quality_buckets.get(key, 0) }}</span></div>
+    {% endfor %}
+    <div class="fd-empty">Dit is een uitlegbaar kwaliteitssignaal, geen automatische verificatie.</div>
+  </section>
+</div>
+
+<div class="fd-layout">
+  <section class="fd-panel"><h2>Bronnen</h2>
+    {% set source_max = (source_counts[0][1] if source_counts else 1) %}
+    {% for name, count in source_counts %}<div class="fd-row"><span class="name" title="{{ name }}">{{ name }}</span><div class="fd-bar"><span style="width:{{ ((count / source_max) * 100)|round(1) }}%"></span></div><span class="fd-count">{{ count }}</span></div>{% else %}<div class="fd-empty">Nog geen brongegevens.</div>{% endfor %}
+  </section>
+  <section class="fd-panel"><h2>Platformen</h2>
+    {% set platform_max = (platform_counts[0][1] if platform_counts else 1) %}
+    {% for name, count in platform_counts %}<div class="fd-row"><span class="name">{{ name|capitalize }}</span><div class="fd-bar"><span style="width:{{ ((count / platform_max) * 100)|round(1) }}%"></span></div><span class="fd-count">{{ count }}</span></div>{% else %}<div class="fd-empty">Geen platform uit de bron-URL afgeleid.</div>{% endfor %}
+  </section>
+</div>
+
+<section class="fd-panel"><h2>Instroom in de tijd</h2>
+  {% if timeline %}{% set timeline_max = (timeline|map(attribute=1)|max) or 1 %}<div class="fd-timeline">{% for day, count in timeline %}<div class="fd-day" title="{{ day }}: {{ count }}"><strong>{{ count }}</strong><div class="column" style="height:{{ ((count / timeline_max) * 100)|round(1) }}%"></div><span>{{ day }}</span></div>{% endfor %}</div>{% else %}<div class="fd-empty">Nog geen tijdlijngegevens.</div>{% endif %}
+</section>
+<div class="fd-footer"><a class="btn-cms primary small" href="{{ url_for('workflow.findings_index') }}">Open findings en valideer →</a></div>
+{% endblock %}

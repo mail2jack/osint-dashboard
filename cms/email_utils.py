@@ -73,7 +73,10 @@ def send_email(to_email, subject, body_html, body_text=None) -> bool:
             )
         else:
             server = smtplib.SMTP(cfg["server"], cfg["port"], timeout=timeout)
-            server.starttls(context=ctx)
+            # Mailpit is an intentionally local, plaintext SMTP sink. Never
+            # apply this exception to production SMTP hosts.
+            if not (cfg["server"] in {"mailpit", "localhost"} and cfg["port"] == 1025):
+                server.starttls(context=ctx)
 
         if cfg["username"] and cfg["password"]:
             server.login(cfg["username"], cfg["password"])

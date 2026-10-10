@@ -39,6 +39,11 @@ providerregister met per provider:
 doel, invoervelden, persoonsgegevens, rechtsgrond/toestemming, regio, retentie,
 kostentype, credential-eigenaar, logging, tenant-scope en verwijderprocedure.
 
+Voor OpenRouter geldt aanvullend het aparte beleid in
+[`AI-OPENROUTER-PRIVACY.md`](AI-OPENROUTER-PRIVACY.md). Een AI-verzoek mag pas
+als privacy- en providerinstellingen aantoonbaar passen bij de gegevens die de
+onderzoeker expliciet heeft geselecteerd.
+
 ## Voorlopige Joost-regels
 
 - Publieke technische gegevens mogen naar een provider worden gestuurd als de

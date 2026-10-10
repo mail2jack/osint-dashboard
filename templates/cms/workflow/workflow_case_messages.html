@@ -1,0 +1,12 @@
+{% extends "cms/base.html" %}
+{% block title %}Berichten — {{ case.case_number }}{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap"><h1>💬 Berichten — {{ case.case_number }}</h1><a class="btn-cms" href="{{ url_for('workflow.case_detail', case_id=case.id) }}">← Terug naar zaak</a></div>
+  <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px">
+    {% for item in messages %}<div style="padding:12px;margin:8px 0;border-radius:10px;max-width:75%;white-space:pre-wrap;background:{% if item.sender_role == 'staff' %}#eaf0ff{% else %}#f0f3f8{% endif %};{% if item.sender_role == 'staff' %}margin-left:auto;{% endif %}"><small style="color:var(--text-muted)">{{ item.sender.full_name or item.sender.email }} · {{ item.created_at.strftime('%d-%m-%Y %H:%M') if item.created_at else '—' }} UTC</small><br>{{ item.message }}<br><button class="btn-cms small" type="button" style="margin-top:.5rem" data-quote-message data-message="{{ item.message|e }}" data-author="{{ item.sender.full_name or item.sender.email }}" data-time="{{ item.created_at.strftime('%d-%m-%Y %H:%M') if item.created_at else '—' }}">↩ Citeren</button></div>{% else %}<p style="color:var(--text-muted)">Nog geen berichten.</p>{% endfor %}
+  </div>
+  <form method="post" style="margin-top:1rem"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><textarea id="message" name="message" maxlength="10000" rows="5" style="width:100%;box-sizing:border-box" placeholder="Schrijf een bericht aan de klant..."></textarea><br><button class="btn-cms primary" type="submit">Bericht naar klant sturen</button></form>
+</div>
+<script src="{{ url_for('static', filename='js/case-messages.js') }}"></script>
+{% endblock %}

@@ -9,6 +9,7 @@ import json
 import base64
 import secrets
 import logging
+import os
 from datetime import datetime, timezone
 
 import flask
@@ -66,6 +67,28 @@ from ..geo_utils import log_login_attempt
 from ..tenant_context import set_tenant_context
 
 logger = logging.getLogger(__name__)
+
+
+def _local_admin_2fa_bypass(user) -> bool:
+    """Allow the synthetic local admin to skip 2FA only in local development."""
+    return bool(
+        os.environ.get("FLASK_ENV") != "production"
+        and os.environ.get("LOCAL_DISABLE_ADMIN_2FA") == "1"
+        and user.email.lower() == "admin@localhost"
+    )
+
+
+def _local_dev_login_enabled() -> bool:
+    """Expose the passwordless local login only in an explicitly local setup."""
+    return bool(
+        os.environ.get("FLASK_ENV") == "development"
+        and os.environ.get("LOCAL_DISABLE_ADMIN_2FA") == "1"
+    )
+
+
+def _render_login(**context):
+    context["local_dev_login_enabled"] = _local_dev_login_enabled()
+    return render_template("cms/login.html", **context)
 
 
 # =============================================================================
@@ -222,21 +245,21 @@ def login() -> flask.Response:
                 "Too many login attempts from this IP. Please wait before trying again.",
                 "danger",
             )
-            return render_template("cms/login.html")
+            return _render_login()
 
         d = request.form.to_dict() if request.form else {}
         try:
             validated = LoginSchema(**d)
         except Exception:
             flash("Please enter email and password.", "warning")
-            return render_template("cms/login.html")
+            return _render_login()
         email = validated.email.strip().lower()
         password = validated.password
         remember = validated.remember or False
 
         if not email or not password:
             flash("Please enter email and password.", "warning")
-            return render_template("cms/login.html")
+            return _render_login()
 
         user = User.query.filter_by(email=email).first()
         login_failed = True
@@ -269,6 +292,8 @@ def login() -> flask.Response:
 
                     session["_2fa_user_id"] = user.id
                     session["_2fa_remember"] = remember
+                    if _local_admin_2fa_bypass(user):
+                        return _complete_2fa_login(user)
                     if user.totp_secret:
                         return redirect(url_for("auth.verify_2fa"))
                     return redirect(url_for("auth.setup_2fa"))
@@ -302,7 +327,70 @@ def login() -> flask.Response:
 
         flash("Invalid email or password.", "danger")
 
-    return render_template("cms/login.html")
+    return _render_login()
+
+
+@auth_bp.route("/local-dev-login", methods=["POST"])
+def local_dev_login() -> flask.Response:
+    """Log in as the seeded local admin without credentials in local development."""
+    if not _local_dev_login_enabled():
+        abort(404)
+
+    user = User.query.filter_by(email="admin@localhost").first()
+    tenant = db.session.get(Tenant, user.tenant_id) if user else None
+    if not user or not user.is_active or not tenant or not tenant.is_active:
+        flash("Local admin account is not available.", "danger")
+        return redirect(url_for("auth.login"))
+
+    session["_2fa_user_id"] = user.id
+    session["_2fa_remember"] = False
+    return _complete_2fa_login(user)
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+@rate_limit(limit=(5, 300), key_prefix="forgot_password_ip")
+def forgot_password() -> flask.Response:
+    """Request a one-time password-reset link without revealing account existence."""
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
+
+        if user and user.is_active:
+            token = user.generate_reset_token()
+            db.session.commit()
+            try:
+                from ..email_utils import send_password_reset_email
+
+                reset_url = url_for("auth.set_password", token=token, _external=True)
+                send_password_reset_email(
+                    user.email,
+                    user.username,
+                    user.full_name,
+                    reset_url,
+                )
+            except Exception:
+                logger.exception("Failed to send password reset email")
+
+            AuditLog.log(
+                user_id=user.id,
+                tenant_id=user.tenant_id,
+                action="password_reset_requested",
+                entity_type="user",
+                entity_id=user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+                description="Password reset requested",
+            )
+            db.session.commit()
+
+        # Keep the response identical for unknown, inactive and active users.
+        flash(
+            "Als er een actief account met dit e-mailadres bestaat, is een herstelmail verzonden.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
+
+    return render_template("cms/forgot_password.html")
 
 
 @auth_bp.route("/logout")
@@ -894,6 +982,7 @@ def create_user() -> flask.Response:
         "senior_investigator",
         "investigator",
         "junior_investigator",
+        "intake_admin",
         "viewer",
     ]
     if data["role"] not in valid_roles:
@@ -1282,6 +1371,42 @@ def accept_invite(token: str):
         ok, _current, _maximum = check_resource_limit(
             User, "tenant_id", "max_users", tenant=inv.tenant
         )
+        existing_user = User.query.filter(
+            db.func.lower(User.email) == inv.email.lower()
+        ).first()
+        if existing_user:
+            if existing_user.tenant_id != inv.tenant_id:
+                flash(
+                    "Dit e-mailadres is al aan een andere organisatie gekoppeld. Neem contact op met Iveras.",
+                    "danger",
+                )
+                return render_template("cms/accept_invite.html", valid=False)
+            if inv.is_portal_invitation and inv.client_id:
+                from cms.models import ClientPortalAccess
+
+                access = ClientPortalAccess.query.filter_by(
+                    tenant_id=inv.tenant_id,
+                    client_id=inv.client_id,
+                    email=inv.email,
+                    is_active=True,
+                ).order_by(ClientPortalAccess.created_at.desc()).first()
+                if access:
+                    access.user_id = existing_user.id
+                    access.accepted_at = access.accepted_at or datetime.now(timezone.utc)
+            inv.accept()
+            db.session.commit()
+            # The invitation may be accepted in the same browser that was
+            # used by an internal admin.  Clear that session so the customer
+            # must authenticate with their own credentials instead of being
+            # silently redirected back into the admin CMS.
+            session.clear()
+            logout_user()
+            flash(
+                "Er bestaat al een account voor dit e-mailadres. De portaltoegang is bijgewerkt; log in met uw bestaande wachtwoord.",
+                "info",
+            )
+            return redirect(url_for("auth.login"))
+
         if not ok:
             flash(
                 "The organization has reached its user limit. Contact your administrator.",
@@ -1302,7 +1427,21 @@ def accept_invite(token: str):
         db.session.add(user)
         db.session.flush()
 
+        if inv.role == "owner" and not inv.tenant.owner_id:
+            inv.tenant.owner_id = user.id
+
         inv.accept()
+        if inv.is_portal_invitation and inv.client_id:
+            from cms.models import ClientPortalAccess
+            access = ClientPortalAccess.query.filter_by(
+                tenant_id=inv.tenant_id,
+                client_id=inv.client_id,
+                email=inv.email,
+                is_active=True,
+            ).order_by(ClientPortalAccess.created_at.desc()).first()
+            if access:
+                access.user_id = user.id
+                access.accepted_at = datetime.now(timezone.utc)
         db.session.commit()
 
         set_tenant_context(db, inv.tenant_id)
@@ -1316,6 +1455,10 @@ def accept_invite(token: str):
         )
         db.session.commit()
 
+        # Never carry an internal admin session into the newly accepted
+        # customer's login flow when both actions happen in one browser.
+        session.clear()
+        logout_user()
         flash(
             "Account created! You can now log in. Please set up two-factor authentication.",
             "success",

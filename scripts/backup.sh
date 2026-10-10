@@ -45,9 +45,47 @@ BACKUP_RETENTION_MONTHLY="${BACKUP_RETENTION_MONTHLY:-12}"
 BACKUP_PGSERVICE="${BACKUP_PGSERVICE:-}"
 BACKUP_PGPASSFILE="${BACKUP_PGPASSFILE:-}"
 BACKUP_PGSERVICEFILE="${BACKUP_PGSERVICEFILE:-}"
+BACKUP_NOTIFY_SCRIPT="$SCRIPT_DIR/scripts/backup_completion_email.py"
+BACKUP_NOTIFY_PYTHON="$SCRIPT_DIR/venv/bin/python3"
 ERRORS=0
 WARNINGS=0
 DB_DUMP_OK=false
+
+if [ ! -x "$BACKUP_NOTIFY_PYTHON" ]; then
+    BACKUP_NOTIFY_PYTHON="$(command -v python3)"
+fi
+
+_notify_completion() {
+    local exit_code="$1"
+    local status="failed"
+    if [ "$exit_code" -eq 0 ] && [ "$ERRORS" -eq 0 ]; then
+        status="success"
+    fi
+    if [ -f "$BACKUP_NOTIFY_SCRIPT" ]; then
+        if command -v docker >/dev/null 2>&1 \
+            && docker compose ps --status running -q app 2>/dev/null | grep -q .; then
+            docker compose exec -T app python3 /app/scripts/backup_completion_email.py \
+                --dir /app --status "$status" \
+                --archive "/app/backups/$(basename "$ENCRYPTED_FILE")" \
+                --errors "$ERRORS" --warnings "$WARNINGS" \
+                || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
+        else
+            "$BACKUP_NOTIFY_PYTHON" "$BACKUP_NOTIFY_SCRIPT" \
+                --dir "$SCRIPT_DIR" --status "$status" --archive "$ENCRYPTED_FILE" \
+                --errors "$ERRORS" --warnings "$WARNINGS" \
+                || echo "  ⚠️  Backup-notificatie kon niet worden verzonden" >&2
+        fi
+    fi
+}
+
+_on_exit() {
+    local exit_code="$?"
+    trap - EXIT
+    _notify_completion "$exit_code"
+    exit "$exit_code"
+}
+
+trap _on_exit EXIT
 
 mkdir -p "$BACKUP_PATH"
 

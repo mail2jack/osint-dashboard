@@ -69,6 +69,11 @@ from .usage_record import UsageRecord
 from .announcement import Announcement, AnnouncementAck
 from .dpa import DpaRecord
 from .breach import BreachRecord
+from .portal_request import PortalRequest
+from .portal_request_message import PortalRequestMessage
+from .customer_registration import CustomerRegistrationRequest
+from .client_portal_access import ClientPortalAccess
+from .case_message import CaseMessage
 
 # Explicit re-exports — used by other modules importing from cms.models
 __all__ = [
@@ -84,12 +89,17 @@ __all__ = [
     "PlatformSetting",
     "Invitation",
     "UsageRecord",
+    "CustomerRegistrationRequest",
     "NotificationPreference",
     "NOTIFICATION_CATEGORIES",
     "Announcement",
     "AnnouncementAck",
     "DpaRecord",
     "BreachRecord",
+    "PortalRequest",
+    "PortalRequestMessage",
+    "ClientPortalAccess",
+    "CaseMessage",
 ]
 
 
@@ -102,6 +112,10 @@ class UserRole(PyEnum):
     INVESTIGATOR = "investigator"  # Can view and update assigned cases
     JUNIOR_INVESTIGATOR = "junior_investigator"  # Can view and update assigned cases
     VIEWER = "viewer"  # Read-only access
+    INTAKE_ADMIN = "intake_admin"  # Reviews and routes customer portal intake
+    PORTAL_ADMIN = "portal_admin"  # Customer portal administrator
+    PORTAL_MEMBER = "portal_member"  # Customer portal user
+    PORTAL_VIEWER = "portal_viewer"  # Read-only customer portal user
 
 
 class CasePriority(PyEnum):
@@ -320,6 +334,7 @@ class User(UserMixin, db.Model):
     # Account lockout
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
+    must_change_password = db.Column(db.Boolean, nullable=False, default=False)
 
     # SMS/WhatsApp notifications
     phone_number = db.Column(db.String(30), nullable=True)
@@ -500,6 +515,7 @@ class Client(db.Model):
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete
+    portal_access_enabled = db.Column(db.Boolean, nullable=False, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
     created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -697,6 +713,9 @@ class Case(db.Model):
     # Proces verbaal (process report — markdown)
     pv_body = db.Column(db.Text)
     pv_updated_at = db.Column(db.DateTime)
+    report_status = db.Column(db.String(20), default="draft", nullable=False, index=True)
+    report_released_at = db.Column(db.DateTime)
+    report_released_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -2537,6 +2556,9 @@ class Document(db.Model):
     financial_record_id = db.Column(
         db.String(36), db.ForeignKey("financial_records.id"), index=True
     )
+    portal_request_id = db.Column(
+        db.String(36), db.ForeignKey("portal_requests.id"), index=True
+    )
 
     filename = db.Column(db.String(255), nullable=False)
     original_filename = db.Column(db.String(255), nullable=False)
@@ -2562,6 +2584,12 @@ class Document(db.Model):
 
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
+
+    portal_request = db.relationship(
+        "PortalRequest",
+        foreign_keys=[portal_request_id],
+        backref=db.backref("documents", order_by="Document.created_at.desc()"),
+    )
 
     def soft_delete(self) -> None:
         """Soft delete the document."""
@@ -4410,6 +4438,9 @@ class Tenant(db.Model):
     domain = db.Column(db.String(255), nullable=True, unique=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     tier = db.Column(db.String(20), default="free", nullable=False)
+    workspace_type = db.Column(
+        db.String(20), default="full", nullable=False
+    )  # full investigation workspace or portal_only customer account
     stripe_customer_id = db.Column(db.String(255), nullable=True, index=True)
     stripe_subscription_id = db.Column(db.String(255), nullable=True)
     subscription_status = db.Column(db.String(50), default="incomplete", nullable=False)
@@ -4448,6 +4479,7 @@ class Tenant(db.Model):
             "domain": self.domain,
             "is_active": self.is_active,
             "tier": self.tier,
+            "workspace_type": self.workspace_type,
             "stripe_customer_id": self.stripe_customer_id,
             "stripe_subscription_id": self.stripe_subscription_id,
             "subscription_status": self.subscription_status,

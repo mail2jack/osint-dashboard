@@ -54,7 +54,7 @@ register_action(
     "Social media scan",
     "🌐",
     _social_scan,
-    "Scans multiple social media platforms based on name or username and collects public profiles, posts, and network connections.",
+    "Scans the default major platforms (YouTube, Facebook, Instagram, TikTok, LinkedIn, X, Reddit, Pinterest, Snapchat, and Telegram) for a name or username. Broader platform coverage requires an explicit expanded scan.",
 )
 register_action(
     "facebook",
@@ -190,3 +190,121 @@ for _action_type in ACTION_REGISTRY:
         ACTION_REGISTRY[_action_type]["category"] = "paid"
     elif _action_type in _LOCAL:
         ACTION_REGISTRY[_action_type]["category"] = "local"
+
+# Product-cost metadata is deliberately kept separate from execution policy.
+# It describes the expected cost surface for previews and later metering; it
+# does not reserve credits, call a provider, or change which actions run.
+_COST_METADATA = {
+    "email": {
+        "cost_class": "mixed",
+        "credit_units": 2,
+        "providers": ["email-search", "hibp", "openpgp", "brave"],
+    },
+    "phone": {
+        "cost_class": "mixed",
+        "credit_units": 2,
+        "providers": ["phone-service", "whatsapp", "telegram"],
+    },
+    "address": {
+        "cost_class": "open",
+        "credit_units": 1,
+        "providers": ["pdok-bag"],
+        "estimated_cost_eur": 0.0,
+    },
+    "social": {
+        "cost_class": "open",
+        "credit_units": 1,
+        "providers": ["public-platform-pages"],
+    },
+    "facebook": {
+        "cost_class": "paid",
+        "credit_units": 3,
+        "requires_explicit_consent": True,
+        "providers": ["rapidapi-facebook"],
+        "estimated_cost_eur": 0.25,
+    },
+    "instagram": {
+        "cost_class": "paid",
+        "credit_units": 3,
+        "requires_explicit_consent": True,
+        "providers": ["rapidapi-instagram"],
+        "estimated_cost_eur": 0.25,
+    },
+    "tiktok": {
+        "cost_class": "paid",
+        "credit_units": 3,
+        "requires_explicit_consent": True,
+        "providers": ["rapidapi-tiktok"],
+        "estimated_cost_eur": 0.25,
+    },
+    "linkedin": {
+        "cost_class": "paid",
+        "credit_units": 8,
+        "requires_explicit_consent": True,
+        "providers": ["rapidapi-linkedin"],
+        "estimated_cost_eur": 1.00,
+    },
+    "twitter": {
+        "cost_class": "paid",
+        "credit_units": 8,
+        "requires_explicit_consent": True,
+        "providers": ["rapidapi-x"],
+        "estimated_cost_eur": 1.00,
+    },
+    "kvk": {
+        "cost_class": "mixed",
+        "credit_units": 1,
+        "providers": ["overheid.io", "openkvk"],
+    },
+    "rdw": {
+        "cost_class": "open",
+        "credit_units": 1,
+        "providers": ["rdw"],
+        "estimated_cost_eur": 0.0,
+    },
+    "vessel": {
+        "cost_class": "mixed",
+        "credit_units": 2,
+        "providers": ["public-maritime", "commercial-maritime"],
+    },
+    "osint": {
+        "cost_class": "mixed",
+        "credit_units": 3,
+        "providers": ["brave", "spiderfoot"],
+    },
+    "financial": {
+        "cost_class": "mixed",
+        "credit_units": 2,
+        "providers": ["public-sources"],
+    },
+    "subdomain": {
+        "cost_class": "open",
+        "credit_units": 1,
+        "providers": ["crt.sh", "certspotter"],
+        "estimated_cost_eur": 0.0,
+    },
+    "google_dork": {
+        "cost_class": "mixed",
+        "credit_units": 1,
+        "providers": ["brave", "duckduckgo"],
+    },
+    "browser_search": {
+        "cost_class": "local",
+        "credit_units": 0,
+        "estimated_cost_eur": 0.0,
+    },
+    "manual_entry": {
+        "cost_class": "local",
+        "credit_units": 0,
+        "estimated_cost_eur": 0.0,
+    },
+    "photo_analysis": {
+        "cost_class": "mixed",
+        "credit_units": 0,
+        "providers": ["local-exif", "picarta"],
+    },
+}
+
+for _action_type, _metadata in _COST_METADATA.items():
+    if _action_type in ACTION_REGISTRY:
+        ACTION_REGISTRY[_action_type].update(_metadata)

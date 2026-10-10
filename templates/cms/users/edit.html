@@ -28,6 +28,7 @@
                     <option value="senior_investigator" {% if user.role == 'senior_investigator' %}selected{% endif %}>Senior Investigator</option>
                     <option value="investigator" {% if user.role == 'investigator' %}selected{% endif %}>Investigator</option>
                     <option value="junior_investigator" {% if user.role == 'junior_investigator' %}selected{% endif %}>Junior Investigator</option>
+                    <option value="intake_admin" {% if user.role == 'intake_admin' %}selected{% endif %}>Intake administrator</option>
                     <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>Viewer</option>
                 </select>
             </div>

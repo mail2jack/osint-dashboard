@@ -197,6 +197,43 @@ class Test2FAVerify:
 
 
 class TestPasswordReset:
+    def test_forgot_password_page(self, client):
+        resp = client.get("/auth/forgot-password")
+        assert resp.status_code == 200
+        assert "Wachtwoord herstellen" in resp.get_data(as_text=True)
+
+    def test_forgot_password_sends_reset_mail(self, client, db_session, monkeypatch):
+        u = _create_user("forgotrequest", "Test1234!")
+        sent = []
+
+        def fake_send(*args):
+            sent.append(args)
+            return True
+
+        monkeypatch.setattr("cms.email_utils.send_password_reset_email", fake_send)
+
+        resp = client.post(
+            "/auth/forgot-password",
+            data={"email": u.email},
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert "Als er een actief account" in resp.get_data(as_text=True)
+        assert sent and sent[0][0] == u.email
+        refreshed = db.session.get(User, u.id)
+        assert refreshed.password_reset_token
+
+    def test_forgot_password_does_not_reveal_unknown_account(self, client, db_session):
+        resp = client.post(
+            "/auth/forgot-password",
+            data={"email": "unknown-reset@example.test"},
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert "Als er een actief account" in resp.get_data(as_text=True)
+
     def test_set_password_valid_token(self, client, db_session):
         u = _create_user("resettest", "Test1234!")
         token = u.generate_reset_token()

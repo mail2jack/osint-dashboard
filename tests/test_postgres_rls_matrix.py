@@ -71,6 +71,8 @@ EXPECTED_FORCE_RLS_TABLES = {
     "osint_searches",
     "payments",
     "phone_lookups",
+    "portal_requests",
+    "client_portal_access",
     "reminders",
     "research_actions",
     "screenshots",

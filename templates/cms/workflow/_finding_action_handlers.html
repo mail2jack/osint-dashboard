@@ -3,6 +3,7 @@
 // investigation workspace.  The including page MUST provide:
 //   - CASE_ID          (string)
 //   - pollStatus()     (called after mutations — typically reload or AJAX)
+//   - refreshFindingView() (optional immediate refresh for finding mutations)
 //   - showToast(msg, type)  (optional, graceful fallback)
 //   - _lastFindingsHash, _suppressFindingsRebuild, _forceFindingsUpdate
 //
@@ -67,6 +68,14 @@ function findingCaseId(el) {
   var item = el && el.closest ? el.closest('.finding-item') : null;
   if (item && item.getAttribute('data-case-id')) return item.getAttribute('data-case-id');
   return (typeof CASE_ID !== 'undefined') ? CASE_ID : '';
+}
+
+function refreshFindingAfterMutation() {
+  if (typeof refreshFindingView === 'function') {
+    refreshFindingView();
+  } else if (typeof pollStatus === 'function') {
+    pollStatus();
+  }
 }
 
 // ── Comment auto-save (debounced, out-of-order safe, registered once) ──
@@ -139,7 +148,7 @@ function handleFindingClick(e) {
         if (typeof _lastFindingsHash    !== 'undefined') _lastFindingsHash = '';
         var item = rej.closest('.finding-item');
         if (item) item.remove();
-        if (typeof pollStatus === 'function') pollStatus();
+        refreshFindingAfterMutation();
       } else {
         rej.dataset.busy = '';
         rej.disabled = false;
@@ -175,7 +184,7 @@ function handleFindingClick(e) {
       if (data.ok) {
         if (typeof _suppressFindingsRebuild !== 'undefined') _suppressFindingsRebuild = Date.now() + 5000;
         if (typeof _lastFindingsHash    !== 'undefined') _lastFindingsHash = '';
-        if (typeof pollStatus === 'function') pollStatus();
+        refreshFindingAfterMutation();
       } else {
         dem.disabled = false;
         dem.style.opacity = '1';
@@ -214,7 +223,7 @@ function handleFindingClick(e) {
       if (data.ok) {
         if (typeof _suppressFindingsRebuild !== 'undefined') _suppressFindingsRebuild = Date.now() + 5000;
         if (typeof _lastFindingsHash    !== 'undefined') _lastFindingsHash = '';
-        if (typeof pollStatus === 'function') pollStatus();
+        refreshFindingAfterMutation();
       } else {
         vfy.disabled = false;
         vfy.style.opacity = '1';
@@ -255,7 +264,7 @@ function handleFindingClick(e) {
       }
       if (typeof _suppressFindingsRebuild !== 'undefined') _suppressFindingsRebuild = Date.now() + 5000;
       if (typeof _lastFindingsHash    !== 'undefined') _lastFindingsHash = '';
-      if (typeof pollStatus === 'function') pollStatus();
+      refreshFindingAfterMutation();
     })
     .catch(function() {
       rfl.disabled = false;
@@ -318,7 +327,7 @@ function handleFindingClick(e) {
       form.querySelector('.ss-notes-input').value = '';
       form.style.display = 'none';
       form.setAttribute('data-saving', '0');
-      if (typeof pollStatus === 'function') pollStatus();
+      refreshFindingAfterMutation();
     };
     if (file) {
       var fd = new FormData();

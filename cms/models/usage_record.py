@@ -52,3 +52,35 @@ class UsageRecord(db.Model):
             db.session.add(row)
         db.session.flush()
         return row
+
+    @classmethod
+    def increment(
+        cls, tenant_id: str, record_date, metric_name: str, amount: int = 1
+    ) -> "UsageRecord":
+        """Increment a daily event counter in the current transaction.
+
+        Event counters use the same tenant-scoped table as daily snapshots but
+        have distinct metric names.  The row lock prevents concurrent app or
+        worker requests from losing increments.
+        """
+        row = (
+            cls.query.filter_by(
+                tenant_id=tenant_id,
+                record_date=record_date,
+                metric_name=metric_name,
+            )
+            .with_for_update()
+            .first()
+        )
+        if row:
+            row.metric_value += amount
+        else:
+            row = cls(
+                tenant_id=tenant_id,
+                record_date=record_date,
+                metric_name=metric_name,
+                metric_value=amount,
+            )
+            db.session.add(row)
+        db.session.flush()
+        return row

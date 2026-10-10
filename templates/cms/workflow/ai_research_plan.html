@@ -30,6 +30,16 @@
       {% endfor %}
     </select>
     <label for="question">Onderzoeksvraag</label>
+    <label for="searchScope" style="display:block;margin-top:.5rem;">Zoekbereik</label>
+    <select id="searchScope" style="display:block;width:100%;max-width:600px;margin:.35rem 0 .35rem;padding:.6rem;">
+      <option value="focused">Gericht zoeken — hoofdplatformen</option>
+      <option value="broad">Breed zoeken — webcontext zonder extra platformscans</option>
+      <option value="exotic">Exotisch zoeken — veel extra sites en meer false positives</option>
+    </select>
+    <small style="display:block;max-width:760px;color:var(--text-secondary);margin-bottom:1rem;">
+      Gericht zoeken gebruikt de afgesproken hoofdplatformen. Breed zoeken voegt Google Dork en Browser Search toe, maar geen extra platformscan.
+      Exotisch zoeken bezoekt veel extra sites; controleer de resultaten daarom extra kritisch.
+    </small>
     <textarea id="question" rows="5" style="display:block;width:100%;padding:.7rem;margin:.35rem 0 1rem;" placeholder="Bijvoorbeeld: onderzoek de openbare online aanwezigheid van de gebruikersnaam voorbeeld_onderzoek2026"></textarea>
     <button id="makePlan" class="btn-cms primary">Maak onderzoeksplan</button>
     <span id="status" style="margin-left:.75rem;"></span>
@@ -52,7 +62,7 @@
   document.getElementById('makePlan').addEventListener('click', function() {
     status.textContent = 'AI maakt een voorstel...';
     planBox.style.display = 'none';
-    api('{{ url_for("workflow.create_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({query:document.getElementById('question').value, subject_id:document.getElementById('subject').value || null})})
+    api('{{ url_for("workflow.create_ai_plan", case_id=case.id) }}', {method:'POST', body:JSON.stringify({query:document.getElementById('question').value, subject_id:document.getElementById('subject').value || null, search_scope:document.getElementById('searchScope').value})})
       .then(function(data) {
         planData = data.plan;
         var interp = planData.interpretation || {};
@@ -63,7 +73,10 @@
         }).join('');
         var ids = (planData.known_identifiers || []).map(function(i) { return esc(i.type+': '+i.value+(i.platform ? ' ('+i.platform+')' : '')); }).join(', ');
         var relations = (planData.relationship_expansion || {}).candidates || [];
-        planBox.innerHTML = '<h2>Voorgesteld plan</h2>' +
+        var policy = planData.policy || {};
+        var warning = policy.exotic_warning ? '<div class="alert alert-warning" role="alert" style="margin:.75rem 0;padding:.8rem 1rem;">⚠️ '+esc(policy.exotic_warning)+'</div>' : '';
+        planBox.innerHTML = '<h2>Voorgesteld plan</h2>' + warning +
+          '<p><strong>Zoekbereik:</strong> '+esc(policy.search_scope_label || 'Gericht zoeken')+'</p>' +
           '<p><strong>Interpretatie:</strong> '+esc(interp.type)+' — '+esc(interp.value)+' (zekerheid '+esc(interp.confidence)+')</p>' +
           '<p><strong>Bestaande identifiers:</strong> '+(ids || 'geen gevonden')+'</p>' +
           '<p><strong>Relaties:</strong> '+(relations.length ? relations.map(function(r){return esc(r.name);}).join(', ') : 'geen bestaande relaties gevonden; nieuwe relaties worden alleen met bronbewijs toegevoegd')+'</p>' +

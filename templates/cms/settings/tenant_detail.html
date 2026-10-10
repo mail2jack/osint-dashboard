@@ -458,7 +458,7 @@
                     <form method="POST" action="{{ url_for('cms.tenant_change_role', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline-flex;gap:0.25rem;align-items:center;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <select name="role" data-change-submit="true" style="font-size:0.75rem;padding:0.15rem 0.3rem;border:1px solid var(--border-color);border-radius:3px;background:var(--card-bg);color:var(--text);">
-                            {% for r in ['viewer','junior_investigator','investigator','senior_investigator','admin'] %}
+                            {% for r in ['viewer','junior_investigator','investigator','intake_admin','senior_investigator','admin'] %}
                             <option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ r.replace('_',' ')|title }}</option>
                             {% endfor %}
                         </select>
