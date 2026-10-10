@@ -112,6 +112,10 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
     assert repeat_invitation.accepted_at is not None
 
     _login_as(auth_client, customer.id)
+    portal_entry = auth_client.get("/portal", follow_redirects=False)
+    assert portal_entry.status_code == 302
+    assert portal_entry.headers["Location"].endswith("/portal/dashboard")
+
     portal_response = auth_client.get("/portal/dashboard")
     assert portal_response.status_code == 302
     profile_location = portal_response.headers["Location"]

@@ -50,9 +50,16 @@ def register_system_routes(app: Flask) -> None:
         return render_template("public/homepage.html")
 
     @app.route("/portal")
-    def portal_prototype() -> str:
-        """Render the synthetic-data customer portal prototype."""
-        return render_template("public/portal.html")
+    @login_required
+    def portal_entry() -> flask.Response:
+        """Open the authenticated, tenant-scoped customer portal.
+
+        The old public prototype used synthetic records and made approved
+        customer requests invisible.  Keep the short, memorable URL as the
+        portal entrypoint, but always send authenticated users to the real
+        tenant-scoped dashboard.
+        """
+        return redirect(url_for("portal_dashboard"))
 
     @app.route("/portal/register", methods=["GET", "POST"])
     @rate_limit(limit=(5, 300), key_prefix="customer_registration")
