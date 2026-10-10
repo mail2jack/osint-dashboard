@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 import flask
 from flask import Flask, request, jsonify, render_template, redirect, url_for, g, abort, current_app
 from flask_login import current_user, login_required
-from werkzeug.utils import secure_filename
+from werkzeug.utils import safe_join, secure_filename
 from cms.rate_limiting import rate_limit
 
 logger = logging.getLogger(__name__)
@@ -447,7 +447,7 @@ def register_system_routes(app: Flask) -> None:
     def portal_document_download(document_id: str):
         """Download a document only when it is explicitly portal-visible."""
         import os
-        from flask import abort, current_app, send_from_directory
+        from flask import abort, current_app, send_file
 
         from cms.models import Document
         from cms.models import Case
@@ -466,8 +466,15 @@ def register_system_routes(app: Flask) -> None:
             abort(404)
         if not document.storage_path:
             abort(404)
-        file_path = os.path.join(current_app.root_path, "static", document.storage_path)
-        if not os.path.isfile(file_path):
+        storage_path = (document.storage_path or "").replace("\\", "/")
+        if not (
+            storage_path.startswith("uploads/cases/")
+            or storage_path.startswith("uploads/portal-requests/")
+        ):
+            abort(404)
+        static_root = os.path.join(current_app.root_path, "static")
+        file_path = safe_join(static_root, storage_path)
+        if not file_path or not os.path.isfile(file_path):
             abort(404)
         record_usage_event(
             tenant_id=current_user.tenant_id,
@@ -479,9 +486,8 @@ def register_system_routes(app: Flask) -> None:
             description="Customer downloaded a published document",
         )
         db.session.commit()
-        return send_from_directory(
-            os.path.dirname(file_path),
-            os.path.basename(file_path),
+        return send_file(
+            file_path,
             as_attachment=True,
             download_name=document.original_filename,
         )
@@ -745,6 +751,8 @@ def register_system_routes(app: Flask) -> None:
     @rate_limit(limit=(60, 60), key_prefix="portal_request_document_download")
     def portal_request_document_download(request_id: str, document_id: str):
         """Download an attachment belonging to the authenticated customer's request."""
+        from flask import send_file
+
         from cms import db
         from cms.models import Document, PortalRequest
         from cms.services.client_portal import portal_can_access_client
@@ -763,8 +771,12 @@ def register_system_routes(app: Flask) -> None:
         ).first_or_404()
         if not document.storage_path:
             abort(404)
-        file_path = os.path.join(current_app.root_path, "static", document.storage_path)
-        if not os.path.isfile(file_path):
+        storage_path = (document.storage_path or "").replace("\\", "/")
+        if not storage_path.startswith("uploads/portal-requests/"):
+            abort(404)
+        static_root = os.path.join(current_app.root_path, "static")
+        file_path = safe_join(static_root, storage_path)
+        if not file_path or not os.path.isfile(file_path):
             abort(404)
         record_usage_event(
             tenant_id=current_user.tenant_id,
@@ -776,10 +788,8 @@ def register_system_routes(app: Flask) -> None:
             description="Customer downloaded a portal request attachment",
         )
         db.session.commit()
-        from flask import send_from_directory
-        return send_from_directory(
-            os.path.dirname(file_path),
-            os.path.basename(file_path),
+        return send_file(
+            file_path,
             as_attachment=True,
             download_name=document.original_filename,
         )
