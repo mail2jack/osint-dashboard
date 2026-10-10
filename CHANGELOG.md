@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Approved one-off customer registrations now create a client-scoped portal
+  request that preserves the original question and remains visible until an
+  investigator converts it into a case (PR #238).
 - Audited FeatureFlag write path: tenant overrides now record nullable creator
   and last-updater IDs, emit an immutable AuditLog entry in the same
   transaction, and are protected by PostgreSQL FORCE RLS. The super-admin UI
@@ -63,6 +66,12 @@ production-operation improvements delivered since 3.7.1.
   104 / 282 after cleanup; all pilot residue zero), and RLS behaviour notes.
 
 ### Operations
+- Production portal end-to-end validation completed with synthetic data:
+  registration, approval, invitation, login, request visibility, case
+  conversion, messaging and notification delivery.
+- The short `/portal` entrypoint now redirects authenticated customers to the
+  real tenant-scoped dashboard instead of the former synthetic prototype
+  (PR #237).
 - Recorded the DR attestation change that was temporarily pushed directly to
   `master` outside the protected PR flow; future DR changes must use a branch
   and green required checks before merge or deployment.
