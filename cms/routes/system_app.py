@@ -78,17 +78,29 @@ def register_system_routes(app: Flask) -> None:
     @app.route("/privacy")
     def public_privacy() -> str:
         """Public privacy notice for the marketing site and portal intake."""
-        return render_template("public/legal.html", page="privacy")
+        return render_template(
+            "public/legal.html",
+            page="privacy",
+            public_site_url=os.environ.get("PUBLIC_SITE_URL", "https://iveras.com"),
+        )
 
     @app.route("/voorwaarden")
     def public_terms() -> str:
         """Public general terms page; final legal review remains required."""
-        return render_template("public/legal.html", page="terms")
+        return render_template(
+            "public/legal.html",
+            page="terms",
+            public_site_url=os.environ.get("PUBLIC_SITE_URL", "https://iveras.com"),
+        )
 
     @app.route("/cookies")
     def public_cookies() -> str:
         """Explain the limited cookie use on the public site and portal."""
-        return render_template("public/legal.html", page="cookies")
+        return render_template(
+            "public/legal.html",
+            page="cookies",
+            public_site_url=os.environ.get("PUBLIC_SITE_URL", "https://iveras.com"),
+        )
 
     @app.route("/robots.txt")
     def public_robots() -> Response:
