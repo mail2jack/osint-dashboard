@@ -167,6 +167,13 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
         submitted_by_id=customer.id,
         question="Synthetische aanvullende aanvraag",
     ).one()
+    assert request_response.headers["Location"].endswith(
+        f"/portal/dashboard?submitted={intake.id}"
+    )
+    confirmation = auth_client.get(request_response.headers["Location"])
+    assert confirmation.status_code == 200
+    assert f"Referentie: {intake.id[:8]}" in confirmation.get_data(as_text=True)
+    assert "Ontvangen" in confirmation.get_data(as_text=True)
     duplicate_response = auth_client.post(
         "/portal/new-request",
         data={
@@ -198,6 +205,8 @@ def test_one_off_customer_gets_client_portal_access_and_completes_profile(
         request_id=intake.id,
         author_user_id=customer.id,
     ).one().message == "Extra synthetische informatie."
+    db.session.refresh(intake)
+    assert intake.status == "additional_info"
     attachment = Document.query.filter_by(portal_request_id=intake.id).one()
     assert attachment.original_filename == "context.pdf"
     download_response = auth_client.get(
@@ -405,6 +414,40 @@ def test_internal_review_converts_request_and_links_intake_documents(
     assert mark_read.status_code == 302
     db.session.refresh(notification)
     assert notification.is_read is True
+
+
+def test_internal_reviewer_can_accept_request_and_customer_sees_status(
+    auth_client, db_session
+):
+    reviewer = User.query.filter_by(username="admin").one()
+    portal_client = Client(
+        tenant_id=reviewer.tenant_id,
+        name="Synthetic Accepted Client",
+    )
+    db_session.add(portal_client)
+    db_session.flush()
+    intake = PortalRequest(
+        tenant_id=reviewer.tenant_id,
+        submitted_by_id=reviewer.id,
+        client_id=portal_client.id,
+        request_type="other",
+        question="Synthetische geaccepteerde aanvraag",
+        status="submitted",
+    )
+    db_session.add(intake)
+    db_session.commit()
+
+    response = auth_client.post(
+        "/cms/portal/requests",
+        data={"request_id": intake.id, "action": "accept"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    db_session.refresh(intake)
+    assert intake.status == "accepted"
+    assert Notification.query.filter_by(
+        title="Uw aanvraag is geaccepteerd"
+    ).count() == 1
 
 
 def test_intake_admin_can_assign_and_route_request_without_general_case_role(

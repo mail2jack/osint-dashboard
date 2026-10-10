@@ -198,7 +198,7 @@ def register_system_routes(app: Flask) -> None:
             notifications=notifications,
             portal_clients=portal_clients,
             tenant_name=current_user.tenant.name if current_user.tenant else "",
-            submitted=request.args.get("submitted") == "1",
+            submitted=request.args.get("submitted"),
             request_message=request.args.get("request_message") == "1",
             public_document_counts=public_document_counts,
         )
@@ -608,7 +608,7 @@ def register_system_routes(app: Flask) -> None:
                 f"Er is een nieuwe aanvraag ingediend door {current_user.email}.",
                 url_for("cms.portal_requests", _external=True),
             )
-            return redirect(url_for("portal_dashboard", submitted="1"))
+            return redirect(url_for("portal_dashboard", submitted=portal_request.id))
 
         allowed_client_ids = portal_client_ids(current_user)
         portal_clients = Client.query.filter(Client.id.in_(allowed_client_ids)).order_by(Client.name).all() if allowed_client_ids is not None else []
@@ -741,6 +741,9 @@ def register_system_routes(app: Flask) -> None:
                     user_id=current_user.id,
                     description="Customer added information to a portal request",
                 )
+            # Make the workflow state visible to the requester: new customer
+            # information is now waiting for internal review.
+            intake.status = "additional_info"
             db.session.commit()
             notify_tenant_admins(
                 intake,

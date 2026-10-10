@@ -7,6 +7,23 @@ from ..models import db
 class PortalRequest(db.Model):
     """Tenant-scoped intake request submitted through the customer portal."""
 
+    STATUS_LABELS = {
+        "submitted": "Ontvangen",
+        "in_review": "In beoordeling",
+        "additional_info": "Aanvullende informatie",
+        "accepted": "Geaccepteerd",
+        "converted": "Omgezet naar zaak",
+        "declined": "Afgewezen",
+    }
+    STATUS_DESCRIPTIONS = {
+        "submitted": "Uw aanvraag is ontvangen en wacht op beoordeling.",
+        "in_review": "Een onderzoeker beoordeelt uw aanvraag.",
+        "additional_info": "Iveras heeft aanvullende informatie nodig.",
+        "accepted": "Uw aanvraag is geaccepteerd en wordt klaargemaakt voor uitvoering.",
+        "converted": "Uw aanvraag is omgezet naar een zaak.",
+        "declined": "Uw aanvraag is afgewezen.",
+    }
+
     __tablename__ = "portal_requests"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -42,3 +59,11 @@ class PortalRequest(db.Model):
         foreign_keys=[duplicate_of_id],
         backref=db.backref("possible_duplicates", lazy="dynamic"),
     )
+
+    @property
+    def status_label(self) -> str:
+        return self.STATUS_LABELS.get(self.status, self.status.replace("_", " ").title())
+
+    @property
+    def status_description(self) -> str:
+        return self.STATUS_DESCRIPTIONS.get(self.status, "Uw aanvraag wordt verwerkt.")

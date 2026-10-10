@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Portal-aanvragen tonen na indienen een referentie en duidelijke statustoelichting;
+  interne behandelaars kunnen aanvragen expliciet accepteren en aanvullende klantinformatie
+  zet de aanvraag zichtbaar terug naar de beoordelingsstap.
 - Approved one-off customer registrations now create a client-scoped portal
   request that preserves the original question and remains visible until an
   investigator converts it into a case (PR #238).

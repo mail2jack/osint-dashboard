@@ -77,8 +77,8 @@ beide.
 - ✅ Goedgekeurde eenmalige aanvragen worden als clientgebonden portalopdracht vastgelegd en blijven zichtbaar totdat ze naar een zaak zijn omgezet.
 - ⏸️ Betaalprovider kiezen en echte betaalafhandeling koppelen — bewust opengehouden voor later; factuurweergave werkt al.
 - ✅ Alleen goedgekeurde organisatie-aanvragen krijgen daarnaast een volledige onderzoekstenant.
-- 🟡 UX voor bevestiging na indienen verbeteren.
-- 🟡 Statussen definitief maken: ingediend, in beoordeling, aanvullende informatie, geaccepteerd, afgewezen, omgezet.
+- ✅ Bevestiging na indienen toont een aanvraagreferentie en de eerstvolgende status.
+- ✅ Statussen definitief gemaakt en consistent zichtbaar: ontvangen, in beoordeling, aanvullende informatie, geaccepteerd, afgewezen en omgezet naar zaak.
 - ✅ E-mailmelding bij nieuwe aanvraag naar platformbeheerders en bevestiging naar de aanvrager.
 - ✅ E-mailmelding bij statuswijziging naar de aanvrager.
 - ✅ Flow “Andere vraag” handmatig getest via website en klantregistraties; voor nu akkoord bevonden.
