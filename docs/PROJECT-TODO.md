@@ -183,12 +183,13 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 - ✅ Back-upscript en geplande back-ups aanwezig.
 - ✅ Back-updecryptie en tijdelijke databasehersteltest uitgevoerd.
 - ✅ Nieuwe productieomgeving nog één keer gecontroleerd vóór ingebruikname; health en containers zijn gezond.
+- ✅ Productie bijgewerkt via de gevalideerde master-merge; publieke health-check en kritieke smoke tests zijn geslaagd.
 - 🟡 Alleen default company met één gebruiker overnemen; geen zaken, subjects, dossiers of rapporten.
 - 🟡 API-configuratie gecontroleerd; OpenRouter bewust later invullen indien nodig.
 - ✅ Licentie-uitgifte en telemetry tussen productie en license server gecontroleerd; productie heeft een actieve licentiestatus en recente check-in.
 - 🔵 Restoreprocedure documenteren inclusief sleutelbeheer.
 - 🔵 Monitoring en e-mailmeldingen voor mislukte back-ups testen.
-- 🔵 Productie-releaseproces vastleggen: lokaal → GitHub → gecontroleerde productie-update.
+- ✅ Productie-releaseproces vastgelegd: lokaal → GitHub → groene verplichte controles → gecontroleerde productie-update.
 - 🔵 Geen directe wijzigingen op productie zonder expliciet akkoord.
 
 ---

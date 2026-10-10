@@ -1,11 +1,11 @@
 # Productie-overgang en terugvalplan voor Joost
 
-**Status:** concept voor besluitvorming  
+**Status:** overgang uitgevoerd; terugval- en nazorgdocument
 **Opgesteld:** 29 september 2026  
 **Productie:** `joost.iveras.com`  
-**Nieuwe productie kandidaat:** `staging.joost.iveras.com`
+**Release:** `3.8.0` in voorbereiding via de release-PR
 
-## Vastgestelde huidige routing
+## Vastgestelde historische routing
 
 Read-only gecontroleerd op 3 oktober 2026:
 
@@ -14,14 +14,14 @@ Read-only gecontroleerd op 3 oktober 2026:
 - `staging.joost.iveras.com` → `136.144.211.112` (huidige staging; latere
   productie).
 
-Deze adressen zijn een controlepunt voor de overgang en mogen niet als
-permanente configuratie worden verondersteld zonder een nieuwe DNS-controle.
+Deze adressen zijn historische controlepunten uit de overgang en mogen niet
+als permanente configuratie worden verondersteld zonder een nieuwe DNS-controle.
 
-## Doelarchitectuur
+## Doelarchitectuur en actuele status
 
-De huidige stagingserver wordt na goedkeuring de nieuwe productieserver. De
-huidige productieserver blijft voorlopig bestaan en krijgt daarna een andere
-rol:
+De overgang naar de nieuwe productieomgeving is uitgevoerd. De voormalige
+productieomgeving blijft voorlopig beschikbaar voor terugval en
+infrastructuurtaken:
 
 - licentieserver;
 - stagingomgeving voor gecontroleerde tests;
@@ -170,6 +170,8 @@ Voor de daadwerkelijke overgang moet de eigenaar nog expliciet bevestigen:
 
 ## Huidige conclusie
 
-Staging is technisch geschikt als kandidaat voor productie, maar de overgang
-is nog niet uitgevoerd. De huidige productieomgeving blijft voorlopig de
-veilige terugval en wordt pas daarna heringericht.
+De overgang naar de nieuwe productieomgeving is uitgevoerd en gecontroleerd.
+De huidige productieomgeving draait de gevalideerde mastercode; de oude
+omgeving blijft als terugval beschikbaar voor zover dat operationeel is
+afgesproken. De releaseversie staat nog op 3.7.1 totdat release 3.8.0 via de
+release-PR wordt gemerged en afzonderlijk wordt uitgerold.
