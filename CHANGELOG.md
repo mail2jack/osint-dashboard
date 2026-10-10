@@ -10,6 +10,9 @@ This release consolidates the validated portal, workflow, AI/findings and
 production-operation improvements delivered since 3.7.1.
 
 ### Added
+- Backup- en DR-notificatiepaden hebben regressietests voor failed-status,
+  UTC-tijd, fout-/waarschuwingsaantallen, localhost-filtering en veilig gedrag
+  wanneer SMTP-alerting niet is ingesteld.
 - Portal- en herstelrunbook toegevoegd met geïsoleerde verificatie, expliciete
   restore-goedkeuring, sleutelbeheer en foutmeldingsgedrag.
 - Geautomatiseerde regressietest toegevoegd die herhaalde publieke aanvragen
