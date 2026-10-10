@@ -62,6 +62,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    bind.execute(sa.text("DROP TRIGGER IF EXISTS trg_cases_case_number_immutable"))
     if bind.dialect.name == "postgresql":
+        bind.execute(
+            sa.text(
+                "DROP TRIGGER IF EXISTS trg_cases_case_number_immutable ON cases"
+            )
+        )
         bind.execute(sa.text("DROP FUNCTION IF EXISTS fn_cases_case_number_immutable()"))
+    else:
+        bind.execute(sa.text("DROP TRIGGER IF EXISTS trg_cases_case_number_immutable"))
