@@ -19,7 +19,7 @@ PyYAML==6.0.3
 Pygments==2.20.0
 SQLAlchemy==2.0.48
 WTForms==3.2.1
-Werkzeug==3.1.8
+Werkzeug==3.1.9
 XMind==1.2.0
 about-time==4.2.1
 adblockparser==0.7
@@ -125,7 +125,7 @@ mdurl==0.1.2
 mock==5.2.0
 more-itertools==11.0.2
 msgspec==0.21.1
-multidict==6.7.1
+multidict==6.9.1
 mypy==2.3.0
 mypy_extensions==1.1.0
 netaddr==0.10.1
