@@ -1,7 +1,7 @@
 # Iveras OSINT Case Management System - Manual
 
-**Version:** 3.6.0  
-**Last Updated:** July 2026
+**Version:** 3.8.0
+**Last Updated:** October 2026
 
 ---
 
@@ -55,6 +55,10 @@ Iveras OSINT Case Management System combines open-source intelligence gathering 
 - **Interpol Check** — Check subject names against INTERPOL Red Notices (wanted) and Yellow Notices (missing)
 - **Politiebureau Lookup** — Find nearest police station for any address
 - **Update Notifications** — In-app banner when a new version is available, with one-click update
+- **Customer Portal** — Tenant-scoped intake, portal access, messages, documents and released reports
+- **AI Research Workflow** — Explicitly started AI research actions, findings extraction and report generation
+- **Finding Review** — Candidate validation, filtering, sorting, deduplication and relation visualisation
+- **Operational Recovery** — Encrypted backups, restore verification, licensing telemetry and controlled releases
 
 ---
 
@@ -1085,4 +1089,4 @@ For issues and feature requests:
 
 ---
 
-*Iveras OSINT Case Management System v3.6.0 — July 2026*
+*Iveras OSINT Case Management System v3.8.0 — October 2026*

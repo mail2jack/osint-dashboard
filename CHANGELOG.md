@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+Planned changes for the next release.
+
+## [3.8.0] — 2026-10-10
+
+This release consolidates the validated portal, workflow, AI/findings and
+production-operation improvements delivered since 3.7.1.
+
 ### Added
 - Audited FeatureFlag write path: tenant overrides now record nullable creator
   and last-updater IDs, emit an immutable AuditLog entry in the same

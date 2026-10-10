@@ -1,7 +1,7 @@
 # Portal release checklist
 
-Deze checklist is het afrondingspunt voor de lokale portalwerkzaamheden. Een
-release naar productie blijft een afzonderlijk, expliciet besluit.
+Deze checklist beschrijft de gevalideerde portalrelease van versie 3.8.0.
+Productie-uitrol blijft per release een afzonderlijk, expliciet besluit.
 
 ## Afgerond en lokaal gecontroleerd
 
@@ -23,17 +23,22 @@ release naar productie blijft een afzonderlijk, expliciet besluit.
   zijn uitgevoerd.
 - De lokale Docker-omgeving start gezond en de health-check geeft HTTP 200.
 
-## Voor productie-openstelling nog expliciet uitvoeren
+## Productiecontrole 3.8.0
 
-- Gebruik uitsluitend synthetische testdata bij de laatste portaalcontrole.
+- Synthetische portaldata is gebruikt voor de laatste portaalcontrole; deze data
+  is niet naar GitHub of productie gekopieerd.
 - Lokale Mailpit-bezorging, wachtwoordherstel, eenmalige resetlink en 2FA zijn
-  met een synthetisch testaccount gecontroleerd; echte SMTP-bezorging blijft een
-  aparte productiecontrole.
-- Productie-licentie, telemetry en TLS-bereikbaarheid gecontroleerd; de productie heeft een actieve licentiestatus en recente check-in.
-- Controleer de geplande back-up, melding bij falen en herstel van een recente
-  back-up inclusief sleutelbeheer.
-- Maak een release-commit en pull request; voer productie pas daarna bij met
-  expliciet releasebesluit.
+  gecontroleerd. Echte SMTP-bezorging blijft een aparte productiecontrole.
+- Productie-licentie, telemetry, TLS en de publieke health-check zijn
+  gecontroleerd; de productie heeft een actieve licentiestatus en recente
+  check-in.
+- Een versleutelde back-up is vóór de uitrol gemaakt en decryptie,
+  archiefintegriteit en tijdelijk databaseherstel zijn gecontroleerd.
+- Releaseproces: lokale test → GitHub PR → groene verplichte controles →
+  gecontroleerde productie-update.
+
+De formele release naar `3.8.0` vereist nog een groene PR, merge en een
+afzonderlijk expliciet besluit voor de productie-uitrol van die versie.
 
 ## Bekende lokale testdata
 
