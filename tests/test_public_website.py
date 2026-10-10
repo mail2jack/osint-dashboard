@@ -1,6 +1,7 @@
 """Public website, legal pages and crawl-control contract tests."""
 
 from xml.etree import ElementTree
+from urllib.parse import urlsplit
 
 
 def test_public_homepage_has_seo_metadata(client):
@@ -62,11 +63,21 @@ def test_public_crawl_controls_exclude_private_surfaces(client):
     assert sitemap.status_code == 200
     xml = sitemap.get_data(as_text=True)
     locations = {
-        element.text
+        urlsplit(element.text)
         for element in ElementTree.fromstring(xml).iter()
         if element.tag.endswith("}loc")
     }
-    assert "https://iveras.com/" in locations
-    assert "https://iveras.com/contact" in locations
-    assert all("/cms/" not in location for location in locations)
-    assert all("/portal/" not in location for location in locations)
+    assert any(
+        location.scheme == "https"
+        and location.netloc == "iveras.com"
+        and location.path == "/"
+        for location in locations
+    )
+    assert any(
+        location.scheme == "https"
+        and location.netloc == "iveras.com"
+        and location.path == "/contact"
+        for location in locations
+    )
+    assert all(location.path != "/cms/" for location in locations)
+    assert all(location.path != "/portal/" for location in locations)
