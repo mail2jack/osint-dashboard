@@ -6,7 +6,8 @@
   <meta name="robots" content="index,follow">
   <title>{% if page == 'privacy' %}Privacyverklaring{% elif page == 'terms' %}Algemene voorwaarden{% else %}Cookiebeleid{% endif %} — Iveras</title>
   <meta name="description" content="{% if page == 'privacy' %}Lees hoe Iveras persoonsgegevens verwerkt en beveiligt.{% elif page == 'terms' %}De algemene voorwaarden voor de diensten van Iveras.{% else %}Informatie over cookies en vergelijkbare technieken op Iveras.{% endif %}">
-  <link rel="canonical" href="{{ request.url }}">
+  {% set canonical_path = '/privacy' if page == 'privacy' else ('/voorwaarden' if page == 'terms' else '/cookies') %}
+  <link rel="canonical" href="{{ public_site_url.rstrip('/') }}{{ canonical_path }}">
   <style>
     :root{--ink:#17213f;--muted:#5e6880;--blue:#2856c7;--line:#dfe5f1;--soft:#eef3ff}
     *{box-sizing:border-box}body{margin:0;background:#fbfcff;color:var(--ink);font:16px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}

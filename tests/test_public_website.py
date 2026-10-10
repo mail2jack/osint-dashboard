@@ -33,6 +33,12 @@ def test_public_legal_pages_are_available(client):
         assert marker in response.get_data(as_text=True)
 
 
+def test_public_legal_pages_use_https_canonical_urls(client):
+    for path in ("/privacy", "/voorwaarden", "/cookies"):
+        body = client.get(path).get_data(as_text=True)
+        assert f'href="https://iveras.com{path}"' in body
+
+
 def test_public_contact_page_explains_customer_routes(client):
     response = client.get("/contact")
     assert response.status_code == 200
