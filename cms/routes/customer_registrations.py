@@ -91,6 +91,37 @@ def customer_registrations() -> str:
         now = datetime.now(timezone.utc)
         if not is_platform_admin and registration.tenant_id != current_user.tenant_id:
             abort(403)
+        if action == "spam":
+            if registration.archived_at is not None or registration.status == "spam":
+                flash("Deze registratie is al als spam gearchiveerd.", "info")
+            else:
+                previous_status = registration.status
+                registration.status = "spam"
+                registration.archived_at = now
+                registration.reviewed_by_id = current_user.id
+                registration.reviewed_at = now
+                AuditLog.log(
+                    tenant_id=registration.tenant_id or current_user.tenant_id,
+                    user_id=current_user.id,
+                    action="customer_registration.spam",
+                    entity_type="customer_registration",
+                    entity_id=registration.id,
+                    description="Customer registration marked as spam and archived; no customer notification sent",
+                    old_values={
+                        "status": previous_status,
+                        "archived_at": None,
+                    },
+                    new_values={
+                        "status": "spam",
+                        "archived_at": now.isoformat(),
+                    },
+                )
+                db.session.commit()
+                flash("Registratie als spam gemarkeerd en gearchiveerd. Er is geen bericht verzonden.", "success")
+            return redirect(url_for("cms.customer_registrations"))
+        if registration.archived_at is not None or registration.status == "spam":
+            flash("Deze registratie is gearchiveerd en kan niet verder worden verwerkt.", "warning")
+            return redirect(url_for("cms.customer_registrations"))
         if action == "respond":
             response_text = (request.form.get("staff_response") or "").strip()
             if registration.registration_type != "other":
@@ -358,10 +389,15 @@ def customer_registrations() -> str:
                 flash(f"Klantomgeving en onderzoekstenant aangemaakt. {mail_status}", "success")
         return redirect(url_for("cms.customer_registrations"))
 
+    show_archived = request.args.get("show_archived") == "1"
     registration_query = CustomerRegistrationRequest.query
     if not is_platform_admin:
         registration_query = registration_query.filter(
             CustomerRegistrationRequest.tenant_id == current_user.tenant_id
+        )
+    if not show_archived:
+        registration_query = registration_query.filter(
+            CustomerRegistrationRequest.archived_at.is_(None)
         )
     registrations = registration_query.order_by(
         CustomerRegistrationRequest.created_at.desc()
@@ -374,4 +410,5 @@ def customer_registrations() -> str:
         registrations=registrations,
         tenants=tenants,
         is_platform_admin=is_platform_admin,
+        show_archived=show_archived,
     )

@@ -25,6 +25,10 @@ class CustomerRegistrationRequest(db.Model):
     internal_note = db.Column(db.Text)
     follow_up_at = db.Column(db.DateTime)
     handled_at = db.Column(db.DateTime)
+    # Spam registrations are retained for auditability but hidden from the
+    # active intake queue.  The status records the classification; the
+    # timestamp makes the soft-delete/archive explicit and queryable.
+    archived_at = db.Column(db.DateTime, index=True)
     status = db.Column(db.String(30), nullable=False, default="submitted", index=True)
     reviewed_by_id = db.Column(db.String(36), db.ForeignKey("users.id"))
     reviewed_at = db.Column(db.DateTime)
