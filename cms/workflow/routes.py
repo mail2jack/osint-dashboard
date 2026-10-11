@@ -952,9 +952,14 @@ def findings_dashboard():
         bucket = "Hoog (60–100)" if score >= 60 else "Middel (45–59)" if score >= 45 else "Laag (0–44)"
         quality_buckets[bucket] += 1
         if finding.created_at:
-            timeline_counts[finding.created_at.strftime("%d-%m")] += 1
+            # Keep the timeline chronologically sortable; Counter.most_common()
+            # would otherwise order dates by volume rather than time.
+            timeline_counts[finding.created_at.date()] += 1
 
-    timeline = list(reversed(timeline_counts.most_common()))
+    timeline = [
+        (day.strftime("%d-%m"), count)
+        for day, count in sorted(timeline_counts.items())[-14:]
+    ]
     record_usage_event(
         tenant_id=current_user.tenant_id,
         metric_name="findings_dashboard_views",
