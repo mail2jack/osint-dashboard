@@ -30,6 +30,48 @@ def _login_as(client, user_id):
         session["_fresh"] = True
 
 
+def test_admin_can_mark_registration_as_spam_without_notification_and_audit(
+    auth_client, db_session
+):
+    admin = User.query.filter_by(username="admin").one()
+    registration = CustomerRegistrationRequest(
+        tenant_id=admin.tenant_id,
+        organization_name="Synthetic spam registration",
+        contact_name="Synthetic spammer",
+        email="synthetic-spam@example.test",
+        registration_type="other",
+        message="Unwanted synthetic intake.",
+    )
+    db_session.add(registration)
+    db_session.commit()
+
+    response = auth_client.post(
+        "/cms/portal/registrations",
+        data={"registration_id": registration.id, "action": "spam"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    db_session.refresh(registration)
+    assert registration.status == "spam"
+    assert registration.archived_at is not None
+    assert Invitation.query.filter_by(email=registration.email).count() == 0
+
+    audit = AuditLog.query.filter_by(
+        entity_type="customer_registration",
+        entity_id=registration.id,
+        action="customer_registration.spam",
+    ).one()
+    assert audit.new_values["status"] == "spam"
+    assert audit.new_values["archived_at"]
+    assert "no customer notification sent" in audit.description
+
+    active_page = auth_client.get("/cms/portal/registrations")
+    assert registration.email.encode() not in active_page.data
+    archived_page = auth_client.get("/cms/portal/registrations?show_archived=1")
+    assert registration.email.encode() in archived_page.data
+    assert b"SPAM" in archived_page.data
+
+
 def test_one_off_customer_gets_client_portal_access_and_completes_profile(
     auth_client, db_session
 ):

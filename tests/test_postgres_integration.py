@@ -64,7 +64,8 @@ class TestPostgreSQLIntegration:
         # f3a4b5c6d9e0 preserves full capture source URLs as evidence.
         # fk0e1f2a3b46 restores the case-number immutability trigger after
         # SQLite batch migrations rebuild the cases table.
-        assert revision == "fk0e1f2a3b46"
+        # fl0e1f2a3b46 adds soft-delete timestamps for spam registrations.
+        assert revision == "fl0e1f2a3b46"
 
         protected = db.session.execute(
             text(
@@ -1228,7 +1229,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "fk0e1f2a3b46"
+        assert revision == "fl0e1f2a3b46"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
