@@ -338,6 +338,8 @@ class TestPVReport:
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
         assert "<h1>Zaakverslag</h1>" in html
+        assert f'/cms/workflow/case/{case.id}/pv/edit' in html
+        assert "Bewerken / vrijgeven" in html
 
     def test_en_pv_title(self, auth_client):
         _set_lang(auth_client, "en")
