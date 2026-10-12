@@ -95,3 +95,27 @@ def test_dashboard_hides_unassigned_case_from_investigator(app):
     assert response.status_code == 200
     assert allowed.title in body
     assert denied.title not in body
+
+
+def test_legacy_dashboard_case_number_uses_workflow_detail_route(auth_client):
+    """The legacy CMS dashboard must open the current workflow case screen."""
+    admin = _admin()
+    token = uuid.uuid4().hex[:8]
+    now = datetime.now(UTC)
+    client = Client(
+        tenant_id=admin.tenant_id,
+        name=f"Dashboard route client {token}",
+        is_active=True,
+        created_by=admin.id,
+    )
+    db.session.add(client)
+    db.session.flush()
+    case = _make_case(admin, client, token, 1, now)
+    db.session.commit()
+
+    response = auth_client.get("/cms/dashboard")
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert f'href="/cms/workflow/case/{case.id}"' in body
+    assert f'href="/cms/cases/{case.id}"' not in body
