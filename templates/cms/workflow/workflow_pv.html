@@ -33,6 +33,7 @@ hr{border:none;border-top:1px solid #222;margin:18pt 0}
 <body>
 
 <div class="pv-actions print-hide">
+  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms gray" style="margin-right:8px;">← Terug naar zaak</a>
   <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" class="btn-cms gray" style="margin-right:8px;">✏️ Bewerken / vrijgeven</a>
   <form method="POST" action="{{ url_for('workflow.pv_regenerate', case_id=case.id) }}" style="display:inline;margin-right:8px;" data-submit-confirm="This will overwrite the current report text with an auto-generated overview of all findings. Are you sure?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
