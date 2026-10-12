@@ -176,6 +176,32 @@ class TestCaseDetail:
         assert "Brave Search quota exceeded" not in html
         assert "OSINT Deep Search uses DuckDuckGo as fallback" not in html
 
+    def test_investigation_cards_open_workspace_when_clicked(self, auth_client):
+        case = _case_with_subject(auth_client, title="Clickable Investigation Case")
+        from cms.models import Investigation
+
+        db.session.add(
+            FeatureFlag(
+                tenant_id=case.tenant_id,
+                flag_name="investigation_workspace",
+                enabled=True,
+            )
+        )
+        investigation = Investigation(
+            case_id=case.id,
+            sequence_no=1,
+            title="Clickable investigation",
+        )
+        db.session.add(investigation)
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}/investigations")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert f'data-investigation-url="/cms/workflow/case/{case.id}/investigations/{investigation.id}"' in html
+        assert "card.addEventListener('click'" in html
+        assert "card.addEventListener('keydown'" in html
+
     def test_nl_detail_breadcrumb_steps_child_label(self, auth_client):
         _set_lang(auth_client, "nl")
         case = _case_with_subject(auth_client, title="Detail NL")

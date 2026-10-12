@@ -10,7 +10,7 @@
 <div class="workflow-step-body">
   {% if investigations %}
     {% for inv in investigations %}
-    <div class="finding-item" data-investigation-id="{{ inv.id }}" style="padding:0.7rem 0.9rem;border-bottom:1px solid var(--border-color);">
+    <div class="finding-item investigation-card" data-investigation-id="{{ inv.id }}"{% if investigation_workspace_enabled %} data-investigation-url="{{ url_for('workflow.investigation_detail', case_id=case.id, investigation_id=inv.id) }}" tabindex="0" role="link"{% endif %} style="padding:0.7rem 0.9rem;border-bottom:1px solid var(--border-color);{% if investigation_workspace_enabled %}cursor:pointer;{% endif %}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
         <div>
           {% if investigation_workspace_enabled %}
@@ -93,6 +93,19 @@
 
 <script nonce="{{ csp_nonce }}">
 (function () {
+  document.querySelectorAll('[data-investigation-url]').forEach(function (card) {
+    var open = function () { window.location.href = card.dataset.investigationUrl; };
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('a, button, form, input, textarea, select')) return;
+      open();
+    });
+    card.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a, button, form, input, textarea, select')) {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
   document.addEventListener('click', function (e) {
     var toggle = e.target.closest('[data-toggle-add-investigation]');
     if (!toggle) return;
