@@ -322,6 +322,29 @@ def save_settings_api() -> flask.Response:
                 setting.value = new_value
                 setting.updated_at = datetime.now(timezone.utc)
 
+                # The general organization-name setting is the user-facing
+                # tenant label. Keep the tenant record in sync so the name in
+                # the CMS footer, portal, invitations and tenant selectors
+                # changes immediately as well.
+                if setting.key == "organization_name" and current_user.tenant:
+                    organization_name = (new_value or "").strip()
+                    if organization_name:
+                        tenant = current_user.tenant
+                        old_tenant_name = tenant.name
+                        if old_tenant_name != organization_name:
+                            tenant.name = organization_name
+                            AuditLog.log(
+                                user_id=current_user.id,
+                                action="tenant_name_updated",
+                                entity_type="tenant",
+                                entity_id=tenant.id,
+                                old_values={"name": old_tenant_name},
+                                new_values={"name": organization_name},
+                                ip_address=request.remote_addr,
+                                description="Updated organization name from general settings",
+                                tenant_id=tenant.id,
+                            )
+
                 AuditLog.log(
                     user_id=current_user.id,
                     action="setting_updated",

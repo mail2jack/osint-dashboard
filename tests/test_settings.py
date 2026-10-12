@@ -77,6 +77,34 @@ def test_init_default_settings_reactivates_deactivated_row(app):
         assert "picarta_api_key" in visible
 
 
+def test_organization_name_setting_updates_tenant_label(auth_client, app):
+    with app.app_context():
+        init_default_settings()
+        admin = User.query.filter_by(username="admin").first()
+        setting = Setting.query.filter_by(key="organization_name").first()
+        assert setting is not None
+        tenant_id = admin.tenant_id
+        setting_id = setting.id
+
+    response = auth_client.post(
+        "/cms/api/settings",
+        json={"settings": [{"id": setting_id, "value": "Iveras"}]},
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        assert db.session.get(Tenant, tenant_id).name == "Iveras"
+        audit = (
+            AuditLog.query.filter_by(
+                action="tenant_name_updated", entity_id=tenant_id
+            )
+            .order_by(AuditLog.timestamp.desc())
+            .first()
+        )
+        assert audit is not None
+        assert audit.new_values == {"name": "Iveras"}
+
+
 def test_tenant_settings_are_scoped_to_current_tenant(auth_client, app):
     with app.app_context():
         from cms.models import User
