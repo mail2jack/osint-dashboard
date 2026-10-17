@@ -107,13 +107,14 @@
         <div class="demo-section">
           <h3>Adressen</h3>
           <div id="addresses-demo-list">
-            <div class="repeat-row address-row">
-              <div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div>
-              <div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div>
+            <div class="repeat-row address-row address-entry">
+              <div><label>Postcode</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div><div><label>Huisnummer</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div>
+              <div><label>Straat</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div>
               <button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button>
             </div>
           </div>
           <button type="button" class="btn-cms small" id="add-address">+ Adres toevoegen</button>
+          <p class="muted" style="margin:.45rem 0 0;">Bij een Nederlandse postcode en huisnummer wordt de BAG/Kadastercontrole automatisch uitgevoerd. Straat en plaats worden daarna ingevuld.</p>
         </div>
         <div class="demo-section">
           <h3>Officiële identificatie</h3>
@@ -213,7 +214,7 @@
     });
   };
   q('#add-address').onclick = () => {
-    q('#addresses-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row address-row"><div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div><div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
+    q('#addresses-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row address-row address-entry"><div><label>Postcode</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div><div><label>Huisnummer</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div><div><label>Straat</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
     bindRepeatRows();
   };
   q('#add-contact').onclick = () => {
