@@ -290,8 +290,12 @@
         const platform = row.querySelector('.contact-platform-field');
         const platformInput = platform.querySelector('input');
         const value = row.querySelector('.contact-value');
+        const isEmail = select.value === 'E-mail';
         platform.style.display = select.value === 'Social media' ? 'block' : 'none';
         platformInput.required = select.value === 'Social media';
+        value.type = isEmail ? 'email' : 'text';
+        value.pattern = isEmail ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+        value.title = isEmail ? 'Gebruik de vorm naam@domein.extensie' : '';
         value.placeholder = select.value === 'Telefoon' ? '+31 6 12345678' : select.value === 'Social media' ? '@gebruikersnaam' : 'persoon@example.com';
       };
       select.onchange();

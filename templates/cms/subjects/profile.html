@@ -1380,6 +1380,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var isSocial = el.value === 'social';
     if (row) { row.style.display = ''; }
     if (platform) { platform.required = isSocial; }
+    var value = form.querySelector('[name="value"]');
+    if (value) {
+      value.type = el.value === 'email' ? 'email' : 'text';
+      value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+      value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
+    }
   }
   window.toggleContactPlatform = toggleContactPlatform;
 

@@ -730,7 +730,15 @@ function toggleContactPlatform(el) {
     const entry = el.closest('.contact-entry');
     const row = entry.querySelector('.contact-platform-row');
     if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
+    const value = entry.querySelector('.contact-value');
+    if (value) {
+        value.type = el.value === 'email' ? 'email' : 'text';
+        value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+        value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
+    }
 }
+
+document.querySelectorAll('.contact-type').forEach(toggleContactPlatform);
 
 function addContact() {
     const container = document.getElementById('contacts-container');
