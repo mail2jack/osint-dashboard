@@ -79,6 +79,13 @@
 (() => {
   const q = s => document.querySelector(s);
   const title = value => value.trim().toLocaleLowerCase('nl-NL').replace(/(^|[\s\-'’])([\p{L}])/gu, (_, sep, letter) => `${sep}${letter.toLocaleUpperCase('nl-NL')}`);
+  const updateRemoveButtons = () => {
+    ['#contacts', '#addresses'].forEach(selector => {
+      const container = q(selector);
+      const rows = container.querySelectorAll('.repeat-row');
+      container.querySelectorAll('.remove').forEach(button => { button.style.display = rows.length > 1 ? '' : 'none'; });
+    });
+  };
   const update = () => {
     const given = q('#given-names').value.trim(), surname = q('#surname').value.trim(), particles = q('#particles').value.trim();
     q('#initials').value = given.split(/\s+/).filter(Boolean).map(word => `${word[0].toUpperCase()}.`).join('');
@@ -86,12 +93,13 @@
     q('#summary-portal').textContent = q('#portal-access').checked ? 'Aan' : 'Uit';
     q('#summary-contacts').textContent = document.querySelectorAll('#contacts .contact-row').length;
     q('#summary-addresses').textContent = document.querySelectorAll('#addresses .address-row').length;
+    updateRemoveButtons();
   };
   document.querySelectorAll('#client-name,#surname,#given-names,#particles,#portal-access').forEach(el => { el.addEventListener('input', update); el.addEventListener('change', update); });
   document.querySelectorAll('input[name="client-type"]').forEach(el => el.addEventListener('change', e => { q('#summary-type').textContent = e.target.value === 'company' ? 'Organisatie' : 'Particulier'; q('#person-fields').style.display = e.target.value === 'company' ? 'none' : 'block'; update(); }));
   q('#add-contact').addEventListener('click', () => { const row = q('.contact-row').cloneNode(true); row.querySelectorAll('input').forEach(input => { if (input.type !== 'radio') input.value = ''; else input.checked = false; }); row.querySelector('select').selectedIndex = 0; row.querySelector('.remove').addEventListener('click', () => { row.remove(); update(); }); q('#contacts').append(row); update(); });
   q('#add-address').addEventListener('click', () => { const row = q('.address-row').cloneNode(true); row.querySelectorAll('input').forEach(input => { if (input.type !== 'radio') input.value = ''; else input.checked = false; }); row.querySelector('select').selectedIndex = 0; row.querySelector('.remove').addEventListener('click', () => { row.remove(); update(); }); q('#addresses').append(row); update(); });
-  document.querySelectorAll('.remove').forEach(button => button.addEventListener('click', () => { const row = button.closest('.repeat-row'); if (document.querySelectorAll('.repeat-row').length > 2) row.remove(); update(); }));
+  document.querySelectorAll('.remove').forEach(button => button.addEventListener('click', () => { const row = button.closest('.repeat-row'); const container = row.parentElement; if (container.querySelectorAll('.repeat-row').length > 1) row.remove(); update(); }));
   document.querySelectorAll('#surname,#given-names,#particles').forEach(el => el.addEventListener('blur', () => { el.value = title(el.value); update(); }));
   q('#demo-save').addEventListener('click', () => { q('#demo-feedback').style.display = 'block'; q('#demo-feedback').innerHTML = '<strong>Demo:</strong> hier zou de klantcontrole en opslag starten. Er is niets opgeslagen.'; });
   update();

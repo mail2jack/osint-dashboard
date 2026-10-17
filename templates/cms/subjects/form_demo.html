@@ -328,6 +328,8 @@
       rows.forEach(row => {
         const primary = row.querySelector('.primary-choice');
         if (primary) primary.style.display = rows.length > 1 ? 'flex' : 'none';
+        const remove = row.querySelector('.remove-repeat');
+        if (remove) remove.style.display = rows.length > 1 ? '' : 'none';
       });
     });
   };
