@@ -149,7 +149,10 @@
           <input id="photo-input" type="file" accept="image/*" multiple>
           <div class="muted" style="margin-top:.4rem;">Meerdere bestanden selecteren is toegestaan.</div>
         </div>
-        <div id="photo-grid" class="photo-grid"></div>
+        <div id="photo-grid" class="photo-grid">
+          <div class="photo-item"><img src="{{ url_for('static', filename='demo/demo-subject-1.svg') }}" alt="Neutrale voorbeeldfoto één"><button type="button" title="Verwijderen">×</button></div>
+          <div class="photo-item"><img src="{{ url_for('static', filename='demo/demo-subject-2.svg') }}" alt="Neutrale voorbeeldfoto twee"><button type="button" title="Verwijderen">×</button></div>
+        </div>
       </div>
 
       <div class="demo-card subject-gated">
@@ -168,7 +171,7 @@
       <div class="summary-list">
         <div class="summary-row"><span>Actie</span><strong id="summary-mode">Nieuw subject</strong></div>
         <div class="summary-row"><span>Zaak</span><strong id="summary-case">Geen koppeling</strong></div>
-        <div class="summary-row"><span>Foto’s</span><strong id="summary-photos">0</strong></div>
+        <div class="summary-row"><span>Foto’s</span><strong id="summary-photos">2</strong></div>
       </div>
       <div class="demo-section"><strong>Opslaglogica</strong><p class="muted">Bij opslaan wordt eerst gecontroleerd op mogelijke dubbele subjects. Daarna wordt het subject aangemaakt of aan de zaak gekoppeld. Foto’s blijven onderdeel van dezelfde subjectkaart.</p></div>
     </aside>
@@ -234,6 +237,7 @@
     else setSubjectFieldsDisabled(false);
   }));
   const input = q('#photo-input'), grid = q('#photo-grid');
+  grid.querySelectorAll('button').forEach(remove => remove.addEventListener('click', () => { remove.closest('.photo-item').remove(); q('#summary-photos').textContent = grid.children.length; }));
   input.addEventListener('change', () => {
     grid.innerHTML = '';
     Array.from(input.files).forEach((file, index) => {

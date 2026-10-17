@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">Neutrale voorbeeldfoto twee</title>
+  <desc id="desc">Illustratieve neutrale persoonsafbeelding voor de formulierdemo.</desc>
+  <defs><linearGradient id="bg" x1="1" y1="0" x2="0" y2="1"><stop stop-color="#fce7f3"/><stop offset="1" stop-color="#fbcfe8"/></linearGradient></defs>
+  <rect width="640" height="640" rx="40" fill="url(#bg)"/><circle cx="320" cy="235" r="125" fill="#c98f68"/><path d="M190 227c-15-101 47-177 139-177 94 0 141 70 121 185-31-57-86-86-163-77-37 4-70 27-97 69z" fill="#713f12"/><circle cx="274" cy="242" r="11" fill="#422006"/><circle cx="366" cy="242" r="11" fill="#422006"/><path d="M280 309c25 16 55 16 80 0" fill="none" stroke="#7c2d12" stroke-width="10" stroke-linecap="round"/><path d="M137 608c14-160 87-229 183-229s169 69 183 229" fill="#be185d"/>
+</svg>
