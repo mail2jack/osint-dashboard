@@ -241,12 +241,15 @@
   grid.querySelectorAll('button').forEach(remove => remove.addEventListener('click', () => { remove.closest('.photo-item').remove(); updatePhotoCount(); }));
   input.addEventListener('change', () => {
     grid.innerHTML = '';
-    Array.from(input.files).forEach((file, index) => {
+    Array.from(input.files).forEach(file => {
       const item = document.createElement('div'); item.className = 'photo-item';
-      const img = document.createElement('img'); img.alt = file.name; img.src = URL.createObjectURL(file);
+      const img = document.createElement('img'); img.alt = file.name;
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.title = 'Verwijderen';
       remove.addEventListener('click', () => { item.remove(); updatePhotoCount(); });
       item.append(img, remove); grid.appendChild(item);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => { img.src = reader.result; });
+      reader.readAsDataURL(file);
     });
     updatePhotoCount();
   });
