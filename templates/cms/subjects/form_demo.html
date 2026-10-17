@@ -174,6 +174,14 @@
 (() => {
   const q = (s) => document.querySelector(s);
   const surname = q('#surname'), given = q('#given-names'), initials = q('#initials'), particles = q('#particles'), dob = q('input[type="date"]');
+  const capitalizeWords = (value) => value.trim().toLocaleLowerCase('nl-NL').replace(/(^|[\s\-'’])([\p{L}])/gu, (_, separator, letter) => `${separator}${letter.toLocaleUpperCase('nl-NL')}`);
+  const normalizeTextFields = () => {
+    [surname, given, particles].forEach(field => { if (field.value.trim()) field.value = capitalizeWords(field.value); });
+    document.querySelectorAll('.addr-street, .addr-town, .addr-region, .contact-platform-field input').forEach(field => {
+      if (field.value.trim()) field.value = capitalizeWords(field.value);
+    });
+    updateName();
+  };
   const updateName = () => {
     const words = (given.value.trim().split(/\s+/).filter(Boolean));
     initials.value = words.map(w => w[0].toUpperCase() + '.').join('');
@@ -184,6 +192,7 @@
     q('#keno').textContent = cleanSurname || firstLetter || year ? `${cleanSurname.slice(0, 4)}${firstLetter}${year}` : '—';
   };
   [surname, given, particles, dob].forEach(el => el.addEventListener('input', updateName));
+  [surname, given, particles].forEach(el => el.addEventListener('blur', normalizeTextFields));
   q('#case-link').addEventListener('change', e => { q('#summary-case').textContent = e.target.value || 'Geen koppeling'; });
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => {
     q('#existing-search').style.display = e.target.value === 'existing' ? 'block' : 'none';
@@ -244,12 +253,18 @@
         town.placeholder = isDutch ? 'Automatisch ingevuld' : 'Plaats';
         street.readOnly = isDutch;
         town.readOnly = isDutch;
+        street.onblur = normalizeTextFields;
+        town.onblur = normalizeTextFields;
+        row.querySelector('.addr-region').onblur = normalizeTextFields;
         if (isDutch) {
           street.value = '';
           town.value = '';
           row.querySelector('.addr-region').value = '';
         }
       };
+    });
+    document.querySelectorAll('.addr-street, .addr-town, .addr-region, .contact-platform-field input').forEach(field => {
+      field.onblur = normalizeTextFields;
     });
     ['contact', 'address'].forEach(kind => {
       const rows = document.querySelectorAll(`.${kind}-row`);
