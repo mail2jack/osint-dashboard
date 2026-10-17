@@ -181,7 +181,7 @@
     <option value="out" {% if f_report == 'out' %}selected{% endif %}>{{ _('Excluded from report') }}</option>
   </select>
   <input type="text" name="q" value="{{ f_q }}" placeholder="{{ _('Search title/content...') }}" style="min-width:200px;">
-  <select name="finding_sort" title="{{ _('Sort findings') }}" onchange="this.form.submit()">
+  <select name="finding_sort" title="{{ _('Sort findings') }}" data-change="submitParentForm">
     <option value="newest" {% if finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest first') }}</option>
     <option value="quality" {% if finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
     <option value="relevance" {% if finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance to subject') }}</option>

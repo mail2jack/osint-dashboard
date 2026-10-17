@@ -571,7 +571,7 @@
     <form method="GET" style="display:inline-flex;align-items:center;gap:.25rem;margin-left:.35rem;">
       <input type="hidden" name="findings_page" value="1">
       <label for="investigationFindingSort" style="font-size:.72rem;color:var(--text-muted);">{{ _('Sort') }}</label>
-      <select id="investigationFindingSort" name="finding_sort" onchange="this.form.submit()" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+      <select id="investigationFindingSort" name="finding_sort" data-change="submitParentForm" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
         <option value="newest" {% if investigation_finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest') }}</option>
         <option value="quality" {% if investigation_finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
         <option value="relevance" {% if investigation_finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance') }}</option>

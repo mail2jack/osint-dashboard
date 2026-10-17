@@ -491,6 +491,22 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Global event delegation system
+window.dismissAlert = function(button) {
+  var alert = button.closest('.alert');
+  if (!alert) return;
+  alert.style.transition = 'opacity 0.3s, transform 0.3s';
+  alert.style.opacity = '0';
+  alert.style.transform = 'translateY(-8px)';
+  setTimeout(function() { alert.remove(); }, 300);
+};
+window.toggleKeyboardHints = function() {
+  var hints = document.getElementById('keyboardHints');
+  if (hints) hints.style.display = hints.style.display === 'none' ? 'inline' : 'none';
+};
+window.goBack = function() { window.history.back(); };
+window.submitParentForm = function(select) {
+  if (select.form) select.form.submit();
+};
 document.addEventListener('click', function(e) {
   var el = e.target.closest('[data-click]');
   if (!el) return;
@@ -515,6 +531,12 @@ document.addEventListener('change', function(e) {
   if (typeof fn === 'function') fn(el);
 });
 document.addEventListener('submit', function(e) {
+  var confirmMessage = e.target.getAttribute('data-confirm');
+  if (!confirmMessage && e.submitter) confirmMessage = e.submitter.getAttribute('data-confirm');
+  if (confirmMessage && !window.confirm(confirmMessage)) {
+    e.preventDefault();
+    return;
+  }
   var el = e.target.closest('[data-submit]');
   if (!el) return;
   e.preventDefault();

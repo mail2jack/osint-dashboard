@@ -330,7 +330,7 @@
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }}" style="position:relative;padding-right:2rem;">
                         {{ message }}
-                        <button onclick="this.parentElement.style.transition='opacity 0.3s,transform 0.3s';this.parentElement.style.opacity='0';this.parentElement.style.transform='translateY(-8px)';setTimeout(function(){this.parentElement.remove()}.bind(this),300);" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:inherit;opacity:0.7;line-height:1;" title="{{ _('Dismiss') }}">&times;</button>
+                        <button data-click="dismissAlert" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:inherit;opacity:0.7;line-height:1;" title="{{ _('Dismiss') }}">&times;</button>
                     </div>
                 {% endfor %}
                 <script nonce="{{ csp_nonce }}">
@@ -366,7 +366,7 @@
             <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
         </span>
         <span class="kh-right">
-            <button onclick="var h=document.getElementById('keyboardHints');h.style.display=h.style.display==='none'?'inline':'none';" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1rem;padding:0.1rem 0.4rem;vertical-align:middle;" title="{{ _('Keyboard shortcuts') }}">⌨</button>
+            <button data-click="toggleKeyboardHints" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1rem;padding:0.1rem 0.4rem;vertical-align:middle;" title="{{ _('Keyboard shortcuts') }}">⌨</button>
             v<span id="footerVersion">-</span>
             <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
             <span style="opacity:0.4;">|</span>

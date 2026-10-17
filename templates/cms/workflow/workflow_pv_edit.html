@@ -41,9 +41,9 @@
     <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
       <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Cancel</a>
       <button type="submit" name="action" value="save" class="btn-cms primary">Save draft and view →</button>
-      <button type="submit" name="action" value="release" class="btn-cms" onclick="return confirm('Dit rapport wordt zichtbaar voor de klant. Doorgaan?');">Release to customer portal</button>
+      <button type="submit" name="action" value="release" class="btn-cms" data-confirm="Dit rapport wordt zichtbaar voor de klant. Doorgaan?">Release to customer portal</button>
       {% if case.report_status == 'released' %}
-      <button type="submit" name="action" value="revoke" class="btn-cms" style="background:#b45309;" onclick="return confirm('Dit rapport wordt tijdelijk verborgen voor de klant. Doorgaan?');">Withdraw from customer portal</button>
+      <button type="submit" name="action" value="revoke" class="btn-cms" data-confirm="Dit rapport wordt tijdelijk verborgen voor de klant. Doorgaan?" style="background:#b45309;">Withdraw from customer portal</button>
       {% endif %}
     </div>
   </form>

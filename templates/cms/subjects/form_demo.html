@@ -173,7 +173,7 @@
           <div class="wide"><label>Interne notitie</label><textarea{% if production %} name="notes"{% endif %} placeholder="Alleen zichtbaar voor bevoegde interne gebruikers"></textarea></div>
         </div>
       </div>
-      <div class="demo-actions subject-gated"><button type="button" class="btn-cms gray"{% if production %} onclick="history.back()"{% endif %}>Annuleren</button><button type="{% if production %}submit{% else %}button{% endif %}" class="btn-cms primary" id="demo-save">{{ 'Subject opslaan en koppelen' if production else 'Subject opslaan en koppelen' }}</button></div>
+      <div class="demo-actions subject-gated"><button type="button" class="btn-cms gray"{% if production %} data-click="goBack"{% endif %}>Annuleren</button><button type="{% if production %}submit{% else %}button{% endif %}" class="btn-cms primary" id="demo-save">{{ 'Subject opslaan en koppelen' if production else 'Subject opslaan en koppelen' }}</button></div>
       <div id="demo-feedback" class="demo-note" style="display:none;margin-top:1rem;"></div>
     </main>
 
