@@ -34,6 +34,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+@cms_bp.route("/subjects/demo", methods=["GET"])
+@login_required
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
+def subject_form_demo() -> flask.Response:
+    """Render the proposed unified person/subject form without persisting data."""
+    cases = (
+        apply_tenant_filter(Case.query, Case)
+        .filter(Case.is_deleted.is_(False))
+        .order_by(Case.case_number.desc())
+        .limit(25)
+        .all()
+    )
+    return render_template("cms/subjects/form_demo.html", cases=cases)
+
+
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
 @roles_required(

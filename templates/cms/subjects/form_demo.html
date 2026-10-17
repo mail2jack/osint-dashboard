@@ -1,0 +1,183 @@
+{% extends "cms/base.html" %}
+{% block title %}Persoonsformulier — demo{% endblock %}
+{% block content %}
+<style>
+  .demo-wrap { max-width: 1100px; margin: 0 auto; }
+  .demo-header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem; }
+  .demo-kicker { color:var(--accent-primary); font-size:.75rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .demo-note { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; padding:1rem 1.1rem; border-radius:8px; color:#1e3a8a; margin-bottom:1rem; }
+  .demo-grid { display:grid; grid-template-columns:minmax(0, 1fr) 300px; gap:1rem; align-items:start; }
+  .demo-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:1.25rem; margin-bottom:1rem; }
+  .demo-card h2 { font-size:1rem; margin:0 0 1rem; }
+  .demo-section { border-top:1px solid var(--border-color); padding-top:1rem; margin-top:1rem; }
+  .demo-section:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  .demo-section h3 { font-size:.9rem; margin:0 0 .75rem; }
+  .demo-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+  .demo-fields .wide { grid-column:1 / -1; }
+  .demo-fields label, .demo-card label { display:block; font-size:.75rem; font-weight:600; color:var(--text-muted); margin-bottom:.25rem; }
+  .demo-fields input, .demo-fields select, .demo-fields textarea, .demo-card select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
+  .demo-fields textarea { min-height:76px; resize:vertical; }
+  .choice-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+  .choice { flex:1 1 220px; border:1px solid var(--border-color); border-radius:8px; padding:.8rem; cursor:pointer; background:var(--bg); }
+  .choice:has(input:checked) { border-color:var(--accent-primary); background:var(--info-bg); }
+  .choice input { margin-right:.4rem; }
+  .choice strong { display:block; }
+  .muted { color:var(--text-muted); font-size:.8rem; }
+  .preview-name { margin-top:.5rem; padding:.55rem .7rem; background:var(--bg-secondary); border-radius:6px; font-weight:600; }
+  .photo-drop { border:2px dashed var(--border-color); border-radius:10px; padding:1.2rem; text-align:center; background:var(--bg-secondary); }
+  .photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-top:.75rem; }
+  .photo-item { position:relative; aspect-ratio:1; overflow:hidden; border-radius:8px; background:#e5e7eb; }
+  .photo-item img { width:100%; height:100%; object-fit:cover; }
+  .photo-item button { position:absolute; top:4px; right:4px; border:0; border-radius:50%; width:24px; height:24px; background:rgba(0,0,0,.7); color:#fff; cursor:pointer; }
+  .summary-list { display:grid; gap:.6rem; }
+  .summary-row { display:flex; justify-content:space-between; gap:.75rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem; font-size:.82rem; }
+  .summary-row span:first-child { color:var(--text-muted); }
+  .demo-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; }
+  @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } }
+</style>
+
+<div class="demo-wrap">
+  <div class="demo-header">
+    <div>
+      <div class="demo-kicker">UI-demo · niets wordt opgeslagen</div>
+      <h1 style="margin:.25rem 0 .35rem;">Persoon toevoegen</h1>
+      <p class="muted" style="margin:0;">Eén herkenbaar formulier voor een nieuw subject, een zaak-koppeling en latere bewerking.</p>
+    </div>
+    <a class="btn-cms small" href="{{ url_for('cms.subjects') }}">← Subjecten</a>
+  </div>
+
+  <div class="demo-note">
+    <strong>Demo-weergave</strong><br>
+    Deze pagina is alleen bedoeld om de voorgestelde indeling te beoordelen. De knoppen slaan niets op en wijzigen geen zaak of subject.
+  </div>
+
+  <div class="demo-grid">
+    <main>
+      <div class="demo-card">
+        <h2>1. Context en koppeling</h2>
+        <div class="choice-row">
+          <label class="choice"><input type="radio" name="mode" value="new" checked> <strong>Nieuw subject</strong><span class="muted">Maak een nieuwe persoonskaart aan.</span></label>
+          <label class="choice"><input type="radio" name="mode" value="existing"> <strong>Bestaand subject koppelen</strong><span class="muted">Zoek eerst naar een bestaande persoonskaart.</span></label>
+        </div>
+        <div class="demo-section">
+          <label for="case-link">Koppelen aan zaak (optioneel)</label>
+          <select id="case-link">
+            <option value="">— Geen zaak geselecteerd —</option>
+            {% for case in cases %}<option>{{ case.case_number }} — {{ case.title }}</option>{% endfor %}
+          </select>
+          <p class="muted" style="margin:.4rem 0 0;">Bij openen vanuit een zaak wordt deze koppeling vooraf ingevuld en duidelijk getoond.</p>
+        </div>
+        <div id="existing-search" class="demo-section" style="display:none;">
+          <label for="subject-search">Bestaand subject zoeken</label>
+          <input id="subject-search" type="search" placeholder="Naam, e-mail, telefoon of identificatie">
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h2>2. Persoonsgegevens</h2>
+        <div class="demo-section">
+          <h3>Basisgegevens</h3>
+          <div class="demo-fields">
+            <div><label for="surname">Achternaam *</label><input id="surname" placeholder="Vries"></div>
+            <div><label for="given-names">Voornamen</label><input id="given-names" placeholder="Jan Peter"></div>
+            <div><label for="initials">Voorletters</label><input id="initials" placeholder="J.P." readonly></div>
+            <div><label for="particles">Tussenvoegsels</label><input id="particles" placeholder="van de"></div>
+            <div class="wide"><label>Weergavenaam</label><div class="preview-name" id="display-name">—</div><span class="muted">Wordt automatisch opgebouwd uit de bovenstaande velden.</span></div>
+          </div>
+        </div>
+        <div class="demo-section">
+          <h3>Contactgegevens</h3>
+          <div class="demo-fields">
+            <div><label>E-mail</label><input type="email" placeholder="persoon@example.com"></div>
+            <div><label>Telefoon</label><input type="tel" placeholder="+31 6 12345678"></div>
+            <div class="wide"><label>Social media</label><input placeholder="Platform + gebruikersnaam, bijvoorbeeld LinkedIn · j.jansen"><span class="muted">Meerdere accounts kunnen worden toegevoegd; een platform is verplicht.</span></div>
+          </div>
+        </div>
+        <div class="demo-section">
+          <h3>Adressen</h3>
+          <div class="demo-fields">
+            <div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div>
+            <div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div>
+          </div>
+          <button type="button" class="btn-cms small" style="margin-top:.75rem;">+ Nog een adres</button>
+        </div>
+        <div class="demo-section">
+          <h3>Officiële identificatie</h3>
+          <div class="demo-fields">
+            <div><label>Geslacht</label><select><option>— Selecteer —</option><option>Man</option><option>Vrouw</option><option>Onbekend</option></select></div>
+            <div><label>Nationaliteit</label><input placeholder="Nederlandse"></div>
+            <div><label>Geboortedatum</label><input type="date"></div><div><label>Geboorteplaats</label><input placeholder="Amsterdam"></div>
+            <div><label>BSN</label><input placeholder="Burgerservicenummer"></div><div><label>Identificatienummer</label><input placeholder="Optioneel documentnummer"></div>
+            <div><label>Reisdocumenttype</label><select><option>— Selecteer —</option><option>Paspoort</option><option>ID-kaart</option><option>Rijbewijs</option></select></div><div><label>Reisdocumentnummer</label><input></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h2>3. Foto’s van het subject</h2>
+        <p class="muted">Voeg één of meerdere foto’s toe. Foto’s horen bij de subjectkaart en kunnen later per foto worden voorzien van bron, datum en notitie.</p>
+        <div class="photo-drop">
+          <input id="photo-input" type="file" accept="image/*" multiple>
+          <div class="muted" style="margin-top:.4rem;">Meerdere bestanden selecteren is toegestaan.</div>
+        </div>
+        <div id="photo-grid" class="photo-grid"></div>
+      </div>
+
+      <div class="demo-card">
+        <h2>4. Interne beoordeling</h2>
+        <div class="demo-fields">
+          <div><label>Risicoscore</label><input type="number" min="0" max="100" value="0"></div>
+          <div class="wide"><label>Interne notitie</label><textarea placeholder="Alleen zichtbaar voor bevoegde interne gebruikers"></textarea></div>
+        </div>
+      </div>
+      <div class="demo-actions"><button type="button" class="btn-cms gray">Annuleren</button><button type="button" class="btn-cms primary" id="demo-save">Subject opslaan en koppelen</button></div>
+      <div id="demo-feedback" class="demo-note" style="display:none;margin-top:1rem;"></div>
+    </main>
+
+    <aside class="demo-card" style="position:sticky;top:1rem;">
+      <h2>Samenvatting</h2>
+      <div class="summary-list">
+        <div class="summary-row"><span>Actie</span><strong id="summary-mode">Nieuw subject</strong></div>
+        <div class="summary-row"><span>Zaak</span><strong id="summary-case">Geen koppeling</strong></div>
+        <div class="summary-row"><span>Foto’s</span><strong id="summary-photos">0</strong></div>
+      </div>
+      <div class="demo-section"><strong>Opslaglogica</strong><p class="muted">Bij opslaan wordt eerst gecontroleerd op mogelijke dubbele subjects. Daarna wordt het subject aangemaakt of aan de zaak gekoppeld. Foto’s blijven onderdeel van dezelfde subjectkaart.</p></div>
+    </aside>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(() => {
+  const q = (s) => document.querySelector(s);
+  const surname = q('#surname'), given = q('#given-names'), initials = q('#initials'), particles = q('#particles');
+  const updateName = () => {
+    const words = (given.value.trim().split(/\s+/).filter(Boolean));
+    initials.value = words.map(w => w[0].toUpperCase() + '.').join('');
+    q('#display-name').textContent = [initials.value, given.value.trim(), particles.value.trim(), surname.value.trim()].filter(Boolean).join(' ') || '—';
+  };
+  [surname, given, particles].forEach(el => el.addEventListener('input', updateName));
+  q('#case-link').addEventListener('change', e => { q('#summary-case').textContent = e.target.value || 'Geen koppeling'; });
+  document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => {
+    q('#existing-search').style.display = e.target.value === 'existing' ? 'block' : 'none';
+    q('#summary-mode').textContent = e.target.value === 'existing' ? 'Bestaand subject koppelen' : 'Nieuw subject';
+  }));
+  const input = q('#photo-input'), grid = q('#photo-grid');
+  input.addEventListener('change', () => {
+    grid.innerHTML = '';
+    Array.from(input.files).forEach((file, index) => {
+      const item = document.createElement('div'); item.className = 'photo-item';
+      const img = document.createElement('img'); img.alt = file.name; img.src = URL.createObjectURL(file);
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.title = 'Verwijderen';
+      remove.addEventListener('click', () => { item.remove(); q('#summary-photos').textContent = grid.children.length; });
+      item.append(img, remove); grid.appendChild(item);
+    });
+    q('#summary-photos').textContent = input.files.length;
+  });
+  q('#demo-save').addEventListener('click', () => {
+    const box = q('#demo-feedback'); box.style.display = 'block';
+    box.innerHTML = '<strong>Demo:</strong> hier zou de duplicate-check en opslag/koppeling starten. Er is niets opgeslagen.';
+  });
+  updateName();
+})();
+</script>
+{% endblock %}
