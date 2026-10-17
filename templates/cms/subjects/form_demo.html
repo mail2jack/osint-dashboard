@@ -41,6 +41,10 @@
   .summary-row { display:flex; justify-content:space-between; gap:.75rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem; font-size:.82rem; }
   .summary-row span:first-child { color:var(--text-muted); }
   .demo-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; }
+  .search-row { display:flex; gap:.6rem; align-items:stretch; }
+  .search-row input { flex:1; }
+  .search-state { margin:.6rem 0 0; padding:.6rem .75rem; border-radius:6px; background:var(--bg-secondary); color:var(--text-muted); font-size:.82rem; }
+  .subject-gated.is-disabled { opacity:.55; }
   @media (max-width:1100px) { .address-row { grid-template-columns:1fr 1fr 1fr; } .address-row .icon-remove { justify-self:start; } }
   @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } .repeat-row, .contact-row, .address-row { grid-template-columns:1fr; } }
 </style>
@@ -78,11 +82,12 @@
         </div>
         <div id="existing-search" class="demo-section" style="display:none;">
           <label for="subject-search">Bestaand subject zoeken</label>
-          <input id="subject-search" type="search" placeholder="Naam, e-mail, telefoon of identificatie">
+          <div class="search-row"><input id="subject-search" type="search" placeholder="Naam, e-mail, telefoon of identificatie" minlength="3"><button type="button" class="btn-cms small" id="subject-search-button">Zoeken</button></div>
+          <div id="subject-search-state" class="search-state">Zoek eerst een bestaand subject. De overige velden blijven tijdelijk uitgeschakeld.</div>
         </div>
       </div>
 
-      <div class="demo-card">
+      <div class="demo-card subject-gated">
         <h2>2. Persoonsgegevens</h2>
         <div class="demo-section">
           <h3>Basisgegevens</h3>
@@ -137,7 +142,7 @@
         </div>
       </div>
 
-      <div class="demo-card">
+      <div class="demo-card subject-gated">
         <h2>3. Foto’s van het subject</h2>
         <p class="muted">Voeg één of meerdere foto’s toe. Foto’s horen bij de subjectkaart en kunnen later per foto worden voorzien van bron, datum en notitie.</p>
         <div class="photo-drop">
@@ -147,14 +152,14 @@
         <div id="photo-grid" class="photo-grid"></div>
       </div>
 
-      <div class="demo-card">
+      <div class="demo-card subject-gated">
         <h2>4. Interne beoordeling</h2>
         <div class="demo-fields">
           <div><label>Risicoscore</label><input type="number" min="0" max="100" value="0"></div>
           <div class="wide"><label>Interne notitie</label><textarea placeholder="Alleen zichtbaar voor bevoegde interne gebruikers"></textarea></div>
         </div>
       </div>
-      <div class="demo-actions"><button type="button" class="btn-cms gray">Annuleren</button><button type="button" class="btn-cms primary" id="demo-save">Subject opslaan en koppelen</button></div>
+      <div class="demo-actions subject-gated"><button type="button" class="btn-cms gray">Annuleren</button><button type="button" class="btn-cms primary" id="demo-save">Subject opslaan en koppelen</button></div>
       <div id="demo-feedback" class="demo-note" style="display:none;margin-top:1rem;"></div>
     </main>
 
@@ -194,9 +199,39 @@
   [surname, given, particles, dob].forEach(el => el.addEventListener('input', updateName));
   [surname, given, particles].forEach(el => el.addEventListener('blur', normalizeTextFields));
   q('#case-link').addEventListener('change', e => { q('#summary-case').textContent = e.target.value || 'Geen koppeling'; });
+  const subjectSearch = q('#subject-search');
+  const subjectSearchState = q('#subject-search-state');
+  const setSubjectFieldsDisabled = (disabled) => {
+    document.querySelectorAll('.subject-gated').forEach(section => {
+      section.classList.toggle('is-disabled', disabled);
+      section.querySelectorAll('input, select, textarea, button').forEach(field => { field.disabled = disabled; });
+    });
+  };
+  const resetSubjectSearch = () => {
+    subjectSearch.value = '';
+    subjectSearchState.textContent = 'Zoek eerst een bestaand subject. De overige velden blijven tijdelijk uitgeschakeld.';
+    setSubjectFieldsDisabled(true);
+  };
+  q('#subject-search-button').addEventListener('click', () => {
+    const query = subjectSearch.value.trim();
+    if (query.length < 3) {
+      subjectSearchState.textContent = 'Vul minimaal drie tekens in om te zoeken.';
+      return;
+    }
+    setSubjectFieldsDisabled(false);
+    const noResult = /geen|onbekend/i.test(query);
+    subjectSearchState.textContent = noResult
+      ? 'Geen bestaand subject gevonden. Controleer de gegevens en maak eventueel een nieuw subject aan.'
+      : 'Subject gevonden. Controleer de gegevens en koppel de bestaande persoonskaart.';
+  });
+  subjectSearch.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); q('#subject-search-button').click(); }
+  });
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => {
     q('#existing-search').style.display = e.target.value === 'existing' ? 'block' : 'none';
     q('#summary-mode').textContent = e.target.value === 'existing' ? 'Bestaand subject koppelen' : 'Nieuw subject';
+    if (e.target.value === 'existing') resetSubjectSearch();
+    else setSubjectFieldsDisabled(false);
   }));
   const input = q('#photo-input'), grid = q('#photo-grid');
   input.addEventListener('change', () => {
