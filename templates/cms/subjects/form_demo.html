@@ -17,6 +17,10 @@
   .demo-fields label, .demo-card label { display:block; font-size:.75rem; font-weight:600; color:var(--text-muted); margin-bottom:.25rem; }
   .demo-fields input, .demo-fields select, .demo-fields textarea, .demo-card select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
   .demo-fields textarea { min-height:76px; resize:vertical; }
+  .repeat-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.65rem; align-items:end; padding:.75rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:.65rem; background:var(--bg-secondary); }
+  .contact-row { grid-template-columns:1fr 2fr 1fr auto; }
+  .repeat-row input, .repeat-row select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
+  .icon-remove { border:0; background:#fee2e2; color:#991b1b; border-radius:6px; width:32px; height:32px; cursor:pointer; font-size:1.2rem; }
   .choice-row { display:flex; gap:.75rem; flex-wrap:wrap; }
   .choice { flex:1 1 220px; border:1px solid var(--border-color); border-radius:8px; padding:.8rem; cursor:pointer; background:var(--bg); }
   .choice:has(input:checked) { border-color:var(--accent-primary); background:var(--info-bg); }
@@ -33,7 +37,7 @@
   .summary-row { display:flex; justify-content:space-between; gap:.75rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem; font-size:.82rem; }
   .summary-row span:first-child { color:var(--text-muted); }
   .demo-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; }
-  @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } }
+  @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } .repeat-row, .contact-row { grid-template-columns:1fr; } }
 </style>
 
 <div class="demo-wrap">
@@ -82,24 +86,33 @@
             <div><label for="given-names">Voornamen</label><input id="given-names" placeholder="Jan Peter"></div>
             <div><label for="initials">Voorletters</label><input id="initials" placeholder="J.P." readonly></div>
             <div><label for="particles">Tussenvoegsels</label><input id="particles" placeholder="van de"></div>
-            <div class="wide"><label>Weergavenaam</label><div class="preview-name" id="display-name">—</div><span class="muted">Wordt automatisch opgebouwd uit de bovenstaande velden.</span></div>
+            <div><label>Weergavenaam</label><div class="preview-name" id="display-name">—</div><span class="muted">Wordt automatisch opgebouwd uit de bovenstaande velden.</span></div>
+            <div><label>Keno</label><div class="preview-name" id="keno">—</div><span class="muted">Eerste vier letters achternaam + eerste voorletter + geboortejaar.</span></div>
           </div>
         </div>
         <div class="demo-section">
           <h3>Contactgegevens</h3>
-          <div class="demo-fields">
-            <div><label>E-mail</label><input type="email" placeholder="persoon@example.com"></div>
-            <div><label>Telefoon</label><input type="tel" placeholder="+31 6 12345678"></div>
-            <div class="wide"><label>Social media</label><input placeholder="Platform + gebruikersnaam, bijvoorbeeld LinkedIn · j.jansen"><span class="muted">Meerdere accounts kunnen worden toegevoegd; een platform is verplicht.</span></div>
+          <div id="contacts-demo-list">
+            <div class="repeat-row contact-row">
+              <div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div>
+              <div><label>Waarde</label><input placeholder="persoon@example.com"></div>
+              <div class="contact-platform-field" style="display:none;"><label>Platform</label><input placeholder="LinkedIn"></div>
+              <button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button>
+            </div>
           </div>
+          <button type="button" class="btn-cms small" id="add-contact">+ Contact toevoegen</button>
+          <p class="muted" style="margin:.45rem 0 0;">Voeg meerdere e-mailadressen, telefoonnummers en sociale accounts toe. Bij sociale media is een platform verplicht.</p>
         </div>
         <div class="demo-section">
           <h3>Adressen</h3>
-          <div class="demo-fields">
-            <div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div>
-            <div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div>
+          <div id="addresses-demo-list">
+            <div class="repeat-row address-row">
+              <div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div>
+              <div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div>
+              <button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button>
+            </div>
           </div>
-          <button type="button" class="btn-cms small" style="margin-top:.75rem;">+ Nog een adres</button>
+          <button type="button" class="btn-cms small" id="add-address">+ Adres toevoegen</button>
         </div>
         <div class="demo-section">
           <h3>Officiële identificatie</h3>
@@ -149,13 +162,17 @@
 <script nonce="{{ csp_nonce }}">
 (() => {
   const q = (s) => document.querySelector(s);
-  const surname = q('#surname'), given = q('#given-names'), initials = q('#initials'), particles = q('#particles');
+  const surname = q('#surname'), given = q('#given-names'), initials = q('#initials'), particles = q('#particles'), dob = q('input[type="date"]');
   const updateName = () => {
     const words = (given.value.trim().split(/\s+/).filter(Boolean));
     initials.value = words.map(w => w[0].toUpperCase() + '.').join('');
     q('#display-name').textContent = [initials.value, given.value.trim(), particles.value.trim(), surname.value.trim()].filter(Boolean).join(' ') || '—';
+    const cleanSurname = surname.value.replace(/[^\p{L}]/gu, '').toUpperCase();
+    const firstLetter = (words[0]?.[0] || initials.value.replace(/[^A-ZÀ-Ý]/gi, '')[0] || '').toUpperCase();
+    const year = dob.value ? dob.value.slice(0, 4) : '';
+    q('#keno').textContent = cleanSurname || firstLetter || year ? `${cleanSurname.slice(0, 4)}${firstLetter}${year}` : '—';
   };
-  [surname, given, particles].forEach(el => el.addEventListener('input', updateName));
+  [surname, given, particles, dob].forEach(el => el.addEventListener('input', updateName));
   q('#case-link').addEventListener('change', e => { q('#summary-case').textContent = e.target.value || 'Geen koppeling'; });
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => {
     q('#existing-search').style.display = e.target.value === 'existing' ? 'block' : 'none';
@@ -177,6 +194,29 @@
     const box = q('#demo-feedback'); box.style.display = 'block';
     box.innerHTML = '<strong>Demo:</strong> hier zou de duplicate-check en opslag/koppeling starten. Er is niets opgeslagen.';
   });
+  const bindRepeatRows = () => {
+    document.querySelectorAll('.remove-repeat').forEach(btn => {
+      btn.onclick = () => {
+        const parent = btn.closest('.repeat-row');
+        if (parent.parentElement.children.length > 1) parent.remove();
+      };
+    });
+    document.querySelectorAll('.contact-row select').forEach(select => {
+      select.onchange = () => {
+        const platform = select.closest('.contact-row').querySelector('.contact-platform-field');
+        platform.style.display = select.value === 'Social media' ? 'block' : 'none';
+      };
+    });
+  };
+  q('#add-address').onclick = () => {
+    q('#addresses-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row address-row"><div><label>Straat</label><input placeholder="Kerkstraat"></div><div><label>Huisnummer/toevoeging</label><input placeholder="12 A"></div><div><label>Postcode</label><input placeholder="1234 AB"></div><div><label>Plaats</label><input placeholder="Amsterdam"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
+    bindRepeatRows();
+  };
+  q('#add-contact').onclick = () => {
+    q('#contacts-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row contact-row"><div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div><div><label>Waarde</label><input placeholder="persoon@example.com"></div><div class="contact-platform-field" style="display:none;"><label>Platform</label><input placeholder="LinkedIn"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
+    bindRepeatRows();
+  };
+  bindRepeatRows();
   updateName();
 })();
 </script>
