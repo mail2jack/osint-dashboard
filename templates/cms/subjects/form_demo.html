@@ -17,6 +17,7 @@
   .demo-fields label, .demo-card label { display:block; font-size:.75rem; font-weight:600; color:var(--text-muted); margin-bottom:.25rem; }
   .demo-fields input, .demo-fields select, .demo-fields textarea, .demo-card select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
   .demo-fields textarea { min-height:76px; resize:vertical; }
+  .demo-card input::placeholder, .demo-card textarea::placeholder, .repeat-row input::placeholder { color:#a7afbd; opacity:1; }
   .repeat-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.65rem; align-items:end; padding:.75rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:.65rem; background:var(--bg-secondary); }
   .contact-row { grid-template-columns:1fr 2fr 1fr auto; }
   .repeat-row input, .repeat-row select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
@@ -95,7 +96,7 @@
           <div id="contacts-demo-list">
             <div class="repeat-row contact-row">
               <div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div>
-              <div><label>Waarde</label><input placeholder="persoon@example.com"></div>
+              <div><label>Waarde</label><input class="contact-value" placeholder="persoon@example.com"></div>
               <div class="contact-platform-field" style="display:none;"><label>Platform</label><input placeholder="LinkedIn"></div>
               <button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button>
             </div>
@@ -203,8 +204,11 @@
     });
     document.querySelectorAll('.contact-row select').forEach(select => {
       select.onchange = () => {
-        const platform = select.closest('.contact-row').querySelector('.contact-platform-field');
+        const row = select.closest('.contact-row');
+        const platform = row.querySelector('.contact-platform-field');
+        const value = row.querySelector('.contact-value');
         platform.style.display = select.value === 'Social media' ? 'block' : 'none';
+        value.placeholder = select.value === 'Telefoon' ? '+31 6 12345678' : select.value === 'Social media' ? '@gebruikersnaam' : 'persoon@example.com';
       };
     });
   };
@@ -213,7 +217,7 @@
     bindRepeatRows();
   };
   q('#add-contact').onclick = () => {
-    q('#contacts-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row contact-row"><div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div><div><label>Waarde</label><input placeholder="persoon@example.com"></div><div class="contact-platform-field" style="display:none;"><label>Platform</label><input placeholder="LinkedIn"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
+    q('#contacts-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row contact-row"><div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div><div><label>Waarde</label><input class="contact-value" placeholder="persoon@example.com"></div><div class="contact-platform-field" style="display:none;"><label>Platform</label><input placeholder="LinkedIn"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
     bindRepeatRows();
   };
   bindRepeatRows();
