@@ -631,7 +631,7 @@ input:-webkit-autofill:focus {
       {% if show_archived %}<input type="hidden" name="show_archived" value="1">{% endif %}
       {% if finding_scope %}<input type="hidden" name="finding_scope" value="{{ finding_scope }}">{% endif %}
       <label for="caseFindingSort" style="font-size:.72rem;color:var(--text-muted);">{{ _('Sort') }}</label>
-      <select id="caseFindingSort" name="finding_sort" onchange="this.form.submit()" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+      <select id="caseFindingSort" name="finding_sort" data-change="submitParentForm" style="font-size:.72rem;padding:.12rem .3rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
         <option value="newest" {% if finding_sort == 'newest' %}selected{% endif %}>{{ _('Newest') }}</option>
         <option value="quality" {% if finding_sort == 'quality' %}selected{% endif %}>{{ _('Quality score') }}</option>
         <option value="relevance" {% if finding_sort == 'relevance' %}selected{% endif %}>{{ _('Relevance') }}</option>
@@ -702,12 +702,12 @@ input:-webkit-autofill:focus {
                <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
                {% endif %}
                {% if act.archived_at %}
-                <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" onsubmit="return confirm('Restore this action?');">
+                <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" data-confirm="Restore this action?">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                    <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Restore</button>
                  </form>
                  {% elif act.status == 'completed' %}
-                 <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" onsubmit="return confirm('Archive this action? Its findings will be hidden.');">
+                 <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" data-confirm="Archive this action? Its findings will be hidden.">
                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                    <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archive</button>
                 </form>

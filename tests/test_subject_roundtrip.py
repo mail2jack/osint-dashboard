@@ -81,6 +81,20 @@ class TestWorkflowCreateRoundtrip:
         subject = case.subjects[0]
         assert subject.voorletters == "J.-P."
 
+    def test_person_identification_number_roundtrips_on_create(self, auth_client):
+        case = _create_case(
+            auth_client,
+            "RT Person Identification",
+            {
+                "type": "person",
+                "name": "Doe",
+                "subject_0_identification_number": "ID-123",
+            },
+        )
+        subject = case.subjects[0]
+        subject.decrypt_identifiers()
+        assert subject.identification_number == "ID-123"
+
     def test_online_placeholder_displays_stored_social_handle(self):
         subject = Subject(
             name="Onbekend",
@@ -312,6 +326,24 @@ class TestWorkflowEditRoundtrip:
         subject = db.session.get(Subject, subject.id)
         assert subject.achternaam == "Van den Berg"
         assert subject.name == "J. Jan Van den Berg"
+
+    def test_person_identification_number_roundtrips_on_edit(self, auth_client):
+        case = _create_case(
+            auth_client,
+            "RT Edit Person Identification",
+            {"type": "person", "name": "Doe"},
+        )
+        subject = case.subjects[0]
+        self._edit(
+            auth_client,
+            case,
+            subject,
+            {f"subj_{subject.id}_identification_number": "ID-456"},
+        )
+        db.session.expire_all()
+        subject = db.session.get(Subject, subject.id)
+        subject.decrypt_identifiers()
+        assert subject.identification_number == "ID-456"
 
     def test_company_org_fields_persist_on_edit(self, auth_client):
         case = _create_case(

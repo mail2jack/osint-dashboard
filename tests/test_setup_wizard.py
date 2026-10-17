@@ -16,6 +16,15 @@ class TestSetupWizardAccess:
         resp = auth_client.get("/setup/welcome")
         assert resp.status_code == 200
 
+    def test_skip_setup_marks_wizard_complete_and_opens_dashboard(
+        self, auth_client, app
+    ):
+        resp = auth_client.post("/setup/skip")
+        assert resp.status_code == 302
+        assert "/cms/dashboard" in resp.headers.get("Location", "")
+        with app.app_context():
+            assert Setting.get("setup_wizard_complete") == "true"
+
     def test_completed_wizard_redirects_to_dashboard(self, auth_client, app):
         with app.app_context():
             Setting.set("setup_wizard_complete", "true")

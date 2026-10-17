@@ -34,6 +34,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+@cms_bp.route("/subjects/demo", methods=["GET"])
+@login_required
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
+def subject_form_demo() -> flask.Response:
+    """Render the proposed unified person/subject form without persisting data."""
+    cases = (
+        apply_tenant_filter(Case.query, Case)
+        .filter(Case.is_deleted.is_(False))
+        .order_by(Case.case_number.desc())
+        .limit(25)
+        .all()
+    )
+    return render_template("cms/subjects/form_demo.html", cases=cases)
+
+
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
 @roles_required(
@@ -43,11 +60,12 @@ logger = logging.getLogger(__name__)
 @validate(CreateSubjectSchema)
 def create_subject() -> flask.Response:
     """Create a new subject with duplicate detection."""
+    unified_person_form = request.args.get("unified") == "1"
     # ADR-0001 rollout: standalone legacy create is gated once a tenant is on
     # Subject-First. Adds from a workflow case (case_id in query or form) stay
     # active.
     case_id = request.args.get("case_id") or request.validated_data.get("case_id")
-    if not case_id and check_feature("subject_first_investigations"):
+    if not case_id and check_feature("subject_first_investigations") and not unified_person_form:
         if request.is_json:
             return api_error("Use the Subject Profile to add a subject.", 403)
         flash(
@@ -209,6 +227,20 @@ def create_subject() -> flask.Response:
 
     # Pass case_id from query param if coming from case view
     case_id = request.args.get("case_id")
+    if unified_person_form:
+        cases = (
+            apply_tenant_filter(Case.query, Case)
+            .filter(Case.is_deleted.is_(False))
+            .order_by(Case.case_number.desc())
+            .limit(100)
+            .all()
+        )
+        return render_template(
+            "cms/subjects/form_demo.html",
+            cases=cases,
+            production=True,
+            case_id=case_id,
+        )
     cases = []
     if not case_id:
         q = apply_tenant_filter(Case.query, Case)

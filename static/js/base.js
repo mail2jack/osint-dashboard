@@ -491,6 +491,22 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Global event delegation system
+window.dismissAlert = function(button) {
+  var alert = button.closest('.alert');
+  if (!alert) return;
+  alert.style.transition = 'opacity 0.3s, transform 0.3s';
+  alert.style.opacity = '0';
+  alert.style.transform = 'translateY(-8px)';
+  setTimeout(function() { alert.remove(); }, 300);
+};
+window.toggleKeyboardHints = function() {
+  var hints = document.getElementById('keyboardHints');
+  if (hints) hints.style.display = hints.style.display === 'none' ? 'inline' : 'none';
+};
+window.goBack = function() { window.history.back(); };
+window.submitParentForm = function(select) {
+  if (select.form) select.form.submit();
+};
 document.addEventListener('click', function(e) {
   var el = e.target.closest('[data-click]');
   if (!el) return;
@@ -515,6 +531,12 @@ document.addEventListener('change', function(e) {
   if (typeof fn === 'function') fn(el);
 });
 document.addEventListener('submit', function(e) {
+  var confirmMessage = e.target.getAttribute('data-confirm');
+  if (!confirmMessage && e.submitter) confirmMessage = e.submitter.getAttribute('data-confirm');
+  if (confirmMessage && !window.confirm(confirmMessage)) {
+    e.preventDefault();
+    return;
+  }
   var el = e.target.closest('[data-submit]');
   if (!el) return;
   e.preventDefault();
@@ -1004,3 +1026,84 @@ function checkForUpdates() {
       statusEl.textContent = '\u274c Error: ' + (err.message || 'check failed');
     });
 }
+
+// Give immediate, consistent feedback for e-mail contact values in every form.
+(function() {
+  var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function errorElement(input) {
+    var error = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+    if (!error) {
+      error = document.createElement('small');
+      error.className = 'contact-email-error';
+      error.style.cssText = 'display:block;color:#b42318;font-size:.8rem;margin-top:.25rem;';
+      input.insertAdjacentElement('afterend', error);
+    }
+    return error;
+  }
+
+  function lockContactSection(input, locked) {
+    var row = input.closest('.contact-row, .contact-entry');
+    var section = row && row.parentElement && row.parentElement.parentElement;
+    if (!section) return;
+    section.querySelectorAll('input, select, textarea, button').forEach(function(control) {
+      var keepAvailable = control === input || (row && control === row.querySelector('.contact-type'));
+      if (keepAvailable) return;
+      if (locked) {
+        if (!Object.prototype.hasOwnProperty.call(control.dataset, 'emailLockDisabled')) {
+          control.dataset.emailLockDisabled = control.disabled ? '1' : '0';
+        }
+        control.disabled = true;
+      } else if (Object.prototype.hasOwnProperty.call(control.dataset, 'emailLockDisabled')) {
+        control.disabled = control.dataset.emailLockDisabled === '1';
+        delete control.dataset.emailLockDisabled;
+      }
+    });
+  }
+
+  function validate(input, showMessage) {
+    if (!input || input.type !== 'email') {
+      if (input) {
+        input.setCustomValidity('');
+        input.removeAttribute('aria-invalid');
+        input.style.removeProperty('border-color');
+        var stale = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+        if (stale) stale.remove();
+      }
+      return true;
+    }
+    var value = input.value.trim();
+    var valid = !value || emailPattern.test(value);
+    input.setCustomValidity(valid ? '' : 'Gebruik de vorm naam@domein.extensie.');
+    if (!valid && showMessage) {
+      var error = errorElement(input);
+      error.textContent = 'Gebruik de vorm naam@domein.extensie.';
+      input.setAttribute('aria-invalid', 'true');
+      input.style.borderColor = '#b42318';
+      lockContactSection(input, true);
+    } else if (valid) {
+      input.removeAttribute('aria-invalid');
+      input.style.removeProperty('border-color');
+      var message = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+      if (message) message.remove();
+      lockContactSection(input, false);
+    }
+    return valid;
+  }
+
+  document.addEventListener('blur', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-value')) return;
+    e.target.dataset.emailTouched = '1';
+    validate(e.target, true);
+  }, true);
+  document.addEventListener('input', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-value')) return;
+    if (e.target.dataset.emailTouched === '1') validate(e.target, true);
+  });
+  document.addEventListener('change', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-type')) return;
+    var entry = e.target.closest('.contact-entry, .contact-row');
+    var input = entry && entry.querySelector('.contact-value');
+    if (input) validate(input, false);
+  });
+})();

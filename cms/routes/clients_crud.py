@@ -29,6 +29,14 @@ from .response import api_success, api_error
 logger = logging.getLogger(__name__)
 
 
+@cms_bp.route("/clients/demo", methods=["GET"])
+@login_required
+@roles_required("admin", "owner", "senior_investigator", "investigator")
+def client_form_demo() -> str:
+    """Render the proposed unified client form without persisting data."""
+    return render_template("cms/clients/form_demo.html")
+
+
 @cms_bp.route("/clients")
 @login_required
 @staff_required

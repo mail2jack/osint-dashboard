@@ -369,6 +369,10 @@ input:-webkit-autofill:focus {
               <label>{{ _('BSN nummer') }}</label>
               <input type="text" name="subj_{{ sid }}_bsn_number" value="{{ subject.bsn_number or '' }}" placeholder="{{ _('Burgerservicenummer') }}">
             </div>
+            <div class="form-group">
+              <label>{{ _('Identification') }}</label>
+              <input type="text" name="subj_{{ sid }}_identification_number" value="{{ subject.identification_number or '' }}" placeholder="{{ _('Optional identifier / document number') }}">
+            </div>
             <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Reisdocument type') }}</label>
@@ -681,7 +685,15 @@ function wfToggleContactPlatform(el) {
   if (!entry) return;
   var row = entry.querySelector('.contact-platform-row');
   if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
+  var value = entry.querySelector('.contact-value');
+  if (value) {
+    value.type = el.value === 'email' ? 'email' : 'text';
+    value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+    value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
+  }
 }
+
+document.querySelectorAll('.contact-type').forEach(wfToggleContactPlatform);
 
 function wfSerializeAllContacts() {
   var invalidPlatform = null;
@@ -880,6 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="form-group"><label>{{ _("Place of Birth") }}</label><input type="text" name="subj_new_' + i + '_place_of_birth"></div>' +
           '</div>' +
           '<div class="form-group"><label>{{ _("BSN nummer") }}</label><input type="text" name="subj_new_' + i + '_bsn_number" placeholder="Burgerservicenummer"></div>' +
+          '<div class="form-group"><label>{{ _("Identification") }}</label><input type="text" name="subj_new_' + i + '_identification_number" placeholder="{{ _("Optional identifier / document number") }}"></div>' +
           '<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">' +
             '<div class="form-group"><label>{{ _("Reisdocument type") }}</label><select name="subj_new_' + i + '_reisdocument_type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">{{ _("-- Selecteer --") }}</option><option value="paspoort">{{ _("Paspoort") }}</option><option value="id-kaart">{{ _("ID-kaart") }}</option><option value="rijbewijs">{{ _("Rijbewijs") }}</option><option value="overige">{{ _("Overige") }}</option></select></div>' +
             '<div class="form-group"><label>{{ _("Reisdocument nummer") }}</label><input type="text" name="subj_new_' + i + '_reisdocument_nummer"></div>' +

@@ -40,6 +40,13 @@
 </div>
 
 <style>
+.subject-form-summary { margin: 1.25rem 0; padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; }
+.subject-form-summary h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.subject-form-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.subject-form-summary-item { min-width: 0; }
+.subject-form-summary-label { display: block; color: var(--text-muted); font-size: .75rem; margin-bottom: .2rem; }
+.subject-form-summary-value { font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .subject-form-summary-grid { grid-template-columns: 1fr; } }
 .type-card {
     display: flex;
     flex-direction: column;
@@ -455,6 +462,17 @@
             </div>
         </div>
     </div>
+
+    <section class="subject-form-summary" aria-labelledby="subject-summary-heading">
+        <h3 id="subject-summary-heading">{{ _('Samenvatting') }}</h3>
+        <div class="subject-form-summary-grid">
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Weergavenaam') }}</span><span class="subject-form-summary-value" id="subject-summary-name">—</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Type') }}</span><span class="subject-form-summary-value" id="subject-summary-type">—</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Koppeling') }}</span><span class="subject-form-summary-value" id="subject-summary-case">{{ _('Geen zaak') }}</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Contactgegevens') }}</span><span class="subject-form-summary-value" id="subject-summary-contacts">0</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Adressen') }}</span><span class="subject-form-summary-value" id="subject-summary-addresses">0</span></div>
+        </div>
+    </section>
     
     <button type="submit" class="btn-cms primary">{{ _('Create Subject') }}</button>
     <button type="button" data-click="resetForm" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Back') }}</button>
@@ -464,13 +482,36 @@
 let selectedType = null;
 let duplicateTimeout = null;
 
+function updateSubjectSummary() {
+    const name = document.getElementById('name-computed')?.value ||
+        [document.getElementById('voorletters')?.value, document.getElementById('voornamen')?.value,
+         document.getElementById('tussenvoegsels')?.value, document.getElementById('achternaam')?.value]
+        .filter(Boolean).join(' ') || '—';
+    const type = document.getElementById('subject_type')?.value || '—';
+    const caseSelect = document.querySelector('select[name="case_id"]');
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    set('subject-summary-name', name);
+    set('subject-summary-type', type);
+    set('subject-summary-case', caseSelect?.selectedOptions[0]?.textContent?.trim() || 'Geen zaak');
+    set('subject-summary-contacts', document.querySelectorAll('#contacts-container .contact-entry').length);
+    set('subject-summary-addresses', document.querySelectorAll('#addresses-container .address-entry').length);
+}
+
 function selectType(btn, type) {
+    if (type === 'person') {
+        const params = new URLSearchParams({unified: '1'});
+        const caseId = new URLSearchParams(window.location.search).get('case_id');
+        if (caseId) params.set('case_id', caseId);
+        window.location.href = '{{ url_for("cms.create_subject") }}?' + params.toString();
+        return;
+    }
     selectedType = type;
     
     document.querySelectorAll('.type-card').forEach(card => card.classList.remove('selected'));
     document.getElementById('card-' + type).classList.add('selected');
     
     document.getElementById('subject_type').value = type;
+    updateSubjectSummary();
     document.getElementById('subjectForm').style.display = 'block';
     document.getElementById('type-selection').style.display = 'none';
     
@@ -897,6 +938,7 @@ function addAddress() {
         else el.checked = false;
     });
     container.appendChild(clone);
+    updateSubjectSummary();
 }
 
 function serializeContacts() {
@@ -920,7 +962,15 @@ function toggleContactPlatform(el) {
     const entry = el.closest('.contact-entry');
     const row = entry.querySelector('.contact-platform-row');
     if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
+    const value = entry.querySelector('.contact-value');
+    if (value) {
+        value.type = el.value === 'email' ? 'email' : 'text';
+        value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+        value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
+    }
 }
+
+document.querySelectorAll('.contact-type').forEach(toggleContactPlatform);
 
 function addContact() {
     const container = document.getElementById('contacts-container');
@@ -932,6 +982,7 @@ function addContact() {
     });
     clone.querySelector('.contact-type').selectedIndex = 0;
     container.appendChild(clone);
+    updateSubjectSummary();
 }
 
 function computeName() {
@@ -968,6 +1019,11 @@ function handleFormSubmit(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#subjectForm input, #subjectForm select').forEach(field => {
+        field.addEventListener('input', updateSubjectSummary);
+        field.addEventListener('change', updateSubjectSummary);
+    });
+    updateSubjectSummary();
     {% if submitted_type %}
     selectType('{{ submitted_type }}');
     {% endif %}

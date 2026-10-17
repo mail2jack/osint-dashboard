@@ -586,7 +586,10 @@
             {% endif %}
 
             <div class="footer-links">
-                <a href="{{ url_for('cms.dashboard') }}">Skip setup and go to Dashboard</a>
+                <form method="POST" action="{{ url_for('setup_wizard.skip') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" style="border:0;background:none;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">Skip setup and go to Dashboard</button>
+                </form>
                 &nbsp;·&nbsp;
                 <a href="{{ url_for('static', filename='INSTALL.md') }}" target="_blank">Installation docs</a>
             </div>

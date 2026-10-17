@@ -48,7 +48,7 @@
         {% else %}
         <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" onclick="return confirm('{{ _('Archive this investigation?') }}');" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
+          <button type="submit" data-confirm="{{ _('Archive this investigation?') }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
         </form>
         {% endif %}
       </div>

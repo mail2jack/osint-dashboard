@@ -110,7 +110,7 @@
     </div>
     <div class="profile-meta">
       {% if subject.creator %}Added by {{ subject.creator.username }} on {{ profile.subject.created_at[:10] if profile.subject.created_at else '—' }}.{% endif %}
-      {% if profile.subject.updated_at %}Last changed {{ profile.subject.updated_at[:10] }}.{% endif %}
+      {% if profile.subject.updated_at %}Last changed {{ profile.subject.updated_at[:10] }}{% if subject.updater %} by {{ subject.updater.username }}{% endif %}.{% endif %}
     </div>
   </div>
 </div>
@@ -396,7 +396,7 @@
       <input type="hidden" name="item_id">
       <div class="form-grid">
         <div class="form-group"><label>Type</label>
-          <select name="contact_type" onchange="toggleContactPlatform(this)">
+          <select name="contact_type" data-change="toggleContactPlatform">
             <option value="email">Email</option>
             <option value="phone">Phone</option>
             <option value="social">Social media</option>
@@ -1380,6 +1380,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var isSocial = el.value === 'social';
     if (row) { row.style.display = ''; }
     if (platform) { platform.required = isSocial; }
+    var value = form.querySelector('[name="value"]');
+    if (value) {
+      value.type = el.value === 'email' ? 'email' : 'text';
+      value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+      value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
+    }
   }
   window.toggleContactPlatform = toggleContactPlatform;
 
