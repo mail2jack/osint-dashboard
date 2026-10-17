@@ -1004,3 +1004,63 @@ function checkForUpdates() {
       statusEl.textContent = '\u274c Error: ' + (err.message || 'check failed');
     });
 }
+
+// Give immediate, consistent feedback for e-mail contact values in every form.
+(function() {
+  var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function errorElement(input) {
+    var error = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+    if (!error) {
+      error = document.createElement('small');
+      error.className = 'contact-email-error';
+      error.style.cssText = 'display:block;color:#b42318;font-size:.8rem;margin-top:.25rem;';
+      input.insertAdjacentElement('afterend', error);
+    }
+    return error;
+  }
+
+  function validate(input, showMessage) {
+    if (!input || input.type !== 'email') {
+      if (input) {
+        input.setCustomValidity('');
+        input.removeAttribute('aria-invalid');
+        input.style.removeProperty('border-color');
+        var stale = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+        if (stale) stale.remove();
+      }
+      return true;
+    }
+    var value = input.value.trim();
+    var valid = !value || emailPattern.test(value);
+    input.setCustomValidity(valid ? '' : 'Gebruik de vorm naam@domein.extensie.');
+    if (!valid && showMessage) {
+      var error = errorElement(input);
+      error.textContent = 'Gebruik de vorm naam@domein.extensie.';
+      input.setAttribute('aria-invalid', 'true');
+      input.style.borderColor = '#b42318';
+    } else if (valid) {
+      input.removeAttribute('aria-invalid');
+      input.style.removeProperty('border-color');
+      var message = input.parentElement && input.parentElement.querySelector('.contact-email-error');
+      if (message) message.remove();
+    }
+    return valid;
+  }
+
+  document.addEventListener('blur', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-value')) return;
+    e.target.dataset.emailTouched = '1';
+    validate(e.target, true);
+  }, true);
+  document.addEventListener('input', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-value')) return;
+    if (e.target.dataset.emailTouched === '1') validate(e.target, true);
+  });
+  document.addEventListener('change', function(e) {
+    if (!e.target.matches || !e.target.matches('.contact-type')) return;
+    var entry = e.target.closest('.contact-entry, .contact-row');
+    var input = entry && entry.querySelector('.contact-value');
+    if (input) validate(input, false);
+  });
+})();
