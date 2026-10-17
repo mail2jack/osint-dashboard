@@ -110,7 +110,7 @@
     </div>
     <div class="profile-meta">
       {% if subject.creator %}Added by {{ subject.creator.username }} on {{ profile.subject.created_at[:10] if profile.subject.created_at else '—' }}.{% endif %}
-      {% if profile.subject.updated_at %}Last changed {{ profile.subject.updated_at[:10] }}.{% endif %}
+      {% if profile.subject.updated_at %}Last changed {{ profile.subject.updated_at[:10] }}{% if subject.updater %} by {{ subject.updater.username }}{% endif %}.{% endif %}
     </div>
   </div>
 </div>
