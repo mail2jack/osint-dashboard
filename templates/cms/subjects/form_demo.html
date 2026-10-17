@@ -154,8 +154,12 @@
         <h2>3. Foto’s van het subject</h2>
         <p class="muted">Voeg één of meerdere foto’s toe. Foto’s horen bij de subjectkaart en kunnen later per foto worden voorzien van bron, datum en notitie.</p>
         <div class="photo-drop">
+          {% if production %}
+          <div class="muted">Foto’s voeg je na het opslaan toe vanuit het subjectprofiel. Zo worden opslag, toegangscontrole en auditregistratie correct uitgevoerd.</div>
+          {% else %}
           <input id="photo-input" type="file" accept="image/*" multiple>
           <div class="muted" style="margin-top:.4rem;">Meerdere bestanden selecteren is toegestaan.</div>
+          {% endif %}
         </div>
         <div id="photo-grid" class="photo-grid">
           <div class="photo-placeholder">Subject foto</div>
@@ -249,7 +253,7 @@
   const input = q('#photo-input'), grid = q('#photo-grid');
   const updatePhotoCount = () => { q('#summary-photos').textContent = grid.querySelectorAll('.photo-item').length; };
   grid.querySelectorAll('button').forEach(remove => remove.addEventListener('click', () => { remove.closest('.photo-item').remove(); updatePhotoCount(); }));
-  input.addEventListener('change', () => {
+  input?.addEventListener('change', () => {
     grid.innerHTML = '';
     Array.from(input.files).forEach(file => {
       const item = document.createElement('div'); item.className = 'photo-item';
