@@ -1,5 +1,14 @@
 {% extends "cms/base.html" %}
 {% block content %}
+<style>
+.subject-form-summary { margin: 1.25rem 0; padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; }
+.subject-form-summary h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.subject-form-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.subject-form-summary-item { min-width: 0; }
+.subject-form-summary-label { display: block; color: var(--text-muted); font-size: .75rem; margin-bottom: .2rem; }
+.subject-form-summary-value { font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .subject-form-summary-grid { grid-template-columns: 1fr 1fr; } }
+</style>
 <h2 style="margin-bottom: 1.5rem;">{{ _('Edit Subject') }}</h2>
 <form method="POST" id="subjectForm" data-submit="handleEditSubmit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -445,6 +454,15 @@
         <textarea name="notes" id="notes" rows="3" placeholder="{{ _('Internal notes') }}">{{ subject.notes or '' }}</textarea>
     </div>
     </div>
+    <section class="subject-form-summary" aria-labelledby="subject-summary-heading">
+        <h3 id="subject-summary-heading">{{ _('Samenvatting') }}</h3>
+        <div class="subject-form-summary-grid">
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Weergavenaam') }}</span><span class="subject-form-summary-value" id="subject-summary-name">{{ subject.name or '—' }}</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Type') }}</span><span class="subject-form-summary-value" id="subject-summary-type">{{ subject.subject_type or '—' }}</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Contactgegevens') }}</span><span class="subject-form-summary-value" id="subject-summary-contacts">{{ subject.contacts.count() }}</span></div>
+            <div class="subject-form-summary-item"><span class="subject-form-summary-label">{{ _('Adressen') }}</span><span class="subject-form-summary-value" id="subject-summary-addresses">{{ subject.addresses.count() }}</span></div>
+        </div>
+    </section>
     <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
 </form>
@@ -687,6 +705,7 @@ function addAddress() {
         else el.checked = false;
     });
     container.appendChild(clone);
+    updateSubjectSummary();
 }
 
 function serializeContacts() {
@@ -724,6 +743,7 @@ function addContact() {
     clone.querySelector('.contact-type').selectedIndex = 0;
     clone.style.display = '';
     container.appendChild(clone);
+    updateSubjectSummary();
 }
 
 function lookupVesselEdit() {
@@ -787,7 +807,28 @@ document.getElementById('vessel_lookup_mmsi').addEventListener('keypress', funct
     if (e.key === 'Enter') { e.preventDefault(); lookupVesselEdit(); }
 });
 
-document.addEventListener('DOMContentLoaded', toggleTypeFields);
+function updateSubjectSummary() {
+    const parts = [
+        document.getElementById('voorletters')?.value,
+        document.getElementById('voornamen')?.value,
+        document.getElementById('tussenvoegsels')?.value,
+        document.getElementById('achternaam')?.value
+    ].filter(Boolean);
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value || '—'; };
+    set('subject-summary-name', parts.join(' ') || document.getElementById('name-computed')?.value || '—');
+    set('subject-summary-type', document.getElementById('subject_type')?.value || '—');
+    set('subject-summary-contacts', document.querySelectorAll('#contacts-container .contact-entry').length);
+    set('subject-summary-addresses', document.querySelectorAll('#addresses-container .address-entry').length);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleTypeFields();
+    document.querySelectorAll('#subjectForm input, #subjectForm select').forEach(field => {
+        field.addEventListener('input', updateSubjectSummary);
+        field.addEventListener('change', updateSubjectSummary);
+    });
+    updateSubjectSummary();
+});
 
 function handleEditSubmit(event) {
     event.preventDefault();
