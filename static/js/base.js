@@ -1020,6 +1020,25 @@ function checkForUpdates() {
     return error;
   }
 
+  function lockContactSection(input, locked) {
+    var row = input.closest('.contact-row, .contact-entry');
+    var section = row && row.parentElement && row.parentElement.parentElement;
+    if (!section) return;
+    section.querySelectorAll('input, select, textarea, button').forEach(function(control) {
+      var keepAvailable = control === input || (row && control === row.querySelector('.contact-type'));
+      if (keepAvailable) return;
+      if (locked) {
+        if (!Object.prototype.hasOwnProperty.call(control.dataset, 'emailLockDisabled')) {
+          control.dataset.emailLockDisabled = control.disabled ? '1' : '0';
+        }
+        control.disabled = true;
+      } else if (Object.prototype.hasOwnProperty.call(control.dataset, 'emailLockDisabled')) {
+        control.disabled = control.dataset.emailLockDisabled === '1';
+        delete control.dataset.emailLockDisabled;
+      }
+    });
+  }
+
   function validate(input, showMessage) {
     if (!input || input.type !== 'email') {
       if (input) {
@@ -1039,11 +1058,13 @@ function checkForUpdates() {
       error.textContent = 'Gebruik de vorm naam@domein.extensie.';
       input.setAttribute('aria-invalid', 'true');
       input.style.borderColor = '#b42318';
+      lockContactSection(input, true);
     } else if (valid) {
       input.removeAttribute('aria-invalid');
       input.style.removeProperty('border-color');
       var message = input.parentElement && input.parentElement.querySelector('.contact-email-error');
       if (message) message.remove();
+      lockContactSection(input, false);
     }
     return valid;
   }
