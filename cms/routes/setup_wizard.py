@@ -143,6 +143,15 @@ def wizard():
     return redirect(url_for(f"setup_wizard.{step}"))
 
 
+@setup_wizard_bp.route("/skip", methods=["POST"])
+@login_required
+def skip():
+    """Leave the first-time wizard and allow normal dashboard access."""
+    _mark_complete()
+    flash("Setup overgeslagen. U kunt dit later via Instellingen afronden.", "info")
+    return redirect(url_for("cms.dashboard"))
+
+
 @setup_wizard_bp.route("/welcome", methods=["GET", "POST"])
 @login_required
 def welcome():
