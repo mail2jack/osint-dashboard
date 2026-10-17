@@ -1089,6 +1089,7 @@ class Subject(db.Model):
     deleted_at = db.Column(db.DateTime)
 
     created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    updated_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -1098,6 +1099,7 @@ class Subject(db.Model):
 
     # Relationships
     creator = db.relationship("User", foreign_keys=[created_by])
+    updater = db.relationship("User", foreign_keys=[updated_by])
     financial_records = db.relationship(
         "FinancialRecord", backref="subject", lazy="dynamic"
     )
@@ -1289,6 +1291,11 @@ class Subject(db.Model):
             "addresses": [a.to_dict(decrypted=decrypted) for a in self.addresses],
             "contacts": [c.to_dict(decrypted=decrypted) for c in self.contacts],
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_by": self.created_by,
+            "updated_by": self.updated_by,
+            "created_by_name": self.creator.full_name if self.creator else "System",
+            "updated_by_name": self.updater.full_name if self.updater else "System",
         }
 
         if include_relations:

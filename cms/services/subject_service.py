@@ -586,6 +586,7 @@ class SubjectService:
             identification_number=data.get("identification_number"),
             bank_account=data.get("bank_account"),
             created_by=created_by,
+            updated_by=created_by,
             achternaam=data.get("achternaam"),
             voornamen=data.get("voornamen"),
             voorletters=data.get("voorletters"),
@@ -771,6 +772,7 @@ class SubjectService:
             changes["social_accounts"] = {"old": "updated", "new": "Updated"}
 
         subject.updated_at = datetime.now(UTC)
+        subject.updated_by = actor_id
         return changes
 
     def set_social_accounts(
