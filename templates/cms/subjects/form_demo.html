@@ -288,10 +288,13 @@
       select.onchange = () => {
         const row = select.closest('.contact-row');
         const platform = row.querySelector('.contact-platform-field');
+        const platformInput = platform.querySelector('input');
         const value = row.querySelector('.contact-value');
         platform.style.display = select.value === 'Social media' ? 'block' : 'none';
+        platformInput.required = select.value === 'Social media';
         value.placeholder = select.value === 'Telefoon' ? '+31 6 12345678' : select.value === 'Social media' ? '@gebruikersnaam' : 'persoon@example.com';
       };
+      select.onchange();
     });
     document.querySelectorAll('.address-row .addr-country').forEach(select => {
       select.onchange = () => {
