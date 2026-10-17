@@ -20,6 +20,7 @@
   .demo-card input::placeholder, .demo-card textarea::placeholder, .repeat-row input::placeholder { color:#a7afbd; opacity:1; }
   .repeat-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.65rem; align-items:end; padding:.75rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:.65rem; background:var(--bg-secondary); }
   .contact-row { grid-template-columns:1fr 2fr 1fr auto; }
+  .address-row { grid-template-columns:1.1fr 1fr 1fr 1.2fr 1.2fr auto; }
   .repeat-row input, .repeat-row select { width:100%; box-sizing:border-box; padding:.55rem .65rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg); color:var(--text); }
   .icon-remove { border:0; background:#fee2e2; color:#991b1b; border-radius:6px; width:32px; height:32px; cursor:pointer; font-size:1.2rem; }
   .choice-row { display:flex; gap:.75rem; flex-wrap:wrap; }
@@ -38,7 +39,8 @@
   .summary-row { display:flex; justify-content:space-between; gap:.75rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem; font-size:.82rem; }
   .summary-row span:first-child { color:var(--text-muted); }
   .demo-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; }
-  @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } .repeat-row, .contact-row { grid-template-columns:1fr; } }
+  @media (max-width:1100px) { .address-row { grid-template-columns:1fr 1fr 1fr; } .address-row .icon-remove { justify-self:start; } }
+  @media (max-width:800px) { .demo-grid { grid-template-columns:1fr; } .demo-fields { grid-template-columns:1fr; } .demo-fields .wide { grid-column:auto; } .repeat-row, .contact-row, .address-row { grid-template-columns:1fr; } }
 </style>
 
 <div class="demo-wrap">
@@ -108,13 +110,16 @@
           <h3>Adressen</h3>
           <div id="addresses-demo-list">
             <div class="repeat-row address-row address-entry">
-              <div><label>Postcode</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div><div><label>Huisnummer</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div>
-              <div><label>Straat</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div>
+              <div><label>Land *</label><select class="addr-country"><option value="NL" selected>Nederland</option><option value="BE">België</option><option value="DE">Duitsland</option><option value="FR">Frankrijk</option><option value="GB">Verenigd Koninkrijk</option><option value="US">Verenigde Staten</option><option value="other">Ander land</option></select></div>
+              <div class="addr-zipcode-field"><label>Postcode *</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div>
+              <div class="addr-number-field"><label>Huisnummer *</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div>
+              <div><label>Straat *</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats *</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div>
+              <div class="addr-region-field" style="display:none;"><label>Regio / staat</label><input class="addr-region" placeholder="Provincie, staat of regio"></div>
               <button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button>
             </div>
           </div>
           <button type="button" class="btn-cms small" id="add-address">+ Adres toevoegen</button>
-          <p class="muted" style="margin:.45rem 0 0;">Bij een Nederlandse postcode en huisnummer wordt de BAG/Kadastercontrole automatisch uitgevoerd. Straat en plaats worden daarna ingevuld.</p>
+          <p class="muted" style="margin:.45rem 0 0;">Nederland gebruikt de BAG/Kadastercontrole automatisch. Voor andere landen vul je het adres in volgens de gebruikelijke lokale indeling.</p>
         </div>
         <div class="demo-section">
           <h3>Officiële identificatie</h3>
@@ -212,9 +217,33 @@
         value.placeholder = select.value === 'Telefoon' ? '+31 6 12345678' : select.value === 'Social media' ? '@gebruikersnaam' : 'persoon@example.com';
       };
     });
+    document.querySelectorAll('.address-row .addr-country').forEach(select => {
+      select.onchange = () => {
+        const row = select.closest('.address-row');
+        const isDutch = select.value === 'NL';
+        const zip = row.querySelector('.addr-zipcode');
+        const number = row.querySelector('.addr-number');
+        const street = row.querySelector('.addr-street');
+        const town = row.querySelector('.addr-town');
+        row.querySelector('.addr-region-field').style.display = isDutch ? 'none' : 'block';
+        row.querySelector('.addr-zipcode-field').querySelector('label').textContent = isDutch ? 'Postcode *' : 'Postcode / ZIP';
+        row.querySelector('.addr-number-field').querySelector('label').textContent = isDutch ? 'Huisnummer *' : 'Huisnummer';
+        zip.placeholder = isDutch ? '3024 ES' : 'Bijv. 10115';
+        number.placeholder = isDutch ? '174' : 'Bijv. 12A';
+        street.placeholder = isDutch ? 'Automatisch ingevuld' : 'Straatnaam';
+        town.placeholder = isDutch ? 'Automatisch ingevuld' : 'Plaats';
+        street.readOnly = isDutch;
+        town.readOnly = isDutch;
+        if (isDutch) {
+          street.value = '';
+          town.value = '';
+          row.querySelector('.addr-region').value = '';
+        }
+      };
+    });
   };
   q('#add-address').onclick = () => {
-    q('#addresses-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row address-row address-entry"><div><label>Postcode</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div><div><label>Huisnummer</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div><div><label>Straat</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
+    q('#addresses-demo-list').insertAdjacentHTML('beforeend', `<div class="repeat-row address-row address-entry"><div><label>Land *</label><select class="addr-country"><option value="NL" selected>Nederland</option><option value="BE">België</option><option value="DE">Duitsland</option><option value="FR">Frankrijk</option><option value="GB">Verenigd Koninkrijk</option><option value="US">Verenigde Staten</option><option value="other">Ander land</option></select></div><div class="addr-zipcode-field"><label>Postcode *</label><input class="addr-zipcode" placeholder="3024 ES" autocomplete="postal-code"></div><div class="addr-number-field"><label>Huisnummer *</label><input class="addr-number" placeholder="174" inputmode="numeric" autocomplete="address-line1"></div><div><label>Straat *</label><input class="addr-street" placeholder="Automatisch ingevuld" readonly></div><div><label>Plaats *</label><input class="addr-town" placeholder="Automatisch ingevuld" readonly></div><div class="addr-region-field" style="display:none;"><label>Regio / staat</label><input class="addr-region" placeholder="Provincie, staat of regio"></div><button type="button" class="icon-remove remove-repeat" title="Verwijderen">×</button></div>`);
     bindRepeatRows();
   };
   q('#add-contact').onclick = () => {
