@@ -342,6 +342,10 @@ input:-webkit-autofill:focus {
               <label>{{ _('BSN nummer') }}</label>
               <input type="text" name="subject_0_bsn_number" data-idx="0" placeholder="{{ _('Burgerservicenummer') }}">
             </div>
+            <div class="form-group">
+              <label>{{ _('Identification') }}</label>
+              <input type="text" name="subject_0_identification_number" data-idx="0" placeholder="{{ _('Optional identifier / document number') }}">
+            </div>
             <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Reisdocument type') }}</label>
@@ -859,7 +863,8 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="form-group"><label>' + T.dateOfBirth + '</label><input type="date" name="subject_' + i + '_date_of_birth" data-idx="' + i + '"></div>' +
             '<div class="form-group"><label>' + T.placeOfBirth + '</label><input type="text" name="subject_' + i + '_place_of_birth" data-idx="' + i + '"></div>' +
           '</div>' +
-          '<div class="form-group"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + i + '_bsn_number" data-idx="' + i + '" placeholder="' + T.bsnPlaceholder + '"></div>' +
+            '<div class="form-group"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + i + '_bsn_number" data-idx="' + i + '" placeholder="' + T.bsnPlaceholder + '"></div>' +
+            '<div class="form-group"><label>{{ _("Identification") }}</label><input type="text" name="subject_' + i + '_identification_number" data-idx="' + i + '" placeholder="{{ _("Optional identifier / document number") }}"></div>' +
           '<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">' +
             '<div class="form-group"><label>' + T.reisdocumentType + '</label><select name="subject_' + i + '_reisdocument_type" data-idx="' + i + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">' + T.selecteer + '</option><option value="paspoort">' + T.paspoort + '</option><option value="id-kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
             '<div class="form-group"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + i + '_reisdocument_nummer" data-idx="' + i + '"></div>' +

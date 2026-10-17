@@ -571,6 +571,7 @@ def _wf_subject_data(prefix: str, fallback_type: str | None = None) -> dict:
             "place_of_birth",
             "nationality",
             "bsn_number",
+            "identification_number",
             "reisdocument_type",
             "reisdocument_nummer",
         ):
