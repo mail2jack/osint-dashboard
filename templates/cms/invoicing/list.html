@@ -2,7 +2,9 @@
 {% block title %}{{ _('Invoices') }}{% endblock %}
 {% block content %}
 
-<div class="card">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Financiën</span><span>›</span><span>Facturen</span></div>
+<div class="ui-page-header"><div><div class="ui-kicker">Financiën · facturatie</div><h1>{{ _('Invoices') }}</h1><p class="ui-lead">Facturen, openstaande bedragen, betaalstatus en creditnota’s.</p></div></div>
+<div class="ui-panel">
     <div class="card-header">
         <h2>{{ _('Invoices') }}</h2>
         <div style="display:flex;gap:0.5rem;align-items:center;">

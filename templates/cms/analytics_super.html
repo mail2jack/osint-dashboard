@@ -39,8 +39,9 @@
 .bar-fill { height:6px;border-radius:3px;transition:width 0.3s;min-width:2px; }
 </style>
 
-<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;">
-    <h1 style="margin:0;">🔭 {{ _('Super Admin Overview') }}</h1>
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Super Admin</span><span>›</span><span>Platformanalyse</span></div>
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Super Admin · platform</div><h1>🔭 {{ _('Super Admin Overview') }}</h1><p class="ui-lead">Geaggregeerde platforminformatie; tenantgegevens blijven in deze beheercontext.</p></div>
     <form method="POST" action="{{ url_for('cms.aggregate_usage_now') }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-cms" style="font-size:0.8rem;">{{ _('Aggregate Now') }}</button>

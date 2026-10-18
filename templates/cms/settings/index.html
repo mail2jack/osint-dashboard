@@ -343,7 +343,8 @@
     <a href="{{ url_for('cms.dashboard') }}">← {{ _('Back to Dashboard') }}</a>
 </div>
 
-<h1 style="margin-bottom: 2rem;">⚙️ Settings</h1>
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Beheer</span><span>›</span><span>Instellingen</span></div>
+<div class="ui-page-header"><div><div class="ui-kicker">Beheer · configuratie</div><h1>⚙️ Settings</h1><p class="ui-lead">Organisatie, integraties, beveiliging, OPSEC, audit en platformbeheer.</p></div></div>
 
 <div class="settings-search">
     <div class="settings-search-bar">

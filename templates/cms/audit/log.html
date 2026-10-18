@@ -15,9 +15,10 @@
     .filter-group label { font-size: 0.75rem; color: var(--text-secondary, #666); }
 </style>
 
-<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Beheer</span><span>›</span><span>Audit trail</span></div>
+<div class="ui-page-header">
     <div>
-        <h1>Audit Log</h1>
+        <div class="ui-kicker">Beheer · controleerbaarheid</div><h1>Audit Log</h1>
         <p style="color:var(--text-secondary);font-size:0.85rem;margin:0;">
             {{ total_count }} entries &middot;
             {% if retention_days > 0 %}

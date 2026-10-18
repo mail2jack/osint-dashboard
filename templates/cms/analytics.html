@@ -77,8 +77,9 @@
 .history-table tr:hover td { background:var(--table-hover); }
 </style>
 
-<div class="analytics-header">
-    <h1>📊 {{ _('Usage Analytics') }}</h1>
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Analyse</span></div>
+<div class="analytics-header ui-page-header">
+    <div><div class="ui-kicker">Analyse · gebruik</div><h1>📊 {{ _('Usage Analytics') }}</h1><p class="ui-lead">Gebruik, kwaliteit en klantportalactiviteit binnen de huidige tenant.</p></div>
     <div style="display:flex;gap:0.5rem;align-items:center;">
         {% if current_user.is_super_admin %}
         <a href="{{ url_for('cms.analytics_super') }}" class="btn-cms" style="font-size:0.8rem;">🔭 {{ _('Super Admin Overview') }}</a>
