@@ -1,11 +1,13 @@
 {% extends "cms/base.html" %}
 {% block title %}Klantregistraties{% endblock %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:1rem;">
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Relaties</span><span>›</span><span>Klantregistraties</span></div>
+<div class="ui-page-header">
   <div>
-    <div style="color:var(--text-muted);font-size:.8rem;">{{ 'Platformbeheer' if is_platform_admin else 'Tenantbeheer' }}</div>
-    <h1 style="margin:.2rem 0;">Klantregistraties</h1>
-    <p style="color:var(--text-muted);">Eenmalige klanten krijgen portaltoegang binnen een bestaande onderzoekstenant. Organisaties krijgen na goedkeuring een eigen onderzoekstenant.</p>
+    <div class="ui-kicker">{{ 'Platformbeheer' if is_platform_admin else 'Tenantbeheer' }} · intake</div>
+    <h1>Klantregistraties</h1>
+    <p class="ui-lead">Eenmalige klanten krijgen portaltoegang binnen een bestaande onderzoekstenant. Organisaties krijgen na goedkeuring een eigen onderzoekstenant.</p>
   </div>
   <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
     <a class="btn-cms small" href="{{ url_for('cms.customer_registrations', show_archived='0' if show_archived else '1') }}">{{ 'Actieve registraties' if show_archived else 'Gearchiveerde registraties' }}</a>
@@ -14,7 +16,7 @@
 </div>
 
 {% for item in registrations %}
-<section style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1rem;margin:.75rem 0;">
+<section class="ui-panel">
   <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;"><strong>{{ item.organization_name }}</strong><span>{{ 'Eigen klantomgeving + onderzoekstenant' if item.registration_type == 'organization' else ('Andere vraag' if item.registration_type == 'other' else 'Portal-only klantomgeving') }} · {{ {'submitted':'Nieuw','in_review':'In beoordeling','contact_pending':'Opvolgen','contacted':'Contact opgenomen','handled':'Afgehandeld','approved':'Goedgekeurd','rejected':'Afgewezen','spam':'SPAM — gearchiveerd'}.get(item.status, item.status) }} · {{ item.created_at.strftime('%d-%m-%Y %H:%M') if item.created_at else '—' }} UTC</span></div>
   {% if item.status == 'spam' or item.archived_at %}<p style="margin:.5rem 0 0;color:var(--text-muted);"><strong>Gearchiveerd als SPAM</strong>{% if item.archived_at %} op {{ item.archived_at.strftime('%d-%m-%Y %H:%M') }} UTC{% endif %}. Er is geen bericht naar de aanvrager verzonden.</p>{% endif %}
   <p style="margin:.45rem 0 0;"><strong>{{ item.contact_name }}</strong> · {{ item.email }}{% if item.phone %} · {{ item.phone }}{% endif %}</p>
@@ -34,5 +36,6 @@
   {% endif %}
   {% endif %}
 </section>
-{% else %}<p style="color:var(--text-muted);">Nog geen klantregistraties.</p>{% endfor %}
+{% else %}<div class="ui-empty"><div class="ui-empty-icon">📭</div><p>Nog geen klantregistraties.</p></div>{% endfor %}
+</div>
 {% endblock %}

@@ -113,8 +113,8 @@
     }
 </style>
 
-<div class="card-header" style="margin-bottom: 1.5rem;">
-    <h2>{{ _('Reminders') }}</h2>
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Werk · opvolging</div><h1>{{ _('Reminders') }}</h1><p class="ui-lead">Volgende acties, deadlines en opvolging per zaak of relatie.</p></div>
     <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary">+ {{ _('New Reminder') }}</a>
 </div>
 
@@ -203,8 +203,8 @@
     </div>
     {% endif %}
 {% else %}
-    <div class="empty-state">
-        <div class="icon">📋</div>
+    <div class="ui-empty">
+        <div class="ui-empty-icon">📋</div>
         <p>{{ _('No reminders found.') }}</p>
         <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary" style="margin-top: 1rem;">{{ _('Create your first reminder') }}</a>
     </div>
