@@ -616,7 +616,7 @@ def test_completed_source_research_action_links_directly_to_materialized_finding
         f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
     ).get_data(as_text=True)
     assert 'href="#investigation-findings"' in html
-    assert "View findings" in html
+    assert any(label in html for label in ("View findings", "Bekijk bevindingen"))
     assert f'data-source-action-id="{action.id}"' not in html
 
 
