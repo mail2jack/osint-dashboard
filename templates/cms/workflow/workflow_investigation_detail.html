@@ -110,7 +110,7 @@
 }
 @media (max-width: 800px) { .relationship-graph-wrap { grid-template-columns:1fr; } }
 </style>
-<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+<nav class="ui-breadcrumbs">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
     <span style="margin:0 0.35rem;">›</span>
     <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Cases') }}</a>

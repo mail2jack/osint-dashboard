@@ -130,6 +130,10 @@
 .ui-empty { text-align:center; padding:2rem 1rem; border:1px dashed var(--border-color); border-radius:var(--iveras-radius-card); color:var(--text-muted); }
 .ui-empty-icon { font-size:2rem; margin-bottom:.4rem; }
 .ui-note { padding:.8rem 1rem; border:1px solid var(--info-bg); border-left:4px solid var(--info-text); border-radius:var(--iveras-radius-control); background:color-mix(in srgb,var(--info-bg) 45%,var(--bg-card)); color:var(--text-secondary); font-size:.82rem; }
+.iveras-cms .workflow-step { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
+.iveras-cms .workflow-step-body { padding:1.15rem; }
+.iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
 
 @media (max-width: 700px) {
     .ui-page-header { margin-bottom:1rem; }

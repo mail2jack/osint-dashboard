@@ -1,16 +1,18 @@
 {% extends "cms/base.html" %}
 {% block title %}{{ _('Report centre') }} — {{ case.case_number }}{% endblock %}
 {% block content %}
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><a href="{{ url_for('workflow.dashboard') }}">{{ _('Cases') }}</a><span>›</span><a href="{{ url_for('workflow.case_detail', case_id=case.id) }}">{{ case.case_number }}</a><span>›</span><span>{{ _('Report centre') }}</span></div>
 <div class="back" style="margin-bottom:1rem;">
   <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}">{{ _('← Back to case') }}</a>
 </div>
 
-<div class="card" style="margin-bottom:1rem;">
+<div class="ui-panel">
   <h1 style="margin:0 0 0.3rem;font-size:1.3rem;">📄 {{ _('Report centre') }}</h1>
   <p style="margin:0;color:var(--text-muted);"><strong>{{ case.case_number }}</strong> — {{ case.title }}</p>
 </div>
 
-<div class="card" style="margin-bottom:1rem;">
+<div class="ui-panel">
   <h2 style="margin-top:0;">{{ _('Official case report') }}</h2>
   <p style="color:var(--text-secondary);">{{ _('This report is available immediately. It uses the findings selected for the report, together with their comments and eligible screenshot evidence.') }}</p>
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -20,7 +22,7 @@
   </div>
 </div>
 
-<div class="card">
+<div class="ui-panel">
   <h2 style="margin-top:0;">{{ _('Document from template') }}</h2>
   <p style="color:var(--text-secondary);">{{ _('Templates are optional. Use one only when you need a specific house style or reusable narrative format.') }}</p>
   {% if templates %}
@@ -45,5 +47,6 @@
     {% endif %}
   </div>
   {% endif %}
+</div>
 </div>
 {% endblock %}
