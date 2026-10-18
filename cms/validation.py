@@ -536,6 +536,7 @@ class EditClientSchema(BaseModel):
 class CreateSubjectSchema(BaseModel):
     name: str = ""
     subject_type: str = ""
+    subject_id: str | None = None
     risk_score: Any = 0
     risk_factors: str | None = None
     notes: str | None = None
