@@ -233,7 +233,7 @@ def create_client() -> flask.Response:
                 if request.is_json:
                     return api_error(f"{field} is required", 400)
                 flash(f"{field} is required.", "danger")
-                return render_template("cms/clients/create.html")
+                return render_template("cms/clients/form_demo.html", production=True)
 
         name = data["name"].strip()
 
@@ -258,7 +258,8 @@ def create_client() -> flask.Response:
                     "warning",
                 )
                 return render_template(
-                    "cms/clients/create.html",
+                    "cms/clients/form_demo.html",
+                    production=True,
                     duplicate_warning=True,
                     exact_match=exact_match,
                     similar_clients=similar[:5],
@@ -272,7 +273,8 @@ def create_client() -> flask.Response:
                     "warning",
                 )
                 return render_template(
-                    "cms/clients/create.html",
+                    "cms/clients/form_demo.html",
+                    production=True,
                     duplicate_warning=True,
                     similar_clients=similar[:5],
                     submitted_name=name,
@@ -291,11 +293,14 @@ def create_client() -> flask.Response:
                 f"Client limit reached ({cur}/{maximum}). Upgrade your plan to add more clients.",
                 "danger",
             )
-            return render_template("cms/clients/create.html")
+            return render_template("cms/clients/form_demo.html", production=True)
 
         client = Client(name=name)
         client.is_company = bool(data.get("is_company"))
         client.portal_access_enabled = bool(data.get("portal_access_enabled"))
+        for field in ("achternaam", "voornamen", "voorletters", "tussenvoegsels", "geslacht", "reisdocument_type"):
+            if data.get(field):
+                setattr(client, field, data[field].strip() if isinstance(data[field], str) else data[field])
         db.session.add(client)
         db.session.flush()  # Assign client.id before creating related contacts/addresses
 
@@ -308,6 +313,9 @@ def create_client() -> flask.Response:
             "bank_account",
             "date_of_birth",
             "place_of_birth",
+            "nationality",
+            "bsn_number",
+            "reisdocument_nummer",
         ]
         for field in encrypted_fields:
             if data.get(field):
@@ -415,7 +423,7 @@ def create_client() -> flask.Response:
         flash(f"Client {client.name} created successfully.", "success")
         return redirect(url_for("cms.view_client", client_id=client.id))
 
-    return render_template("cms/clients/create.html")
+    return render_template("cms/clients/form_demo.html", production=True)
 
 
 @cms_bp.route("/clients/<client_id>/edit", methods=["GET", "POST"])
@@ -460,6 +468,9 @@ def edit_client(client_id: str) -> flask.Response:
             "bank_account",
             "date_of_birth",
             "place_of_birth",
+            "nationality",
+            "bsn_number",
+            "reisdocument_nummer",
         ]
         for field in encrypted_fields:
             if field in data:
@@ -471,6 +482,11 @@ def edit_client(client_id: str) -> flask.Response:
                         setattr(client, field, encryptor.encrypt(new_value))
                     else:
                         setattr(client, field, None)
+
+        for field in ("achternaam", "voornamen", "voorletters", "tussenvoegsels", "geslacht", "reisdocument_type"):
+            if field in data and data[field] != getattr(client, field):
+                changes[field] = {"old": getattr(client, field), "new": data[field]}
+                setattr(client, field, data[field] or None)
 
         # Handle structured contacts
         if data.get("contacts_data"):
@@ -592,7 +608,7 @@ def edit_client(client_id: str) -> flask.Response:
             c.decrypt_fields()
         for addr in client.addresses:
             addr.decrypt_fields()
-        return render_template("cms/clients/edit.html", client=client)
+        return render_template("cms/clients/form_demo.html", client=client, production=True, edit_mode=True)
 
 
 @cms_bp.route("/clients/<client_id>/delete", methods=["POST"])
