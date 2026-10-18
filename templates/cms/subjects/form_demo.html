@@ -71,14 +71,14 @@
   </div>
 
   {% if production %}<form method="POST" action="{{ url_for('cms.create_subject', unified=1, case_id=case_id) if case_id else url_for('cms.create_subject', unified=1) }}" id="subjectForm">{% endif %}
-  {% if production %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="subject_type" value="person"><input type="hidden" name="name" id="name-computed"><input type="hidden" name="addresses_data" id="addresses-data"><input type="hidden" name="contacts_data" id="contacts-data">{% endif %}
+  {% if production %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="subject_type" value="person"><input type="hidden" name="subject_id" id="existing-subject-id"><input type="hidden" name="name" id="name-computed"><input type="hidden" name="addresses_data" id="addresses-data"><input type="hidden" name="contacts_data" id="contacts-data">{% endif %}
   <div class="demo-grid">
     <main>
       <div class="demo-card">
         <h2>1. Context en koppeling</h2>
         <div class="choice-row">
           <label class="choice"><input type="radio" name="mode" value="new" checked> <strong>Nieuw subject</strong><span class="muted">Maak een nieuwe persoonskaart aan.</span></label>
-          {% if not production %}<label class="choice"><input type="radio" name="mode" value="existing"> <strong>Bestaand subject koppelen</strong><span class="muted">Zoek eerst naar een bestaande persoonskaart.</span></label>{% endif %}
+          <label class="choice"><input type="radio" name="mode" value="existing"> <strong>Bestaand subject koppelen</strong><span class="muted">Zoek eerst naar een bestaande persoonskaart.</span></label>
         </div>
         <div class="demo-section">
           <label for="case-link">Koppelen aan zaak (optioneel)</label>
@@ -90,8 +90,9 @@
         </div>
         <div id="existing-search" class="demo-section" style="display:none;">
           <label for="subject-search">Bestaand subject zoeken</label>
-          <div class="search-row"><input id="subject-search" type="search" placeholder="Naam, e-mail, telefoon of identificatie" minlength="3"><button type="button" class="btn-cms small" id="subject-search-button">Zoeken</button></div>
+          <div class="search-row"><input id="subject-search" type="search" placeholder="Naam of persoonskenmerk" minlength="3"><button type="button" class="btn-cms small" id="subject-search-button">Zoeken</button></div>
           <div id="subject-search-state" class="search-state">Zoek eerst een bestaand subject. De overige velden blijven tijdelijk uitgeschakeld.</div>
+          <div id="subject-search-results" class="search-state" style="display:none;"></div>
         </div>
       </div>
 
@@ -218,6 +219,9 @@
   q('#case-link').addEventListener('change', e => { q('#summary-case').textContent = e.target.value || 'Geen koppeling'; });
   const subjectSearch = q('#subject-search');
   const subjectSearchState = q('#subject-search-state');
+  const subjectSearchResults = q('#subject-search-results');
+  const existingSubjectId = q('#existing-subject-id');
+  const saveButton = q('#demo-save');
   const setSubjectFieldsDisabled = (disabled) => {
     document.querySelectorAll('.subject-gated').forEach(section => {
       section.classList.toggle('is-disabled', disabled);
@@ -226,20 +230,73 @@
   };
   const resetSubjectSearch = () => {
     subjectSearch.value = '';
+    if (existingSubjectId) existingSubjectId.value = '';
+    if (subjectSearchResults) {
+      subjectSearchResults.innerHTML = '';
+      subjectSearchResults.style.display = 'none';
+    }
     subjectSearchState.textContent = 'Zoek eerst een bestaand subject. De overige velden blijven tijdelijk uitgeschakeld.';
     setSubjectFieldsDisabled(true);
+    if (saveButton) saveButton.textContent = 'Subject opslaan en koppelen';
   };
-  q('#subject-search-button').addEventListener('click', () => {
+  const showSearchResults = (results) => {
+    if (!subjectSearchResults) return;
+    subjectSearchResults.innerHTML = '';
+    subjectSearchResults.style.display = 'block';
+    if (!results.length) {
+      subjectSearchResults.textContent = 'Geen bestaand subject gevonden. Je kunt een nieuw subject aanmaken.';
+      return;
+    }
+    const heading = document.createElement('strong');
+    heading.textContent = 'Kies het juiste bestaande subject:';
+    subjectSearchResults.appendChild(heading);
+    results.forEach(result => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn-cms small';
+      button.style.cssText = 'display:block;width:100%;text-align:left;margin-top:.45rem;';
+      button.textContent = `${result.name} (${result.subject_type})`;
+      button.addEventListener('click', () => {
+        if (existingSubjectId) existingSubjectId.value = result.id;
+        subjectSearchState.textContent = `Geselecteerd: ${result.name}. Controleer de koppeling en sla op.`;
+        subjectSearchResults.querySelectorAll('button').forEach(item => item.disabled = true);
+        button.disabled = false;
+        button.style.borderColor = 'var(--accent-primary)';
+        setSubjectFieldsDisabled(false);
+        if (saveButton) saveButton.textContent = 'Bestaand subject koppelen';
+      });
+      subjectSearchResults.appendChild(button);
+    });
+  };
+  q('#subject-search-button').addEventListener('click', async () => {
     const query = subjectSearch.value.trim();
     if (query.length < 3) {
       subjectSearchState.textContent = 'Vul minimaal drie tekens in om te zoeken.';
       return;
     }
+    {% if production %}
+    subjectSearchState.textContent = 'Bezig met zoeken…';
+    if (subjectSearchResults) subjectSearchResults.style.display = 'none';
+    try {
+      const response = await fetch(`{{ url_for('cms.search_subjects_for_link') }}?q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('search failed');
+      const payload = await response.json();
+      showSearchResults(payload.results || []);
+      setSubjectFieldsDisabled(false);
+      subjectSearchState.textContent = payload.results?.length
+        ? 'Zoekresultaat gevonden. Selecteer het juiste subject.'
+        : 'Geen bestaand subject gevonden. Controleer de gegevens en maak eventueel een nieuw subject aan.';
+    } catch (error) {
+      subjectSearchState.textContent = 'Zoeken is mislukt. Probeer het opnieuw.';
+      setSubjectFieldsDisabled(true);
+    }
+    {% else %}
     setSubjectFieldsDisabled(false);
     const noResult = /geen|onbekend/i.test(query);
     subjectSearchState.textContent = noResult
       ? 'Geen bestaand subject gevonden. Controleer de gegevens en maak eventueel een nieuw subject aan.'
       : 'Subject gevonden. Controleer de gegevens en koppel de bestaande persoonskaart.';
+    {% endif %}
   });
   subjectSearch.addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); q('#subject-search-button').click(); }
@@ -375,6 +432,13 @@
   };
   {% if production %}
   q('#subjectForm').addEventListener('submit', event => {
+    const mode = q('input[name="mode"]:checked')?.value;
+    if (mode === 'existing' && !(existingSubjectId?.value || '').trim()) {
+      event.preventDefault();
+      subjectSearchState.textContent = 'Selecteer eerst een bestaand subject uit de zoekresultaten.';
+      subjectSearch.focus();
+      return;
+    }
     serializeProductionData();
     updateName();
     if (!q('#surname').value.trim()) { event.preventDefault(); q('#surname').focus(); }

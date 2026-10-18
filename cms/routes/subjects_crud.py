@@ -51,6 +51,41 @@ def subject_form_demo() -> flask.Response:
     return render_template("cms/subjects/form_demo.html", cases=cases)
 
 
+@cms_bp.route("/api/subjects/search-for-link", methods=["GET"])
+@login_required
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
+def search_subjects_for_link() -> flask.Response:
+    """Search tenant subjects that can be linked instead of creating a duplicate."""
+    term = request.args.get("q", "").strip()
+    if len(term) < 3:
+        return jsonify({"results": []})
+
+    pattern = f"%{term}%"
+    query = apply_tenant_filter(
+        Subject.query.filter(
+            Subject.is_deleted.is_(False),
+            db.or_(
+                Subject.id == term,
+                Subject.name.ilike(pattern),
+                Subject.achternaam.ilike(pattern),
+                Subject.voornamen.ilike(pattern),
+            ),
+        ),
+        Subject,
+    )
+    results = query.order_by(Subject.name.asc()).limit(20).all()
+    return jsonify(
+        {
+            "results": [
+                {"id": subject.id, "name": subject.name, "subject_type": subject.subject_type}
+                for subject in results
+            ]
+        }
+    )
+
+
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
 @roles_required(
@@ -78,6 +113,43 @@ def create_subject() -> flask.Response:
         data = request.validated_data
         if "type_" in data:
             data["type"] = data.pop("type_")
+
+        # Existing-subject mode links the selected tenant subject and must
+        # never create a second person record from the rest of the form.
+        existing_subject_id = data.get("subject_id")
+        if existing_subject_id:
+            subject = db.session.get(Subject, existing_subject_id) or abort(404)
+            ensure_tenant_access(subject)
+            if subject.is_deleted:
+                abort(404)
+
+            case_id = data.get("case_id")
+            if case_id:
+                case = db.session.get(Case, case_id) or abort(404)
+                ensure_tenant_access(case)
+                if subject not in case.subjects.all():
+                    case.subjects.append(subject)
+                    AuditLog.log(
+                        user_id=current_user.id,
+                        action="update",
+                        entity_type="case",
+                        entity_id=case.id,
+                        new_values={"added_subject": subject.name},
+                        ip_address=request.remote_addr,
+                        description=f"Linked existing subject {subject.name} to case {case.case_number}",
+                    )
+                    db.session.commit()
+                else:
+                    flash(f"Subject {subject.name} is already linked to this case.", "info")
+                if request.is_json:
+                    return jsonify({"message": "Existing subject linked", "subject": subject.to_dict()})
+                flash(f"Subject {subject.name} linked to the case.", "success")
+                return redirect(url_for("cms.view_case", case_id=case.id))
+
+            if request.is_json:
+                return jsonify({"message": "Existing subject selected", "subject": subject.to_dict()})
+            flash(f"Existing subject selected: {subject.name}.", "info")
+            return redirect(url_for("cms.view_subject", subject_id=subject.id))
 
         required = ["subject_type"]
         for field in required:
