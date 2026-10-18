@@ -1,0 +1,164 @@
+/* Iveras UI foundation — shared by CMS screens during the UI migration. */
+:root {
+    --iveras-radius-card: 14px;
+    --iveras-radius-control: 9px;
+    --iveras-space-section: 1.25rem;
+    --iveras-shadow-card: 0 6px 20px rgba(15, 23, 42, .06);
+    --iveras-focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+.iveras-cms .container {
+    width: min(100% - 2rem, 1440px);
+    margin-inline: auto;
+    padding-block: 1.25rem 5rem;
+}
+
+.iveras-cms h1 {
+    font-size: clamp(1.55rem, 2vw, 2rem);
+    letter-spacing: -.02em;
+    margin-bottom: .35rem;
+}
+
+.iveras-cms h2 {
+    letter-spacing: -.015em;
+}
+
+.iveras-cms .card,
+.iveras-cms .stat-card,
+.iveras-cms .address-card {
+    border-radius: var(--iveras-radius-card);
+    box-shadow: var(--iveras-shadow-card);
+}
+
+.iveras-cms .card-header {
+    gap: .75rem;
+    padding-bottom: .9rem;
+}
+
+.iveras-cms input,
+.iveras-cms select,
+.iveras-cms textarea {
+    border-radius: var(--iveras-radius-control);
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.iveras-cms input:focus,
+.iveras-cms select:focus,
+.iveras-cms textarea:focus,
+.iveras-cms button:focus-visible,
+.iveras-cms a:focus-visible {
+    outline: none;
+    box-shadow: var(--iveras-focus-ring);
+}
+
+.iveras-cms label {
+    font-size: .82rem;
+    font-weight: 650;
+}
+
+.iveras-cms .btn,
+.iveras-cms .btn-cms {
+    min-height: 2.5rem;
+    border-radius: var(--iveras-radius-control);
+    font-weight: 650;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.iveras-cms .btn:hover,
+.iveras-cms .btn-cms:hover {
+    transform: translateY(-1px);
+}
+
+.iveras-cms .badge,
+.iveras-cms .review-status,
+.iveras-cms .review-chip {
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.iveras-cms .data-table,
+.iveras-cms table {
+    border: 1px solid var(--border-color);
+    border-radius: var(--iveras-radius-card);
+    overflow: hidden;
+}
+
+.iveras-cms .data-table th,
+.iveras-cms table th {
+    background: color-mix(in srgb, var(--bg-secondary) 70%, var(--bg-card));
+}
+
+.iveras-cms .empty-state {
+    border: 1px dashed var(--border-color);
+    border-radius: var(--iveras-radius-card);
+    background: color-mix(in srgb, var(--bg-card) 70%, var(--bg-secondary));
+}
+
+.iveras-cms .alert {
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* Shared page grammar used by the work-area screens. */
+.ui-page { max-width: 1280px; margin-inline: auto; }
+.ui-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin: .25rem 0 1.25rem; }
+.ui-page-header h1 { margin: .15rem 0 .25rem; }
+.ui-kicker { color:var(--accent-primary); font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.ui-lead { color:var(--text-secondary); margin:0; max-width:72ch; }
+.ui-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.ui-breadcrumbs { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-bottom:.85rem; color:var(--text-muted); font-size:.8rem; }
+.ui-breadcrumbs a { color:var(--text-secondary); text-decoration:none; }
+.ui-breadcrumbs a:hover { color:var(--link-color); text-decoration:underline; }
+.ui-panel { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--iveras-radius-card); padding:1.15rem; margin-bottom:1rem; box-shadow:var(--iveras-shadow-card); }
+.ui-panel > :first-child { margin-top:0; }
+.ui-panel > :last-child { margin-bottom:0; }
+.ui-section-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:.85rem; }
+.ui-section-heading h2 { margin:0; font-size:1.05rem; }
+.ui-section-heading p { margin:.2rem 0 0; color:var(--text-muted); font-size:.82rem; }
+.ui-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:.75rem; margin-bottom:1rem; }
+.ui-stat { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--iveras-radius-card); padding:.9rem; box-shadow:var(--iveras-shadow-card); }
+.ui-stat-label { color:var(--text-muted); font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.ui-stat-value { margin-top:.2rem; font-size:1.45rem; font-weight:800; }
+.ui-stat-hint { color:var(--text-muted); font-size:.72rem; margin-top:.2rem; }
+.ui-status { display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.25rem .6rem; font-size:.74rem; font-weight:750; background:var(--bg-secondary); color:var(--text-secondary); }
+.ui-status::before { content:'●'; font-size:.55rem; }
+.ui-status.success { background:var(--success-bg); color:var(--success-text); }
+.ui-status.warning { background:var(--warning-bg); color:var(--warning-text); }
+.ui-status.info { background:var(--info-bg); color:var(--info-text); }
+.ui-status.danger { background:var(--danger-bg); color:var(--danger-text); }
+.ui-table-wrap { overflow-x:auto; border:1px solid var(--border-color); border-radius:var(--iveras-radius-card); }
+.ui-table-wrap table { min-width:620px; border:0; border-radius:0; }
+.ui-empty { text-align:center; padding:2rem 1rem; border:1px dashed var(--border-color); border-radius:var(--iveras-radius-card); color:var(--text-muted); }
+.ui-empty-icon { font-size:2rem; margin-bottom:.4rem; }
+.ui-note { padding:.8rem 1rem; border:1px solid var(--info-bg); border-left:4px solid var(--info-text); border-radius:var(--iveras-radius-control); background:color-mix(in srgb,var(--info-bg) 45%,var(--bg-card)); color:var(--text-secondary); font-size:.82rem; }
+.iveras-cms .workflow-step { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
+.iveras-cms .workflow-step-body { padding:1.15rem; }
+.iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .page-header { gap:1rem; flex-wrap:wrap; }
+.iveras-cms .back { margin-bottom:1rem; }
+.iveras-cms .back a { display:inline-flex; align-items:center; gap:.35rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
+.iveras-cms .back a:hover { color:var(--link-color); text-decoration:underline; }
+.iveras-cms .type-card { box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
+.iveras-cms .workflow-step-body { padding:1.15rem; }
+.iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+
+@media (max-width: 700px) {
+    .ui-page-header { margin-bottom:1rem; }
+    .ui-actions { width:100%; }
+    .ui-actions .btn, .ui-actions .btn-cms { flex:1 1 auto; }
+}
+
+@media (max-width: 700px) {
+    .iveras-cms .container {
+        width: min(100% - 1rem, 1440px);
+        padding-block: .75rem 5.5rem;
+    }
+
+    .iveras-cms .data-table,
+    .iveras-cms table {
+        display: block;
+        overflow-x: auto;
+    }
+}

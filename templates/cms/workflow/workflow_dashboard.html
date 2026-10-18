@@ -23,14 +23,16 @@ input:-webkit-autofill:focus {
 }
 </style>
 
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><span>{{ _('Cases') }}</span></div>
+<div class="ui-page-header">
   <div>
-    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('Cases') }}</h1>
-    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
+    <div class="ui-kicker">Werk · zaken</div><h1><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('Cases') }}</h1>
+    <p class="ui-lead">
       <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('All findings register') }}</a>
     </p>
   </div>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ {{ _('New case') }}</a>
+  <div class="ui-actions"><a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ {{ _('New case') }}</a></div>
 </div>
 
 {% if cases %}
@@ -57,7 +59,7 @@ input:-webkit-autofill:focus {
   </div>
   {% endfor %}
 {% else %}
-<div style="text-align:center;padding:3rem;color:var(--text-muted);">
+<div class="ui-empty">
   <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>
   <h2>{{ _('No cases yet') }}</h2>
   <p>{{ _('Start a new case to test the workflow.') }}</p>
@@ -71,4 +73,5 @@ input:-webkit-autofill:focus {
   {% if cases_page < cases_pages %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">{{ _('Next') }} →</a>{% endif %}
 </div>
 {% endif %}
+</div>
 {% endblock %}

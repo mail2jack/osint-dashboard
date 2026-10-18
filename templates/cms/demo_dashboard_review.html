@@ -1,0 +1,90 @@
+{% extends "cms/base.html" %}
+{% block title %}Dashboard- en menudemo{% endblock %}
+{% block content %}
+<style>
+  .dash-demo { max-width:1220px; margin:0 auto; }
+  .dash-demo-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .dash-kicker { color:var(--accent-primary); font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+  .dash-demo h1 { margin:.2rem 0 .35rem; }
+  .dash-note { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; padding:1rem 1.1rem; border-radius:10px; color:#1e3a8a; margin-bottom:1rem; }
+  .dash-layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:1rem; align-items:start; }
+  .dash-nav, .dash-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; }
+  .dash-nav { padding:.7rem; position:sticky; top:1rem; }
+  .dash-nav-title { padding:.55rem .65rem .8rem; font-weight:800; color:var(--text-primary); border-bottom:1px solid var(--border-color); margin-bottom:.45rem; }
+  .dash-nav-section { margin:.25rem 0 .55rem; }
+  .dash-nav-section h3 { margin:.5rem .65rem .25rem; font-size:.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+  .dash-nav a, .dash-nav button { display:flex; justify-content:space-between; align-items:center; width:100%; box-sizing:border-box; border:0; border-radius:7px; padding:.55rem .65rem; background:transparent; color:var(--text-secondary); text-decoration:none; font:inherit; font-size:.82rem; text-align:left; cursor:pointer; }
+  .dash-nav a:hover, .dash-nav button:hover, .dash-nav .active { background:var(--info-bg,#eff6ff); color:var(--accent-primary); }
+  .dash-nav .count { min-width:20px; padding:.1rem .35rem; border-radius:999px; background:#fee2e2; color:#991b1b; font-size:.67rem; text-align:center; }
+  .dash-main { min-width:0; }
+  .dash-topline { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .dash-topline h2 { margin:0; font-size:1.15rem; }
+  .dash-date { color:var(--text-muted); font-size:.8rem; }
+  .dash-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .dash-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.7rem; margin-bottom:1rem; }
+  .dash-stat { padding:.85rem; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-card); }
+  .dash-stat .label { color:var(--text-muted); font-size:.72rem; font-weight:700; text-transform:uppercase; }
+  .dash-stat .number { display:block; margin-top:.2rem; font-size:1.45rem; font-weight:800; }
+  .dash-stat .hint { color:var(--text-muted); font-size:.72rem; }
+  .dash-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,.8fr); gap:1rem; }
+  .dash-card { padding:1rem; margin-bottom:1rem; }
+  .dash-card h3 { margin:0 0 .75rem; font-size:.95rem; }
+  .dash-card-head { display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:.75rem; }
+  .dash-card-head h3 { margin:0; }
+  .dash-card-head a { color:var(--link-color); font-size:.78rem; }
+  .work-row { display:grid; grid-template-columns:85px minmax(0,1fr) auto; gap:.65rem; align-items:center; padding:.65rem 0; border-bottom:1px solid var(--border-color); font-size:.8rem; }
+  .work-row:last-child { border-bottom:0; }
+  .work-row strong { display:block; }
+  .work-row small { color:var(--text-muted); }
+  .status { display:inline-flex; border-radius:999px; padding:.2rem .5rem; font-size:.68rem; font-weight:700; white-space:nowrap; }
+  .status.open { background:#fef3c7; color:#92400e; }
+  .status.wait { background:#dbeafe; color:#1e40af; }
+  .status.done { background:#dcfce7; color:#166534; }
+  .status.alert { background:#fee2e2; color:#991b1b; }
+  .dash-list { list-style:none; padding:0; margin:0; display:grid; gap:.55rem; }
+  .dash-list li { display:flex; justify-content:space-between; gap:.7rem; padding:.55rem 0; border-bottom:1px solid var(--border-color); font-size:.8rem; }
+  .dash-list li:last-child { border-bottom:0; }
+  .dash-list small { color:var(--text-muted); display:block; margin-top:.15rem; }
+  .health-line { display:flex; justify-content:space-between; gap:.7rem; padding:.42rem 0; font-size:.78rem; }
+  .health-ok { color:#15803d; font-weight:700; }
+  .dash-footer-note { color:var(--text-muted); font-size:.75rem; padding:.2rem .1rem 1rem; }
+  @media (max-width:900px) { .dash-layout { grid-template-columns:1fr; } .dash-nav { position:static; } .dash-grid { grid-template-columns:1fr; } }
+  @media (max-width:620px) { .dash-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .work-row { grid-template-columns:1fr auto; } .work-row > small { grid-column:1 / -1; } }
+</style>
+
+<div class="dash-demo">
+  <div class="dash-demo-header">
+    <div><div class="dash-kicker">UI-review · demo · niets wordt opgeslagen</div><h1>Dashboard en menustructuur</h1><p class="muted" style="margin:0;">Voorstel voor een werkgerichte startpagina met duidelijke scheiding tussen werk, relaties, communicatie en beheer.</p></div>
+    <a class="btn-cms small" href="{{ url_for('cms.dashboard') }}">← Huidig dashboard</a>
+  </div>
+  <div class="dash-note"><strong>Ontwerpkeuze</strong><br>Het dashboard toont eerst wat vandaag aandacht vraagt. De menustructuur groepeert functies op taak en voorkomt dat Onderzoeken, Bevindingen, Rapporten en Portal-aanvragen los van elkaar blijven staan.</div>
+
+  <div class="dash-layout">
+    <aside class="dash-nav" aria-label="Voorgestelde menustructuur">
+      <div class="dash-nav-title">Iveras CMS <span class="muted" style="float:right;font-weight:400;">demo</span></div>
+      <div class="dash-nav-section"><h3>Start</h3><a class="active" href="#overzicht">📊 Overzicht</a><a href="#mijn-werk">📋 Mijn werk <span class="count">5</span></a><a href="#meldingen">🔔 Meldingen <span class="count">2</span></a></div>
+      <div class="dash-nav-section"><h3>Werk</h3><a href="#zaken">📁 Zaken</a><a href="#onderzoeken">🔎 Onderzoeken</a><a href="#findings">🧩 Bevindingen <span class="count">3</span></a><a href="#rapporten">📄 Rapporten & vrijgave</a></div>
+      <div class="dash-nav-section"><h3>Relaties</h3><a href="#klanten">🏢 Klanten</a><a href="#subjecten">👤 Subjecten</a><a href="#portal">📨 Portal-aanvragen <span class="count">1</span></a></div>
+      <div class="dash-nav-section"><h3>Communicatie</h3><a href="#berichten">💬 Berichten</a><a href="#documenten">📎 Documenten</a><a href="#reminders">⏰ Herinneringen</a></div>
+      <div class="dash-nav-section"><h3>Beheer</h3><a href="#instellingen">⚙️ Instellingen</a><a href="#audit">🛡️ Audit trail</a></div>
+    </aside>
+
+    <main class="dash-main" id="overzicht">
+      <div class="dash-topline"><div><h2>Goedemiddag, Ivan</h2><span class="dash-date">Overzicht · maandag 18 oktober 2026 · alle tijden UTC</span></div><div class="dash-actions"><button class="btn-cms primary small" type="button">+ Nieuwe zaak</button><button class="btn-cms small" type="button">+ Onderzoeksactie</button></div></div>
+      <div class="dash-stats"><div class="dash-stat"><span class="label">Mijn open zaken</span><span class="number">4</span><span class="hint">1 hoge prioriteit</span></div><div class="dash-stat"><span class="label">Acties vandaag</span><span class="number">7</span><span class="hint">3 nog te starten</span></div><div class="dash-stat"><span class="label">Te beoordelen</span><span class="number">3</span><span class="hint">bevindingen</span></div><div class="dash-stat"><span class="label">Wacht op klant</span><span class="number">1</span><span class="hint">portal-aanvraag</span></div></div>
+      <div class="dash-grid">
+        <div>
+          <section class="dash-card" id="mijn-werk"><div class="dash-card-head"><h3>Mijn werk vandaag</h3><a href="#mijn-werk">Alles bekijken →</a></div><div class="work-row"><span class="status alert">Hoog</span><div><strong>2026-00003 · Onderzoeksvraag Hermsen Bouw</strong><small>Rapportcontrole vereist</small></div><small>vandaag</small></div><div class="work-row"><span class="status open">Actie</span><div><strong>KvK-registratie controleren</strong><small>Onderzoek 2026-00003-01</small></div><small>15:30</small></div><div class="work-row"><span class="status wait">Klant</span><div><strong>Document opvragen bij P. Jansen</strong><small>Wacht op reactie via portal</small></div><small>gisteren</small></div><div class="work-row"><span class="status done">Klaar</span><div><strong>Open bronnen zoeken</strong><small>Resultaat toegevoegd aan bevindingen</small></div><small>12:05</small></div></section>
+          <section class="dash-card" id="findings"><div class="dash-card-head"><h3>Bevindingen die aandacht vragen</h3><a href="#findings">Naar findings dashboard →</a></div><ul class="dash-list"><li><span><strong>Mogelijke socialmedia-koppeling</strong><small>2026-00003 · onbeoordeeld</small></span><span class="status open">Beoordelen</span></li><li><span><strong>Nieuw document van klant</strong><small>2026-00002 · bron controleren</small></span><span class="status wait">Nieuw</span></li><li><span><strong>Bronlink niet meer bereikbaar</strong><small>2026-00001 · hercontrole nodig</small></span><span class="status alert">Actie</span></li></ul></section>
+        </div>
+        <div>
+          <section class="dash-card" id="meldingen"><div class="dash-card-head"><h3>Meldingen</h3><a href="#meldingen">Alles bekijken →</a></div><ul class="dash-list"><li><span><strong>Nieuw bericht van klant</strong><small>Zaak 2026-00002</small></span><span class="status wait">Nieuw</span></li><li><span><strong>Portal-aanvraag goedgekeurd</strong><small>Jansen · 14:17 UTC</small></span><span class="status done">Gelezen</span></li></ul></section>
+          <section class="dash-card" id="portal"><div class="dash-card-head"><h3>Portal en rapporten</h3><a href="#portal">Openen →</a></div><div class="health-line"><span>Nieuwe aanvragen</span><strong>1</strong></div><div class="health-line"><span>Rapporten ter controle</span><strong>2</strong></div><div class="health-line"><span>Vrijgegeven deze maand</span><strong>6</strong></div></section>
+          <section class="dash-card" id="gezondheid"><div class="dash-card-head"><h3>Systeemstatus</h3><span class="health-ok">● Operationeel</span></div><div class="health-line"><span>Database</span><span class="health-ok">OK</span></div><div class="health-line"><span>Mailomgeving</span><span class="health-ok">OK</span></div><div class="health-line"><span>Laatste controle</span><small>18-10-2026 16:40 UTC</small></div></section>
+        </div>
+      </div>
+      <div class="dash-footer-note">Voorstel: legacy-routes blijven tijdelijk bereikbaar, maar verdwijnen uit de primaire navigatie. De gebruiker werkt vanuit Zaken, Onderzoeken, Bevindingen en Rapporten.</div>
+    </main>
+  </div>
+</div>
+{% endblock %}

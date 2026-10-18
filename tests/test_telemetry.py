@@ -252,8 +252,20 @@ def test_loop_starts_in_production(app, monkeypatch):
     def fake_loop(app):
         started.append(app)
 
+    class ImmediateThread:
+        def __init__(self, *, target, args, daemon, name):
+            self.target = target
+            self.args = args
+
+        def start(self):
+            # Make the asynchronous production hand-off deterministic in this
+            # unit test; the real implementation still uses a daemon thread.
+            self.target(*self.args)
+
     monkeypatch.setattr(app, "testing", False)
     monkeypatch.setattr(telemetry, "_telemetry_loop", fake_loop)
+    monkeypatch.setattr(telemetry.threading, "Thread", ImmediateThread)
+    monkeypatch.delenv("TELEMETRY_DISABLED", raising=False)
     monkeypatch.setenv("FLASK_ENV", "production")
     with app.app_context():
         telemetry.init_telemetry(app)

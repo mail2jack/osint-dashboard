@@ -3,7 +3,7 @@
 {% block content %}
     <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
         
-        <h1>{{ user.full_name }}</h1>
+        <div class="ui-page-header"><div><div class="ui-kicker">Beheer · gebruiker</div><h1>{{ user.full_name }}</h1><p class="ui-lead">Accountprofiel, rol, tenant en beveiligingsstatus.</p></div></div>
     
     <div class="card">
         <div class="info-row">

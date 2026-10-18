@@ -536,6 +536,10 @@ def inject_globals():
     ctx = {
         "current_version": get_version(),
         "csp_nonce": _nonce,
+        # Public metadata is used by public pages even when they are rendered
+        # through a test client or a non-public host. Keep one safe fallback
+        # so canonical URLs never make a page fail to render.
+        "public_site_url": os.environ.get("PUBLIC_SITE_URL", "https://iveras.com"),
     }
     # Notification count for bell icon (cached 30s)
     try:

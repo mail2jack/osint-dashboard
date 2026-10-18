@@ -3,12 +3,14 @@
 {% block title %}Users - CMS{% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 1rem;">
-    <h1 style="margin: 0;">Users</h1>
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Beheer</span><span>›</span><span>Users</span></div>
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Beheer · toegang</div><h1>Users</h1><p class="ui-lead">Gebruikers, rollen, tenants en accountactiviteit.</p></div>
     <a href="{{ url_for('users.create_user') }}" class="btn-cms primary">+ New User</a>
 </div>
 
-<div class="card">
+<div class="ui-panel">
     <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" data-immediate-search
                style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">
@@ -53,7 +55,7 @@
         </tbody>
     </table>
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div><p>No users found.</p></div>
+    <div class="ui-empty"><div class="ui-empty-icon">📭</div><p>No users found.</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
@@ -67,5 +69,6 @@
         {% endif %}
     </div>
     {% endif %}
+</div>
 </div>
 {% endblock %}

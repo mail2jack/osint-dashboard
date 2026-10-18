@@ -72,6 +72,93 @@ def test_admin_can_mark_registration_as_spam_without_notification_and_audit(
     assert b"SPAM" in archived_page.data
 
 
+def test_registration_review_actions_are_audited(auth_client, db_session):
+    admin = User.query.filter_by(username="admin").one()
+    registration = CustomerRegistrationRequest(
+        tenant_id=admin.tenant_id,
+        organization_name="Synthetic audit registration",
+        contact_name="Synthetic reviewer",
+        email="synthetic-audit@example.test",
+        registration_type="other",
+        message="Audit trail test.",
+    )
+    db_session.add(registration)
+    db_session.commit()
+
+    for action in ("review", "follow_up"):
+        data = {"registration_id": registration.id, "action": action}
+        if action == "follow_up":
+            data.update({"follow_up_at": "2026-11-01", "internal_note": "Synthetic follow-up."})
+        response = auth_client.post("/cms/portal/registrations", data=data)
+        assert response.status_code == 302
+
+    response = auth_client.post(
+        "/cms/portal/registrations",
+        data={
+            "registration_id": registration.id,
+            "action": "respond",
+            "staff_response": "Synthetic response.",
+        },
+    )
+    assert response.status_code == 302
+
+    response = auth_client.post(
+        "/cms/portal/registrations",
+        data={
+            "registration_id": registration.id,
+            "action": "reject",
+            "reason": "Synthetic rejection.",
+        },
+    )
+    assert response.status_code == 302
+
+    actions = {
+        audit.action
+        for audit in AuditLog.query.filter_by(
+            entity_type="customer_registration", entity_id=registration.id
+        ).all()
+    }
+    assert {
+        "customer_registration.review_started",
+        "customer_registration.follow_up",
+        "customer_registration.responded",
+        "customer_registration.rejected",
+    }.issubset(actions)
+    response_audit = AuditLog.query.filter_by(
+        entity_type="customer_registration",
+        entity_id=registration.id,
+        action="customer_registration.responded",
+    ).one()
+    assert response_audit.new_values["email_sent"] is False
+
+    type_registration = CustomerRegistrationRequest(
+        tenant_id=admin.tenant_id,
+        organization_name="Synthetic type change",
+        contact_name="Synthetic type reviewer",
+        email="synthetic-type@example.test",
+        registration_type="other",
+        message="Type change test.",
+    )
+    db_session.add(type_registration)
+    db_session.commit()
+    response = auth_client.post(
+        "/cms/portal/registrations",
+        data={
+            "registration_id": type_registration.id,
+            "action": "set_type",
+            "new_registration_type": "one_off",
+        },
+    )
+    assert response.status_code == 302
+    type_audit = AuditLog.query.filter_by(
+        entity_type="customer_registration",
+        entity_id=type_registration.id,
+        action="customer_registration.type_changed",
+    ).one()
+    assert type_audit.old_values["registration_type"] == "other"
+    assert type_audit.new_values["registration_type"] == "one_off"
+
+
 def test_one_off_customer_gets_client_portal_access_and_completes_profile(
     auth_client, db_session
 ):
@@ -550,6 +637,7 @@ def test_public_registration_rate_limit_blocks_repeated_submissions(client):
                     "contact_name": "Synthetic User",
                     "email": f"rate-limit-{index}@example.test",
                     "registration_type": "other",
+                    "message": "Synthetische vraag voor rate-limit-test.",
                 },
             )
             for index in range(6)
@@ -560,6 +648,45 @@ def test_public_registration_rate_limit_blocks_repeated_submissions(client):
         assert responses[5].headers["Retry-After"]
     finally:
         _api_rate_limits.clear()
+
+
+def test_public_registration_scenarios_apply_distinct_required_fields(client):
+    private_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "one_off",
+            "contact_name": "Particuliere aanvrager",
+            "email": "private-scenario@example.test",
+            "message": "Ik wil een eenmalig OSINT-onderzoek aanvragen.",
+        },
+    )
+    assert private_response.status_code == 200
+    private_registration = CustomerRegistrationRequest.query.filter_by(
+        email="private-scenario@example.test"
+    ).one()
+    assert private_registration.organization_name == "Particuliere aanvrager"
+
+    organization_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "organization",
+            "contact_name": "Organisatiecontact",
+            "email": "organization-scenario@example.test",
+        },
+    )
+    assert organization_response.status_code == 400
+    assert b"organisatienaam" in organization_response.data
+
+    other_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "other",
+            "contact_name": "Andere vraag",
+            "email": "other-scenario@example.test",
+        },
+    )
+    assert other_response.status_code == 400
+    assert b"onderzoeksvraag" in other_response.data
 
 
 def test_internal_reviewer_can_accept_request_and_customer_sees_status(

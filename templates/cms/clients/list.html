@@ -3,15 +3,17 @@
 {% block title %}{{ _('Clients') }} - CMS{% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 1rem;">
-    <h1 style="margin: 0;">{{ _('Clients') }}</h1>
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><span>{{ _('Clients') }}</span></div>
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Relaties · klanten</div><h1>{{ _('Clients') }}</h1><p class="ui-lead">Klantrelaties, portaltoegang en financiële context.</p></div>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{{ url_for('cms.export_clients', format='csv') }}" class="btn-cms teal">📥 {{ _('Export') }}</a>
         <a href="{{ url_for('cms.create_client') }}" class="btn-cms primary">+ {{ _('New Client') }}</a>
     </div>
 </div>
 
-<div class="card">
+<div class="ui-panel">
     <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
         <input type="text" name="search" placeholder="{{ _('Search by name...') }}" value="{{ search or '' }}" data-immediate-search
                style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px;">
@@ -71,7 +73,7 @@
         </tbody>
     </table>
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div>        <p>{{ _('No clients found.') }}</p></div>
+    <div class="ui-empty"><div class="ui-empty-icon">📭</div><p>{{ _('No clients found.') }}</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
@@ -86,4 +88,5 @@
     </div>
     {% endif %}
 </div>
+ </div>
 {% endblock %}

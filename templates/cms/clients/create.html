@@ -1,6 +1,7 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 1.5rem;">{{ _('Create New Client') }}</h2>
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a><span>›</span><span>{{ _('New') }}</span></div>
+<div class="ui-page-header"><div><div class="ui-kicker">Relaties · klant</div><h1>{{ _('Create New Client') }}</h1><p class="ui-lead">Maak een particuliere klant of organisatie aan en bepaal of portaltoegang nodig is.</p></div></div>
 
 {% if duplicate_warning %}
 <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">

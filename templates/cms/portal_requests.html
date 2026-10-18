@@ -1,17 +1,15 @@
-<!doctype html>
-<html lang="nl">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Portal-aanvragen</title>
+{% extends "cms/base.html" %}
+{% block title %}Portal-aanvragen{% endblock %}
+{% block content %}
   <style>
-    body{margin:0;background:#f6f8fc;color:#18223f;font-family:Inter,system-ui,sans-serif}.wrap{max-width:1180px;margin:auto;padding:32px 22px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}.muted{color:#667089}.card{background:#fff;border:1px solid #dfe5f1;border-radius:12px;padding:20px;margin:14px 0;box-shadow:0 4px 14px #17213f0b}.meta{display:flex;gap:12px;flex-wrap:wrap;color:#667089;font-size:.85rem}.badge{display:inline-block;border-radius:99px;padding:4px 9px;background:#eaf0ff;color:#2856c7;font-weight:700;font-size:.78rem}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:15px}button,select,input{font:inherit;padding:9px 11px;border:1px solid #cfd7e7;border-radius:7px;background:#fff}button{cursor:pointer;font-weight:700;color:#2856c7}button.primary{background:#2856c7;color:#fff;border-color:#2856c7}button.danger{color:#a61b1b}.question{white-space:pre-wrap;margin:13px 0;line-height:1.45}.message{white-space:pre-wrap;border-left:3px solid #2856c7;padding-left:10px;margin:10px 0}.flash{padding:12px;border-radius:8px;background:#e7f7f1;color:#087f5b;font-weight:700}.empty{padding:35px;text-align:center;color:#667089}
+    .portal-request-page{max-width:1180px;margin:auto}.portal-request-page .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}.portal-request-page .muted{color:var(--text-muted)}.portal-request-page .request-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--iveras-radius-card);padding:20px;margin:14px 0;box-shadow:var(--iveras-shadow-card)}.portal-request-page .meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--text-muted);font-size:.85rem}.portal-request-page .badge{display:inline-block;border-radius:99px;padding:4px 9px;background:var(--info-bg);color:var(--info-text);font-weight:700;font-size:.78rem}.portal-request-page .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:15px}.portal-request-page button,.portal-request-page select,.portal-request-page input{font:inherit;padding:9px 11px;border:1px solid var(--border-input);border-radius:var(--iveras-radius-control);background:var(--bg-card);color:var(--text-primary)}.portal-request-page button{cursor:pointer;font-weight:700;color:var(--link-color)}.portal-request-page button.primary{background:var(--accent-primary);color:#fff;border-color:var(--accent-primary)}.portal-request-page button.danger{color:var(--danger-text)}.portal-request-page .question{white-space:pre-wrap;margin:13px 0;line-height:1.45}.portal-request-page .message{white-space:pre-wrap;border-left:3px solid var(--accent-primary);padding-left:10px;margin:10px 0}.portal-request-page .flash{padding:12px;border-radius:var(--iveras-radius-control);background:var(--success-bg);color:var(--success-text);font-weight:700}.portal-request-page .empty{padding:35px;text-align:center;color:var(--text-muted)}
   </style>
-</head>
-<body><main class="wrap">
-  <div class="top"><div><div class="muted">Interne intake</div><h1>Portal-aanvragen</h1><p class="muted">Alleen aanvragen van uw eigen organisatie.</p></div><a href="{{ url_for('cms.dashboard') }}">← Terug naar dashboard</a></div>
+<div class="portal-request-page">
+  <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Relaties</span><span>›</span><span>Portal-aanvragen</span></div>
+  <div class="top"><div><div class="ui-kicker">Relaties · intake</div><h1>Portal-aanvragen</h1><p class="muted">Beoordeel aanvragen binnen de huidige tenant en kies bewust het vervolgscenario.</p></div><a class="btn-cms small" href="{{ url_for('cms.dashboard') }}">← Terug naar dashboard</a></div>
   {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}{% endwith %}
   {% for item in portal_requests %}
-  <section class="card">
+  <section class="request-card">
     <div class="meta"><span class="badge">{{ item.status_label }}</span><span>{{ item.status_description }}</span><span>{{ {'person':'Persoon','organization':'Organisatie','digital_trace':'Digitaal spoor / account','other':'Anders'}.get(item.request_type, item.request_type) }}</span><span>{{ item.created_at.strftime('%d-%m-%Y %H:%M') if item.created_at else '—' }} UTC</span></div>
     <div class="question">{{ item.question }}{% if item.duplicate_of_id %}<div class="muted"><strong>⚠ Mogelijk dubbele aanvraag</strong> — vergelijk met de eerdere aanvraag voordat u omzet.</div>{% endif %}</div>
     {% if item.context %}<p class="muted"><strong>Context:</strong> {{ item.context }}</p>{% endif %}
@@ -30,5 +28,6 @@
       {% else %}<span class="muted">Deze aanvraag is afgewezen.</span>{% endif %}
     </div>
   </section>
-  {% else %}<section class="card empty">Er zijn nog geen portal-aanvragen.</section>{% endfor %}
-</main></body></html>
+  {% else %}<section class="request-card empty">Er zijn nog geen portal-aanvragen.</section>{% endfor %}
+</div>
+{% endblock %}

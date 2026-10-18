@@ -159,10 +159,17 @@ def register_system_routes(app: Flask) -> None:
             message = (request.form.get("message") or "").strip() or None
             if registration_type not in {"one_off", "organization", "other"}:
                 registration_type = "one_off"
-            if not organization_name or not contact_name or "@" not in email:
+            organization_required = registration_type == "organization"
+            if (organization_required and not organization_name) or not contact_name or "@" not in email:
                 return render_template(
                     "public/portal_register.html",
-                    error="Vul organisatie, contactpersoon en een geldig e-mailadres in.",
+                    error="Vul de organisatienaam, contactpersoon en een geldig e-mailadres in." if organization_required else "Vul contactpersoon en een geldig e-mailadres in.",
+                    form=request.form,
+                ), 400
+            if registration_type in {"one_off", "other"} and not message:
+                return render_template(
+                    "public/portal_register.html",
+                    error="Beschrijf kort uw onderzoeksvraag of andere vraag.",
                     form=request.form,
                 ), 400
             existing = CustomerRegistrationRequest.query.filter(
@@ -177,7 +184,7 @@ def register_system_routes(app: Flask) -> None:
                 ), 409
             db.session.add(
                 CustomerRegistrationRequest(
-                    organization_name=organization_name,
+                    organization_name=organization_name or contact_name,
                     registration_type=registration_type,
                     contact_name=contact_name,
                     email=email,

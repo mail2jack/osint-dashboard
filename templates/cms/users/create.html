@@ -3,7 +3,7 @@
 {% block content %}
     <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
     
-    <h1>Create New User</h1>
+    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Create New User</h1><p class="ui-lead">Maak een gebruiker aan met een expliciete rol en tenantcontext.</p></div></div>
 
     <div class="card">
         <form method="POST" id="createUserForm">

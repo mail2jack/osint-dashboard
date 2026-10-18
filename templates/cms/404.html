@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - {{ _('Not Found') }}</title>
+    <title>404 - {{ _('Not Found') }} — Iveras</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -15,12 +16,13 @@
         .btn:hover { background: #1a1a2e; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="code">404</div>
-        <div class="title">{{ _('Page Not Found') }}</div>
-        <div class="message">{{ _('The page you are looking for does not exist.') }}</div>
-        <a href="/cms/" class="btn-cms primary">{{ _('Back to Dashboard') }}</a>
+<body class="iveras-error-page">
+    <div class="container iveras-error-card">
+        <a class="iveras-error-brand" href="/public"><span class="iveras-error-mark">I</span>Iveras</a>
+        <div class="code iveras-error-code">404</div>
+        <div class="title"><h1>{{ _('Page Not Found') }}</h1></div>
+        <div class="message"><p>{{ _('The page you are looking for does not exist.') }}</p></div>
+        <div class="iveras-error-actions"><a href="/public" class="btn iveras-error-button">Naar website</a><a href="/cms/" class="btn-cms primary iveras-error-button primary">{{ _('Back to Dashboard') }}</a></div>
     </div>
 </body>
 </html>

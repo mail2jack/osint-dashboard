@@ -3,7 +3,7 @@
 {% block content %}
     <div class="back"><a href="{{ url_for('users.view_user', user_id=user.id) }}">← Back to User</a></div>
     
-    <h1>Edit User</h1>
+    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Edit User</h1><p class="ui-lead">Wijzig profiel, rol, tenant en beveiligingsinstellingen.</p></div></div>
 
     <div class="card" style="max-width:500px;">
         <form method="POST">

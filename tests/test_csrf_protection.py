@@ -77,7 +77,12 @@ def _scan_exempt_functions():
     root = Path(__file__).resolve().parents[1]
     found = set()
     for py in root.rglob("*.py"):
-        if ".venv" in str(py) or "node_modules" in str(py):
+        # Ignore generated/hidden tooling files. The repository contains a
+        # macOS worker helper that is not UTF-8 Python source and is unrelated
+        # to the application's CSRF allowlist.
+        if any(part.startswith(".") for part in py.relative_to(root).parts):
+            continue
+        if "__pycache__" in py.parts or ".venv" in py.parts or "node_modules" in py.parts:
             continue
         lines = py.read_text(encoding="utf-8").splitlines()
         for i, line in enumerate(lines):

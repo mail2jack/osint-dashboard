@@ -3,8 +3,10 @@
 {% block title %}{{ _('Subjects') }} - CMS{% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-    <h1 style="margin: 0;">{{ _('Subjects') }}</h1>
+<div class="ui-page">
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><span>{{ _('Subjects') }}</span></div>
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Relaties · subjecten</div><h1>{{ _('Subjects') }}</h1><p class="ui-lead">Personen, organisaties en andere onderzoekssubjecten met hun relaties.</p></div>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn-cms teal">📥 {{ _('Export') }}</a>
         <a href="{{ url_for('cms.create_subject') }}" class="btn-cms primary">+ {{ _('New Subject') }}</a>
@@ -23,7 +25,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="ui-panel">
     <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
         <input type="text" name="search" placeholder="{{ _('Search by name...') }}" value="{{ filters.search or '' }}" data-immediate-search
                style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; flex: 1; min-width: 200px; background: var(--bg-card); color: var(--text-primary);">
@@ -98,7 +100,7 @@
         </table>
     </form>
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div><p>{{ _('No subjects found.') }}</p></div>
+    <div class="ui-empty"><div class="ui-empty-icon">📭</div><p>{{ _('No subjects found.') }}</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
@@ -270,4 +272,5 @@ document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
     .catch(err => showToast('{{ _('Error') }}: ' + err.message, 'error'));
 }
 </script>
+</div>
 {% endblock %}
