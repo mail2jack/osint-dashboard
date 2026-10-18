@@ -76,3 +76,11 @@
 @media (max-width: 520px) {
   .iveras-auth-card, .iveras-error-card { padding: 26px 22px; border-radius: 18px; }
 }
+
+.iveras-skip-link { position: absolute; top: 8px; left: 8px; z-index: 20; padding: 10px 14px; border-radius: 9px; color: #fff; background: var(--public-ink); transform: translateY(-140%); transition: transform .15s ease; }
+.iveras-skip-link:focus { transform: translateY(0); outline: 3px solid #9db8ff; outline-offset: 2px; }
+.iveras-public-focus a:focus,
+.iveras-public-focus button:focus,
+.iveras-public-focus input:focus,
+.iveras-public-focus textarea:focus,
+.iveras-public-focus select:focus { outline: 3px solid #d9e3ff; outline-offset: 2px; }

@@ -13,6 +13,7 @@
   <meta property="og:url" content="{{ public_site_url }}/">
   <meta name="twitter:card" content="summary">
   <title>Iveras — Onderzoek met overzicht</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
   <style>
     :root { --ink:#17213f; --muted:#5e6880; --blue:#2856c7; --soft:#eef3ff; --line:#dfe5f1; --white:#fff; }
     * { box-sizing:border-box; }
@@ -60,7 +61,8 @@
     @media (max-width:760px) { .nav-links a:not(.button) { display:none; } .hero { grid-template-columns:1fr; gap:34px; padding:48px 0 62px; } .cards,.process { grid-template-columns:1fr; } .process-item:not(:last-child) { margin-right:0; } .cta { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
-<body>
+<body class="iveras-public-focus">
+  <a class="iveras-skip-link" href="#main-content">Ga naar inhoud</a>
   <header class="wrap nav">
     <a class="brand" href="/"><span class="brand-mark">I</span> Iveras</a>
     <nav class="nav-links" aria-label="Hoofdnavigatie">
@@ -73,7 +75,7 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main-content">
     <section class="wrap hero">
       <div>
         <div class="eyebrow">Iveras OSINT</div>
