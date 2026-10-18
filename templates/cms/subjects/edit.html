@@ -9,7 +9,8 @@
 .subject-form-summary-value { font-weight: 600; overflow-wrap: anywhere; }
 @media (max-width: 800px) { .subject-form-summary-grid { grid-template-columns: 1fr 1fr; } }
 </style>
-<h2 style="margin-bottom: 1.5rem;">{{ _('Edit Subject') }}</h2>
+<div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a><span>›</span><span>{{ _('Edit') }}</span></div>
+<div class="ui-page-header"><div><div class="ui-kicker">Relaties · subject</div><h1>{{ _('Edit Subject') }}</h1><p class="ui-lead">Werk dezelfde volledige subjectkaart bij als bij het aanmaken.</p></div></div>
 <form method="POST" id="subjectForm" data-submit="handleEditSubmit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">

@@ -1,6 +1,7 @@
 {% extends "cms/base.html" %}
 {% block title %}{{ client.name }} — {{ _('CMS') }}{% endblock %}
 {% block content %}
+    <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a><span>›</span><span>{{ client.name }}</span></div>
     <div class="back"><a href="{{ url_for('cms.clients') }}">← {{ _('Back to Clients') }}</a></div>
     
     <div class="card">

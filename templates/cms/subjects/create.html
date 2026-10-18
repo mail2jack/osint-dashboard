@@ -1,13 +1,13 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+<nav class="ui-breadcrumbs">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
     <span style="margin:0 0.35rem;">›</span>
     <a href="{{ url_for('cms.subjects') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Subjects') }}</a>
     <span style="margin:0 0.35rem;">›</span>
     <span style="color:var(--text-primary);">{{ _('New') }}</span>
 </nav>
-<h2 style="margin-bottom: 1rem;">{{ _('Create New Subject') }}</h2>
+<div class="ui-page-header"><div><div class="ui-kicker">Relaties · subject</div><h1>{{ _('Create New Subject') }}</h1><p class="ui-lead">Maak een uniforme subjectkaart aan en koppel die zo nodig aan een zaak.</p></div></div>
 
 <div id="type-selection" style="margin-bottom: 2rem;">
     <p style="color: #666; margin-bottom: 1rem;">{{ _('Select the type of subject you want to create:') }}</p>

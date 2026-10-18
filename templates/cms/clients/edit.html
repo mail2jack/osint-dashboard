@@ -3,7 +3,7 @@
 {% block content %}
     <div class="back"><a href="{{ url_for('cms.view_client', client_id=client.id) }}">← {{ _('Back to Client') }}</a></div>
     
-    <h1>{{ _('Edit Client') }}</h1>
+    <div class="ui-page-header"><div><div class="ui-kicker">Relaties · klant</div><h1>{{ _('Edit Client') }}</h1><p class="ui-lead">Werk dezelfde klantkaart bij als bij het aanmaken.</p></div></div>
 
     <div class="card" style="max-width:700px;">
         <form method="POST" data-submit="handleEditSubmit">

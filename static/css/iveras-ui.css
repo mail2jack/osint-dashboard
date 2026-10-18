@@ -134,6 +134,15 @@
 .iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
 .iveras-cms .workflow-step-body { padding:1.15rem; }
 .iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .page-header { gap:1rem; flex-wrap:wrap; }
+.iveras-cms .back { margin-bottom:1rem; }
+.iveras-cms .back a { display:inline-flex; align-items:center; gap:.35rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
+.iveras-cms .back a:hover { color:var(--link-color); text-decoration:underline; }
+.iveras-cms .type-card { box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
+.iveras-cms .workflow-step-body { padding:1.15rem; }
+.iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
 
 @media (max-width: 700px) {
     .ui-page-header { margin-bottom:1rem; }
