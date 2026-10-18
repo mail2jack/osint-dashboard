@@ -134,7 +134,18 @@ def customer_registrations() -> str:
                 registration.reviewed_by_id = current_user.id
                 registration.reviewed_at = now
                 db.session.commit()
-                if _send_customer_response(registration):
+                email_sent = _send_customer_response(registration)
+                AuditLog.log(
+                    tenant_id=registration.tenant_id or current_user.tenant_id,
+                    user_id=current_user.id,
+                    action="customer_registration.responded",
+                    entity_type="customer_registration",
+                    entity_id=registration.id,
+                    description="Staff response saved for customer registration",
+                    new_values={"status": "contacted", "email_sent": email_sent},
+                )
+                db.session.commit()
+                if email_sent:
                     flash(f"Antwoord verzonden naar {registration.email}.", "success")
                 else:
                     flash("Antwoord opgeslagen. SMTP is niet beschikbaar; verstuur het antwoord handmatig.", "info")
@@ -151,6 +162,18 @@ def customer_registrations() -> str:
                     flash("Gebruik een geldige opvolgdatum.", "error")
                     return redirect(url_for("cms.customer_registrations"))
                 registration.status = "contact_pending"
+                AuditLog.log(
+                    tenant_id=registration.tenant_id or current_user.tenant_id,
+                    user_id=current_user.id,
+                    action="customer_registration.follow_up",
+                    entity_type="customer_registration",
+                    entity_id=registration.id,
+                    description="Customer registration follow-up scheduled",
+                    new_values={
+                        "status": "contact_pending",
+                        "follow_up_at": registration.follow_up_at.isoformat() if registration.follow_up_at else None,
+                    },
+                )
                 db.session.commit()
                 flash("Opvolging opgeslagen.", "success")
             return redirect(url_for("cms.customer_registrations"))
@@ -159,8 +182,19 @@ def customer_registrations() -> str:
             if registration.registration_type != "other" or new_type not in {"one_off", "organization"}:
                 flash("Kies een geldige vervolgstap.", "error")
             else:
+                previous_type = registration.registration_type
                 registration.registration_type = new_type
                 registration.status = "in_review"
+                AuditLog.log(
+                    tenant_id=registration.tenant_id or current_user.tenant_id,
+                    user_id=current_user.id,
+                    action="customer_registration.type_changed",
+                    entity_type="customer_registration",
+                    entity_id=registration.id,
+                    description="Customer registration follow-up type changed",
+                    old_values={"registration_type": previous_type},
+                    new_values={"registration_type": new_type, "status": "in_review"},
+                )
                 db.session.commit()
                 flash("Vervolgvorm opgeslagen. Je kunt de aanvraag nu normaal goedkeuren.", "success")
             return redirect(url_for("cms.customer_registrations"))
@@ -195,16 +229,38 @@ def customer_registrations() -> str:
         elif not is_platform_admin and registration.registration_type == "organization":
             abort(403)
         elif action == "review" and registration.status == "submitted":
+            previous_status = registration.status
             registration.status = "in_review"
             registration.reviewed_by_id = current_user.id
             registration.reviewed_at = now
+            AuditLog.log(
+                tenant_id=registration.tenant_id or current_user.tenant_id,
+                user_id=current_user.id,
+                action="customer_registration.review_started",
+                entity_type="customer_registration",
+                entity_id=registration.id,
+                description="Customer registration moved into review",
+                old_values={"status": previous_status},
+                new_values={"status": "in_review"},
+            )
             db.session.commit()
             flash("Registratieaanvraag staat in beoordeling.", "success")
         elif action == "reject" and registration.status not in ("approved", "rejected"):
+            previous_status = registration.status
             registration.status = "rejected"
             registration.rejection_reason = (request.form.get("reason") or "").strip() or None
             registration.reviewed_by_id = current_user.id
             registration.reviewed_at = now
+            AuditLog.log(
+                tenant_id=registration.tenant_id or current_user.tenant_id,
+                user_id=current_user.id,
+                action="customer_registration.rejected",
+                entity_type="customer_registration",
+                entity_id=registration.id,
+                description="Customer registration rejected",
+                old_values={"status": previous_status},
+                new_values={"status": "rejected", "reason": registration.rejection_reason},
+            )
             db.session.commit()
             flash("Registratieaanvraag afgewezen.", "info")
         elif action == "resend" and registration.status == "approved":
@@ -220,6 +276,16 @@ def customer_registrations() -> str:
             if not invitation:
                 flash("Er staat geen openstaande uitnodiging meer voor deze aanvraag.", "warning")
             elif _send_customer_invitation(invitation):
+                AuditLog.log(
+                    tenant_id=registration.tenant_id or current_user.tenant_id,
+                    user_id=current_user.id,
+                    action="customer_registration.invitation_resent",
+                    entity_type="customer_registration",
+                    entity_id=registration.id,
+                    description="Customer portal invitation resent",
+                    new_values={"invitation_id": invitation.id, "email_sent": True},
+                )
+                db.session.commit()
                 flash(f"Nieuwe uitnodiging verzonden naar {invitation.email}.", "success")
             else:
                 accept_url = url_for("auth.accept_invite", token=invitation.token, _external=True)
