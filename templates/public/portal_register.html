@@ -1,5 +1,81 @@
 <!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Toegang aanvragen — Iveras</title>
-<style>:root{--ink:#17213f;--muted:#667089;--blue:#2856c7;--line:#dfe5f1;--error:#a61b1b;--ok:#176b38}*{box-sizing:border-box}body{margin:0;background:#f8faff;color:var(--ink);font-family:Inter,system-ui,sans-serif}.top{background:var(--ink);color:#fff}.topbar,.wrap{width:min(850px,calc(100% - 40px));margin:auto}.topbar{display:flex;justify-content:space-between;padding:18px 0}.top a{color:#fff;text-decoration:none}.page{padding:44px 0 70px}.eyebrow{color:var(--blue);font-size:.75rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px;margin-top:20px}.card h1{margin:8px 0 10px;font-size:2.2rem;letter-spacing:-.05em}.card p{color:var(--muted)}label{display:block;font-weight:700;margin:19px 0 7px}input,textarea{width:100%;padding:12px;border:1px solid #cfd7e7;border-radius:8px;font:inherit;color:var(--ink)}textarea{min-height:110px;resize:vertical}.hint{font-size:.82rem;color:var(--muted);font-weight:400}.actions{display:flex;gap:10px;margin-top:24px}.button{display:inline-flex;padding:11px 16px;border-radius:9px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--blue);cursor:pointer}button.button{background:var(--blue);color:#fff;border-color:var(--blue)}.error,.success{padding:12px;border-radius:8px;font-weight:700}.error{background:#fff0f0;border:1px solid #f0b5b5;color:var(--error)}.success{background:#effaf2;border:1px solid #acd7b9;color:var(--ok)}.notice{padding:14px 16px;background:#f1f5ff;border-left:4px solid var(--blue);color:var(--muted);line-height:1.5}</style></head>
-<body><header class="top"><div class="topbar"><a href="/public">← Iveras</a><a href="/auth/login">Bestaande klant inloggen</a></div></header>
-<main class="wrap page"><div class="card"><div class="eyebrow">Klant worden</div><h1>Vraag contact of toegang aan</h1>{% if submitted %}<div class="success">Uw aanvraag is ontvangen. Iveras beoordeelt eerst welk vervolg past: een eenmalig onderzoek, een eigen klantomgeving of uw andere vraag.</div><div class="actions"><a class="button" href="/public">Terug naar website</a></div>{% else %}<p>Vul uw gegevens in. Dit formulier maakt nog geen account aan en geeft nog geen toegang tot het portaal.</p><div class="notice">Een eenmalige onderzoeksopdracht leidt niet automatisch tot een tenant. Alleen organisaties die een eigen klantomgeving nodig hebben krijgen na goedkeuring een tenant en persoonlijke uitnodiging.</div>{% if error %}<p class="error">{{ error }}</p>{% endif %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="registration_type">Wat heeft u nodig?</label><select id="registration_type" name="registration_type" required style="width:100%;padding:12px;border:1px solid #cfd7e7;border-radius:8px;font:inherit;color:var(--ink)"><option value="one_off">Eenmalig OSINT-onderzoek</option><option value="organization">Eigen klantomgeving voor mijn organisatie</option><option value="other">Een andere vraag</option></select><label for="organization_name">Organisatie of bedrijfsnaam</label><input id="organization_name" name="organization_name" required value="{{ form.get('organization_name','') }}"><label for="contact_name">Contactpersoon</label><input id="contact_name" name="contact_name" required value="{{ form.get('contact_name','') }}"><label for="email">E-mailadres</label><input id="email" name="email" type="email" required value="{{ form.get('email','') }}"><label for="phone">Telefoonnummer <span class="hint">(optioneel)</span></label><input id="phone" name="phone" value="{{ form.get('phone','') }}"><label for="message">Waar kunnen wij u mee helpen? <span class="hint">(optioneel)</span></label><textarea id="message" name="message">{{ form.get('message','') }}</textarea><div class="actions"><a class="button" href="/public">Annuleren</a><button class="button" type="submit">Aanvraag indienen</button></div></form>{% endif %}</div></main></body></html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Toegang aanvragen — Iveras</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
+  <style>
+    :root{--ink:#17213f;--muted:#667089;--blue:#2856c7;--line:#dfe5f1;--error:#a61b1b;--ok:#176b38}
+    *{box-sizing:border-box}body{margin:0;background:#f8faff;color:var(--ink);font-family:Inter,system-ui,sans-serif}.top{background:var(--ink);color:#fff}.topbar,.wrap{width:min(850px,calc(100% - 40px));margin:auto}.topbar{display:flex;justify-content:space-between;padding:18px 0}.top a{color:#fff;text-decoration:none}.page{padding:44px 0 70px}.eyebrow{color:var(--blue);font-size:.75rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px;margin-top:20px;box-shadow:0 10px 30px rgba(33,54,104,.05)}.card h1{margin:8px 0 10px;font-size:2.2rem;letter-spacing:-.05em}.card p{color:var(--muted)}label{display:block;font-weight:700;margin:19px 0 7px}input,select,textarea{width:100%;padding:12px;border:1px solid #cfd7e7;border-radius:8px;font:inherit;color:var(--ink);background:#fff}input:focus,select:focus,textarea:focus{outline:3px solid #d9e3ff;border-color:var(--blue)}textarea{min-height:110px;resize:vertical}.hint{font-size:.82rem;color:var(--muted);font-weight:400}.scenario-note{padding:14px 16px;background:#f1f5ff;border-left:4px solid var(--blue);color:var(--muted);line-height:1.5}.actions{display:flex;gap:10px;margin-top:24px}.button{display:inline-flex;padding:11px 16px;border-radius:9px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--blue);cursor:pointer}button.button{background:var(--blue);color:#fff;border-color:var(--blue)}.error,.success{padding:12px;border-radius:8px;font-weight:700}.error{background:#fff0f0;border:1px solid #f0b5b5;color:var(--error)}.success{background:#effaf2;border:1px solid #acd7b9;color:var(--ok)}@media(max-width:620px){.actions{flex-direction:column}.button,button.button{width:100%;justify-content:center}}
+  </style>
+</head>
+<body class="iveras-portal-page">
+  <a class="iveras-skip-link" href="#main-content">Ga naar inhoud</a>
+  <header class="top"><div class="topbar"><a href="/public">← Iveras</a><a href="/auth/login">Bestaande klant inloggen</a></div></header>
+  <main id="main-content" class="wrap page">
+    <div class="card">
+      <div class="eyebrow">Klant worden</div>
+      <h1>Vraag contact of toegang aan</h1>
+      {% if submitted %}
+        <div class="success">Uw aanvraag is ontvangen. Iveras beoordeelt eerst welk vervolg past: een eenmalig onderzoek, een eigen klantomgeving of uw andere vraag.</div>
+        <div class="actions"><a class="button" href="/public">Terug naar website</a></div>
+      {% else %}
+        <p>Vul uw gegevens in. Dit formulier maakt nog geen account aan en geeft nog geen toegang tot het portaal.</p>
+        <div id="scenario-note" class="scenario-note" role="status">Een eenmalige onderzoeksopdracht leidt niet automatisch tot een tenant. Alleen organisaties die een eigen klantomgeving nodig hebben krijgen na goedkeuring een tenant en persoonlijke uitnodiging.</div>
+        {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="registration_type">Wat heeft u nodig?</label>
+          <select id="registration_type" name="registration_type" required>
+            <option value="one_off"{% if form.get('registration_type','one_off') == 'one_off' %} selected{% endif %}>Eenmalig OSINT-onderzoek</option>
+            <option value="organization"{% if form.get('registration_type') == 'organization' %} selected{% endif %}>Eigen klantomgeving voor mijn organisatie</option>
+            <option value="other"{% if form.get('registration_type') == 'other' %} selected{% endif %}>Een andere vraag</option>
+          </select>
+          <label id="organization-label" for="organization_name">Naam of organisatie <span id="organization-required">(optioneel)</span></label>
+          <input id="organization_name" name="organization_name" autocomplete="organization" value="{{ form.get('organization_name','') }}">
+          <label for="contact_name">Contactpersoon</label>
+          <input id="contact_name" name="contact_name" autocomplete="name" required value="{{ form.get('contact_name','') }}">
+          <label for="email">E-mailadres</label>
+          <input id="email" name="email" type="email" autocomplete="email" required value="{{ form.get('email','') }}">
+          <label for="phone">Telefoonnummer <span class="hint">(optioneel)</span></label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" value="{{ form.get('phone','') }}">
+          <label id="message-label" for="message">Wat wilt u laten onderzoeken?</label>
+          <textarea id="message" name="message" aria-describedby="message-hint">{{ form.get('message','') }}</textarea>
+          <div id="message-hint" class="hint">Beschrijf kort uw vraag, doel en gewenste vervolgstap.</div>
+          <div class="actions"><a class="button" href="/public">Annuleren</a><button class="button" type="submit">Aanvraag indienen</button></div>
+        </form>
+      {% endif %}
+    </div>
+  </main>
+  <script>
+    (function () {
+      const type = document.getElementById('registration_type');
+      const organization = document.getElementById('organization_name');
+      const organizationLabel = document.getElementById('organization-label');
+      const organizationRequired = document.getElementById('organization-required');
+      const note = document.getElementById('scenario-note');
+      const message = document.getElementById('message');
+      const messageLabel = document.getElementById('message-label');
+      if (!type || !organization || !note || !message) return;
+      function updateScenario() {
+        const selected = type.value;
+        const isOrganization = selected === 'organization';
+        organization.required = isOrganization;
+        organizationRequired.textContent = isOrganization ? '*' : '(optioneel)';
+        organizationLabel.firstChild.textContent = isOrganization ? 'Organisatie of bedrijfsnaam ' : 'Naam of organisatie ';
+        message.required = selected === 'one_off' || selected === 'other';
+        messageLabel.firstChild.textContent = selected === 'other' ? 'Waar kunnen wij u mee helpen? ' : selected === 'one_off' ? 'Wat wilt u laten onderzoeken? ' : 'Waar kunnen wij u mee helpen? ';
+        note.textContent = isOrganization
+          ? 'Een eigen klantomgeving is bedoeld voor organisaties die opdrachten, berichten, documenten en rapporten structureel willen beheren. Na beoordeling kan een tenant worden ingericht.'
+          : selected === 'other'
+            ? 'Beschrijf uw vraag zo concreet mogelijk. Iveras beoordeelt eerst welk vervolg passend is; dit maakt nog geen account of zaak aan.'
+            : 'Een eenmalige onderzoeksopdracht leidt niet automatisch tot een tenant. Na beoordeling ontvangt u informatie over de opdracht en het vervolg.';
+      }
+      type.addEventListener('change', updateScenario);
+      updateScenario();
+    }());
+  </script>
+</body>
+</html>
