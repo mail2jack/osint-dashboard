@@ -1,5 +1,6 @@
 {% extends "cms/base.html" %}
-{% block title %}Klantformulier — demo{% endblock %}
+{% set edit_mode = edit_mode|default(false) %}
+{% block title %}{% if edit_mode %}Klant bewerken{% elif production|default(false) %}Klant toevoegen{% else %}Klantformulier — demo{% endif %}{% endblock %}
 {% block content %}
 <style>
   .client-demo { max-width:1100px; margin:0 auto; }
@@ -24,9 +25,10 @@
   .choice input { width:auto; margin-right:.4rem; }
   .choice strong { display:block; }
   .repeat-row { display:grid; grid-template-columns:1fr 2fr 1fr auto; gap:.65rem; align-items:end; padding:.75rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:.65rem; background:var(--bg-secondary); }
-  .address-row { grid-template-columns:1.1fr 1fr 1fr 1.2fr 1.2fr auto; }
+  .address-row { grid-template-columns:1.1fr 1fr 1fr 1.2fr 1.2fr auto auto; }
   .primary { display:flex; align-items:center; gap:.35rem; white-space:nowrap; padding-bottom:.55rem; font-size:.78rem; color:var(--text-muted); }
   .primary input { width:auto; }
+  .address-actions { display:flex; align-items:center; gap:.45rem; padding-bottom:.35rem; }
   .remove { border:0; background:#fee2e2; color:#991b1b; border-radius:6px; width:32px; height:32px; cursor:pointer; font-size:1.2rem; }
   .summary { display:grid; gap:.6rem; }
   .summary-row { display:flex; justify-content:space-between; gap:.75rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem; font-size:.82rem; }
@@ -37,78 +39,152 @@
 
 <div class="client-demo">
   <div class="client-head">
-    <div><div class="kicker">UI-demo · niets wordt opgeslagen</div><h1 style="margin:.25rem 0 .35rem;">Klant toevoegen</h1><p class="muted" style="margin:0;">Een herkenbare klantkaart met portaltoegang, contactpersonen, adressen, contract en financiële gegevens.</p></div>
-    <a class="btn-cms small" href="{{ url_for('cms.clients') }}">← Klanten</a>
+    <div><div class="kicker">{% if edit_mode %}Klant bewerken{% elif production %}Klant aanmaken{% else %}UI-demo · niets wordt opgeslagen{% endif %}</div><h1 style="margin:.25rem 0 .35rem;">{% if edit_mode %}Klant bewerken{% else %}Klant toevoegen{% endif %}</h1><p class="muted" style="margin:0;">Een herkenbare klantkaart met portaltoegang, contactpersonen, adressen, contract en financiële gegevens.</p></div>
+    <a class="btn-cms small" href="{% if edit_mode %}{{ url_for('cms.view_client', client_id=client.id) }}{% else %}{{ url_for('cms.clients') }}{% endif %}">← Klanten</a>
   </div>
+  {% if production %}
+  {% if duplicate_warning %}
+  <div class="note" style="border-left-color:#d97706;color:#92400e;background:#fffbeb;"><strong>Controle op dubbele klant</strong><br>Er bestaat al een gelijke of vergelijkbare klant. Controleer de melding voordat je doorgaat.</div>
+  {% endif %}
+  {% else %}
   <div class="note"><strong>Demo-weergave</strong><br>Deze pagina is alleen bedoeld om de voorgestelde indeling te beoordelen. Er wordt niets opgeslagen en er wordt geen uitnodiging verzonden.</div>
+  {% endif %}
 
+  {% if production %}<form method="POST" action="{% if edit_mode %}{{ url_for('cms.edit_client', client_id=client.id) }}{% else %}{{ url_for('cms.create_client') }}{% endif %}" id="client-form"> <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
   <div class="client-grid">
     <main>
       <div class="card-demo">
         <h2>1. Klanttype en basisgegevens</h2>
         <div class="choice-row">
-          <label class="choice"><input type="radio" name="client-type" value="person" checked><strong>Particuliere klant</strong><span class="muted">Persoon met een eigen klantrelatie.</span></label>
-          <label class="choice"><input type="radio" name="client-type" value="company"><strong>Organisatie / bedrijf</strong><span class="muted">Bedrijf met contactpersoon en eventueel portaltoegang.</span></label>
+          <label class="choice"><input type="radio" name="client-type" value="person" {% if not client or not client.is_company %}checked{% endif %}><strong>Particuliere klant</strong><span class="muted">Persoon met een eigen klantrelatie.</span></label>
+          <label class="choice"><input type="radio" name="client-type" value="company" {% if client and client.is_company %}checked{% endif %}><strong>Organisatie / bedrijf</strong><span class="muted">Bedrijf met contactpersoon en eventueel portaltoegang.</span></label>
         </div>
-        <div class="section"><div class="fields"><div><label for="client-name">Klantnaam *</label><input id="client-name" placeholder="Bijvoorbeeld: Patricia van Sandwijk"></div><div id="contact-person-field"><label for="contact-person">Contactpersoon</label><input id="contact-person" placeholder="Bijvoorbeeld: Ivan Versteegh"></div></div></div>
+        <input type="hidden" name="is_company" id="is-company" value="">
+        <div class="section"><div class="fields"><div id="client-name-field" style="{% if client and not client.is_company %}display:none;{% endif %}"><label for="client-name">Klantnaam *</label><input id="client-name" name="name" required value="{{ client.name if client else (submitted_name or '') }}" placeholder="Bijvoorbeeld: Iveras B.V."></div><div id="contact-person-field"><label for="contact-person">Contactpersoon</label><input id="contact-person" name="contact_person" value="{{ client.contact_person if client else '' }}" placeholder="Bijvoorbeeld: Ivan Versteegh"></div></div><p id="person-name-help" class="muted" style="{% if client and client.is_company %}display:none;{% endif %}">De naam wordt automatisch opgebouwd uit de persoonsvelden.</p></div>
       </div>
 
       <div class="card-demo">
         <h2>2. Persoons- en contactgegevens</h2>
-        <div id="person-fields" class="section"><div class="fields"><div><label>Achternaam</label><input id="surname" placeholder="Van Sandwijk"></div><div><label>Voornamen</label><input id="given-names" placeholder="Patricia Marie"></div><div><label>Voorletters</label><input id="initials" placeholder="P.M." readonly></div><div><label>Tussenvoegsels</label><input id="particles" placeholder="van de"></div><div><label>Geboortedatum</label><input id="dob" type="date"></div><div><label>Nationaliteit</label><input id="nationality" placeholder="Nederlandse"></div></div></div>
-        <div class="section"><h3>Contactgegevens</h3><div id="contacts"><div class="repeat-row contact-row"><div><label>Type</label><select><option>E-mail</option><option>Telefoon</option><option>Social media</option></select></div><div><label>Waarde</label><input class="contact-value" placeholder="klant@example.com"></div><div><label>Platform</label><input class="platform" placeholder="LinkedIn"></div><label class="primary"><input type="radio" name="primary-contact" checked> Primair</label><button class="remove" type="button">×</button></div></div><button class="btn-cms small" type="button" id="add-contact">+ Contact toevoegen</button></div>
+        <div id="person-fields" class="section"><div class="fields"><div><label>Achternaam</label><input id="surname" name="achternaam" value="{{ client.achternaam if client else '' }}" placeholder="Van Sandwijk"></div><div><label>Voornamen</label><input id="given-names" name="voornamen" value="{{ client.voornamen if client else '' }}" placeholder="Patricia Marie"></div><div><label>Voorletters</label><input id="initials" name="voorletters" value="{{ client.voorletters if client else '' }}" placeholder="P.M." readonly></div><div><label>Tussenvoegsels</label><input id="particles" name="tussenvoegsels" value="{{ client.tussenvoegsels if client else '' }}" placeholder="van de"></div><div><label>Geboortedatum</label><input id="dob" name="date_of_birth" type="date" value="{{ client.date_of_birth if client else '' }}"></div><div><label>Nationaliteit</label><input id="nationality" name="nationality" value="{{ client.nationality if client else '' }}" placeholder="Nederlandse"></div></div></div>
+        <div class="section"><h3>Contactgegevens</h3><div id="contacts">
+          {% if edit_mode and client.contacts.count() %}{% for contact in client.contacts %}
+          <div class="repeat-row contact-row"><div><label>Type</label><select><option value="email" {% if contact.contact_type == 'email' %}selected{% endif %}>E-mail</option><option value="phone" {% if contact.contact_type == 'phone' %}selected{% endif %}>Telefoon</option><option value="social" {% if contact.contact_type == 'social' %}selected{% endif %}>Social media</option></select></div><div><label>Waarde</label><input class="contact-value" value="{{ contact.value }}" placeholder="klant@example.com"></div><div><label>Platform</label><input class="platform" value="{{ contact.platform or '' }}" placeholder="LinkedIn"></div><label class="primary"><input type="radio" name="primary-contact" {% if contact.is_primary %}checked{% endif %}> Primair</label><button class="remove" type="button">×</button></div>
+          {% endfor %}{% else %}
+          <div class="repeat-row contact-row"><div><label>Type</label><select><option value="email">E-mail</option><option value="phone">Telefoon</option><option value="social">Social media</option></select></div><div><label>Waarde</label><input class="contact-value" placeholder="klant@example.com"></div><div><label>Platform</label><input class="platform" placeholder="LinkedIn"></div><label class="primary"><input type="radio" name="primary-contact" checked> Primair</label><button class="remove" type="button">×</button></div>
+          {% endif %}</div><button class="btn-cms small" type="button" id="add-contact">+ Contact toevoegen</button></div>
       </div>
 
+      {% if production %}<input type="hidden" name="contacts_data" id="contacts-data"><input type="hidden" name="addresses_data" id="addresses-data">{% endif %}
       <div class="card-demo">
         <h2>3. Adressen</h2>
-        <div class="section"><div id="addresses"><div class="repeat-row address-row"><div><label>Land</label><select><option>Nederland</option><option>België</option><option>Duitsland</option><option>Ander land</option></select></div><div><label>Postcode / ZIP</label><input placeholder="3024 ES"></div><div><label>Huisnummer</label><input placeholder="174"></div><div><label>Straat</label><input placeholder="Automatisch bij Nederlands adres"></div><div><label>Plaats</label><input placeholder="Automatisch bij Nederlands adres"></div><label class="primary"><input type="radio" name="primary-address" checked> Primair</label><button class="remove" type="button">×</button></div></div><button class="btn-cms small" type="button" id="add-address">+ Adres toevoegen</button><p class="muted">Nederlandse adressen worden via postcode en huisnummer gecontroleerd. Bij meerdere adressen kiest de gebruiker het primaire adres.</p></div>
+        <div class="section"><div id="addresses">
+          {% if edit_mode and client.addresses.count() %}{% for address in client.addresses %}
+          <div class="repeat-row address-row"><div><label>Land</label><select><option value="Netherlands" {% if address.country == 'Netherlands' %}selected{% endif %}>Nederland</option><option value="Belgium" {% if address.country == 'Belgium' %}selected{% endif %}>België</option><option value="Germany" {% if address.country == 'Germany' %}selected{% endif %}>Duitsland</option><option value="Other" {% if address.country == 'Other' %}selected{% endif %}>Ander land</option></select></div><div><label>Postcode / ZIP</label><input value="{{ address.zipcode or '' }}" placeholder="3024 ES"></div><div><label>Huisnummer</label><input value="{{ address.number or '' }}" placeholder="174"></div><div><label>Straat</label><input value="{{ address.street or '' }}" placeholder="Automatisch bij Nederlands adres"></div><div><label>Plaats</label><input value="{{ address.town or '' }}" placeholder="Automatisch bij Nederlands adres"></div><div class="address-actions"><label class="primary"><input type="radio" name="primary-address" {% if address.is_primary %}checked{% endif %}> Primair</label></div><button class="remove" type="button">×</button></div>
+          {% endfor %}{% else %}
+          <div class="repeat-row address-row"><div><label>Land</label><select><option value="Netherlands">Nederland</option><option value="Belgium">België</option><option value="Germany">Duitsland</option><option value="Other">Ander land</option></select></div><div><label>Postcode / ZIP</label><input placeholder="3024 ES"></div><div><label>Huisnummer</label><input placeholder="174"></div><div><label>Straat</label><input placeholder="Automatisch bij Nederlands adres"></div><div><label>Plaats</label><input placeholder="Automatisch bij Nederlands adres"></div><div class="address-actions"><label class="primary"><input type="radio" name="primary-address" checked> Primair</label></div><button class="remove" type="button">×</button></div>
+          {% endif %}</div><button class="btn-cms small" type="button" id="add-address">+ Adres toevoegen</button><p class="muted">Nederlandse adressen worden via postcode en huisnummer gecontroleerd. Bij meerdere adressen kiest de gebruiker het primaire adres.</p></div>
       </div>
 
       <div class="card-demo">
         <h2>4. Klantomgeving en financiële gegevens</h2>
-        <div class="section"><label class="choice" style="display:block;"><input id="portal-access" type="checkbox"><strong>Portaltoegang voor deze klant</strong><span class="muted">Na opslaan kan een contactpersoon een uitnodiging ontvangen. De klant blijft gekoppeld aan deze tenant.</span></label></div>
-        <div class="section"><div class="fields"><div><label>Contractnummer</label><input placeholder="Wordt automatisch gegenereerd"></div><div><label>BTW-nummer</label><input placeholder="Voor organisaties"></div><div><label>Bankrekening / IBAN</label><input placeholder="NL00 BANK 0000 0000 00"></div><div><label>BSN / identificatie</label><input placeholder="Afgeschermd opgeslagen"></div><div class="wide"><label>Financiële notitie</label><textarea placeholder="Interne financiële notitie"></textarea></div></div></div>
+        <div class="section"><label class="choice" style="display:block;"><input id="portal-access" name="portal_access_enabled" value="1" type="checkbox" {% if client and client.portal_access_enabled %}checked{% endif %}><strong>Portaltoegang voor deze klant</strong><span class="muted">Na opslaan kan een contactpersoon een uitnodiging ontvangen. De klant blijft gekoppeld aan deze tenant.</span></label></div>
+        <div class="section"><div class="fields"><div><label>Contractnummer</label><input name="contract_number" value="{{ client.contract_number if client else '' }}" placeholder="Wordt automatisch gegenereerd"></div><div><label>BTW-nummer</label><input name="vat_number" value="{{ client.vat_number if client else '' }}" placeholder="Voor organisaties"></div><div><label>Bankrekening / IBAN</label><input name="bank_account" value="{{ client.bank_account if client else '' }}" placeholder="NL00 BANK 0000 0000 00"></div><div><label>BSN / identificatie</label><input name="bsn_number" value="{{ client.bsn_number if client else '' }}" placeholder="Afgeschermd opgeslagen"></div><div class="wide"><label>Financiële notitie</label><textarea name="financial_notes" placeholder="Interne financiële notitie">{{ client.financial_notes if client else '' }}</textarea></div></div></div>
       </div>
-      <div style="display:flex;justify-content:flex-end;gap:.6rem;"><button class="btn-cms gray" type="button">Annuleren</button><button class="btn-cms primary" type="button" id="demo-save">Klant opslaan</button></div>
+      <div style="display:flex;justify-content:flex-end;gap:.6rem;"><a class="btn-cms gray" href="{% if edit_mode %}{{ url_for('cms.view_client', client_id=client.id) }}{% else %}{{ url_for('cms.clients') }}{% endif %}">Annuleren</a><button class="btn-cms primary" type="{% if production %}submit{% else %}button{% endif %}" id="demo-save">{% if edit_mode %}Wijzigingen opslaan{% else %}Klant opslaan{% endif %}</button></div>
       <div class="note" id="demo-feedback" style="display:none;margin-top:1rem;"></div>
     </main>
     <aside class="card-demo" style="position:sticky;top:1rem;"><h2>Samenvatting</h2><div class="summary"><div class="summary-row"><span>Klantnaam</span><strong id="summary-name">—</strong></div><div class="summary-row"><span>Type</span><strong id="summary-type">Particulier</strong></div><div class="summary-row"><span>Portaltoegang</span><strong id="summary-portal">Uit</strong></div><div class="summary-row"><span>Contactgegevens</span><strong id="summary-contacts">1</strong></div><div class="summary-row"><span>Adressen</span><strong id="summary-addresses">1</strong></div></div><div class="section"><strong>Opslaglogica</strong><p class="muted">De klant wordt binnen de huidige tenant opgeslagen. Portaltoegang is een aparte vlag; uitnodigingen worden pas na opslaan bewust verzonden.</p></div></aside>
   </div>
+  {% if production %}</form>{% endif %}
 </div>
 
 <script nonce="{{ csp_nonce }}">
 (() => {
   const q = s => document.querySelector(s);
+  const production = {{ 'true' if production else 'false' }};
   const title = value => value.trim().toLocaleLowerCase('nl-NL').replace(/(^|[\s\-'’])([\p{L}])/gu, (_, sep, letter) => `${sep}${letter.toLocaleUpperCase('nl-NL')}`);
   const updateRemoveButtons = () => {
     ['#contacts', '#addresses'].forEach(selector => {
       const container = q(selector);
       const rows = container.querySelectorAll('.repeat-row');
       container.querySelectorAll('.remove').forEach(button => { button.style.display = rows.length > 1 ? '' : 'none'; });
+      container.querySelectorAll('.primary').forEach(choice => { choice.style.display = rows.length > 1 ? 'flex' : 'none'; });
     });
   };
   const updateContactRow = row => {
     const select = row.querySelector('select');
     const platform = row.querySelector('.platform');
     const value = row.querySelector('.contact-value');
-    const isSocial = select.value === 'Social media';
-    const isEmail = select.value === 'E-mail';
+    const isSocial = select.value === 'social';
+    const isEmail = select.value === 'email';
     platform.parentElement.style.display = isSocial ? '' : 'none';
     platform.required = isSocial;
     value.type = isEmail ? 'email' : 'text';
     value.pattern = isEmail ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
     value.title = isEmail ? 'Gebruik de vorm naam@domein.extensie' : '';
-    value.placeholder = select.value === 'Telefoon' ? '+31 6 12345678' : isSocial ? '@gebruikersnaam' : 'klant@example.com';
+    value.placeholder = select.value === 'phone' ? '+31 6 12345678' : isSocial ? '@gebruikersnaam' : 'klant@example.com';
   };
   const bindContactRow = row => {
     const select = row.querySelector('select');
     select.onchange = () => updateContactRow(row);
     updateContactRow(row);
   };
+  const updateAddressRow = row => {
+    const country = row.querySelector('select').value;
+    const inputs = row.querySelectorAll('input');
+    const isNetherlands = country === 'Netherlands';
+    inputs[2].readOnly = isNetherlands;
+    inputs[3].readOnly = isNetherlands;
+  };
+  const lookupAddress = row => {
+    const inputs = row.querySelectorAll('input');
+    const zipcode = inputs[0].value.trim().toUpperCase();
+    const number = inputs[1].value.trim();
+    const lookupKey = `${zipcode}|${number}`;
+    if (row.dataset.lookupKey === lookupKey) return;
+    if (!zipcode || !number) {
+      if (typeof showToast === 'function') showToast('Vul eerst postcode en huisnummer in.', 'warning');
+      return;
+    }
+    row.dataset.lookupKey = lookupKey;
+    inputs[2].value = '';
+    inputs[3].value = '';
+    apiFetch('/cms/api/kadaster-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zipcode, number }),
+    }).then(response => response.json()).then(data => {
+      if (data.found && data.bag_data) {
+        const bag = data.bag_data;
+        if (bag.street) inputs[2].value = bag.street;
+        if (bag.town) inputs[3].value = bag.town;
+        if (bag.number) inputs[1].value = bag.number;
+        if (bag.zipcode) inputs[0].value = bag.zipcode;
+      } else {
+        delete row.dataset.lookupKey;
+        if (typeof showToast === 'function') showToast('Adres niet gevonden in de BAG.', 'warning');
+      }
+    }).catch(() => {
+      delete row.dataset.lookupKey;
+      if (typeof showToast === 'function') showToast('Adrescontrole tijdelijk niet beschikbaar.', 'danger');
+    });
+  };
+  const scheduleAddressLookup = row => {
+    clearTimeout(row._lookupTimer);
+    const inputs = row.querySelectorAll('input');
+    const zipcode = inputs[0].value.trim().toUpperCase();
+    const number = inputs[1].value.trim();
+    const isCompleteDutchPostcode = /^\d{4}\s?[A-Z]{2}$/.test(zipcode);
+    if (row.querySelector('select').value !== 'Netherlands' || !isCompleteDutchPostcode || !number) return;
+    row._lookupTimer = setTimeout(() => lookupAddress(row), 250);
+  };
   const update = () => {
     const given = q('#given-names').value.trim(), surname = q('#surname').value.trim(), particles = q('#particles').value.trim();
     q('#initials').value = given.split(/\s+/).filter(Boolean).map(word => `${word[0].toUpperCase()}.`).join('');
-    q('#summary-name').textContent = [q('#initials').value, given, particles, surname].filter(Boolean).join(' ') || q('#client-name').value || '—';
+    const personName = [q('#initials').value, given, particles, surname].filter(Boolean).join(' ');
+    const isCompany = q('#is-company') && q('#is-company').value === '1';
+    if (!isCompany) q('#client-name').value = personName;
+    q('#summary-name').textContent = (isCompany ? q('#client-name').value : personName) || '—';
     q('#summary-portal').textContent = q('#portal-access').checked ? 'Aan' : 'Uit';
     q('#summary-contacts').textContent = document.querySelectorAll('#contacts .contact-row').length;
     q('#summary-addresses').textContent = document.querySelectorAll('#addresses .address-row').length;
@@ -117,16 +193,42 @@
   document.querySelectorAll('#client-name,#surname,#given-names,#particles,#portal-access').forEach(el => { el.addEventListener('input', update); el.addEventListener('change', update); });
   const updateClientTypeFields = value => {
     const isCompany = value === 'company';
+    if (q('#is-company')) q('#is-company').value = isCompany ? '1' : '';
     q('#summary-type').textContent = isCompany ? 'Organisatie' : 'Particulier';
     q('#person-fields').style.display = isCompany ? 'none' : 'block';
     q('#contact-person-field').style.display = isCompany ? 'block' : 'none';
+    q('#client-name-field').style.display = isCompany ? 'block' : 'none';
+    q('#person-name-help').style.display = isCompany ? 'none' : 'block';
   };
   document.querySelectorAll('input[name="client-type"]').forEach(el => el.addEventListener('change', e => { updateClientTypeFields(e.target.value); update(); }));
   q('#add-contact').addEventListener('click', () => { const row = q('.contact-row').cloneNode(true); row.querySelectorAll('input').forEach(input => { if (input.type !== 'radio') input.value = ''; else input.checked = false; }); row.querySelector('select').selectedIndex = 0; row.querySelector('.remove').addEventListener('click', () => { row.remove(); update(); }); q('#contacts').append(row); bindContactRow(row); update(); });
   q('#add-address').addEventListener('click', () => { const row = q('.address-row').cloneNode(true); row.querySelectorAll('input').forEach(input => { if (input.type !== 'radio') input.value = ''; else input.checked = false; }); row.querySelector('select').selectedIndex = 0; row.querySelector('.remove').addEventListener('click', () => { row.remove(); update(); }); q('#addresses').append(row); update(); });
   document.querySelectorAll('.remove').forEach(button => button.addEventListener('click', () => { const row = button.closest('.repeat-row'); const container = row.parentElement; if (container.querySelectorAll('.repeat-row').length > 1) row.remove(); update(); }));
+  document.querySelectorAll('.address-row').forEach(row => {
+    updateAddressRow(row);
+    row.querySelector('select').addEventListener('change', () => updateAddressRow(row));
+  });
+  q('#addresses').addEventListener('input', event => {
+    if (event.target.matches('.address-row input')) scheduleAddressLookup(event.target.closest('.address-row'));
+  });
   document.querySelectorAll('#surname,#given-names,#particles').forEach(el => el.addEventListener('blur', () => { el.value = title(el.value); update(); }));
-  q('#demo-save').addEventListener('click', () => { q('#demo-feedback').style.display = 'block'; q('#demo-feedback').innerHTML = '<strong>Demo:</strong> hier zou de klantcontrole en opslag starten. Er is niets opgeslagen.'; });
+  const serializeProductionData = () => {
+    if (!production) return;
+    const contacts = [...document.querySelectorAll('#contacts .contact-row')].map(row => ({
+      contact_type: row.querySelector('select').value,
+      value: row.querySelector('.contact-value').value.trim(),
+      platform: row.querySelector('.platform').value.trim() || null,
+      is_primary: row.querySelector('.primary input').checked,
+    })).filter(item => item.value);
+    const addresses = [...document.querySelectorAll('#addresses .address-row')].map(row => {
+      const inputs = row.querySelectorAll('input');
+      return { country: row.querySelector('select').value, zipcode: inputs[0].value.trim(), number: inputs[1].value.trim(), street: inputs[2].value.trim(), town: inputs[3].value.trim(), is_primary: row.querySelector('.primary input').checked };
+    }).filter(item => item.zipcode || item.number || item.street || item.town);
+    q('#contacts-data').value = JSON.stringify(contacts);
+    q('#addresses-data').value = JSON.stringify(addresses);
+  };
+  if (production) q('#client-form').addEventListener('submit', serializeProductionData);
+  else q('#demo-save').addEventListener('click', () => { q('#demo-feedback').style.display = 'block'; q('#demo-feedback').innerHTML = '<strong>Demo:</strong> hier zou de klantcontrole en opslag starten. Er is niets opgeslagen.'; });
   document.querySelectorAll('#contacts .contact-row').forEach(bindContactRow);
   updateClientTypeFields(document.querySelector('input[name="client-type"]:checked').value);
   update();
