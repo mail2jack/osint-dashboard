@@ -1,7 +1,10 @@
 {% extends "cms/base.html" %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">{% endblock %}
 {% block content %}
-<div class="auth-wrapper" style="max-width:480px;margin:4rem auto;padding:2rem;">
-  <h2>Accept Invitation</h2>
+<div class="auth-wrapper iveras-auth-card" style="max-width:480px;margin:4rem auto;padding:2rem;">
+  <a class="iveras-auth-brand" href="/public"><span class="iveras-auth-mark">I</span>Iveras</a>
+  <div class="ui-kicker">Klantportal · uitnodiging</div>
+  <h1>Uitnodiging accepteren</h1>
 
   {% if not valid %}
     <div style="background:#fff3cd;border:1px solid #ffc107;padding:1.5rem;border-radius:8px;margin-top:1rem;">
@@ -44,7 +47,7 @@
                style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:6px;">
       </div>
 
-      <button type="submit"
+      <button type="submit" class="iveras-auth-button"
               style="width:100%;padding:0.75rem;background:#1a73e8;color:white;border:none;border-radius:6px;font-size:1rem;cursor:pointer;">
         Create Account &amp; Accept
       </button>

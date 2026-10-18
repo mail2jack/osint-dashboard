@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ _('CMS Login') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -30,36 +31,37 @@
         .alert-danger { background: #fee2e2; color: #dc2626; }
     </style>
 </head>
-<body>
-    <div class="login-container">
+<body class="iveras-auth-page">
+    <div class="login-container iveras-auth-card">
         {% if app_logo %}
         <div style="text-align:center;margin-bottom:1.5rem;">
             <img src="{{ url_for('static', filename='uploads/logo/' + app_logo) }}" alt="Logo" style="max-height:4rem;width:auto;">
         </div>
         {% else %}
-        <h1>{{ _('Case Management') }}</h1>
+        <a class="iveras-auth-brand" href="/public"><span class="iveras-auth-mark">I</span>Iveras</a>
+        <h1>{{ _('Inloggen') }}</h1>
         {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-danger">{{ message }}</div>
+                    <div class="alert alert-danger iveras-auth-alert">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="email">{{ _('Email') }}</label>
+                <label class="iveras-auth-label" for="email">{{ _('E-mailadres') }}</label>
                 <input type="email" name="email" id="email" required autocomplete="email">
             </div>
             <div class="form-group">
-                <label for="password">{{ _('Password') }}</label>
+                <label class="iveras-auth-label" for="password">{{ _('Wachtwoord') }}</label>
                 <input type="password" name="password" id="password" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn-cms primary">{{ _('Login') }}</button>
+            <button type="submit" class="btn-cms primary iveras-auth-button">{{ _('Inloggen') }}</button>
         </form>
         <div style="text-align:center;margin-top:0.9rem;font-size:0.9rem;">
-            <a href="{{ url_for('auth.forgot_password') }}" style="color:#16213e;text-decoration:underline;">Wachtwoord vergeten?</a>
+            <a class="iveras-auth-link" href="{{ url_for('auth.forgot_password') }}">Wachtwoord vergeten?</a>
         </div>
         {% if local_dev_login_enabled %}
         <form method="POST" action="{{ url_for('auth.local_dev_login') }}" style="margin-top:1rem;">
