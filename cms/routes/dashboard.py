@@ -6,7 +6,17 @@ from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Case, Client, Subject, Finding, CaseStatus, Setting
+from ..models import (
+    db,
+    Case,
+    Client,
+    Subject,
+    Finding,
+    CaseStatus,
+    Setting,
+    Notification,
+    PortalRequest,
+)
 from ..auth import apply_tenant_filter
 
 logger = logging.getLogger(__name__)
@@ -145,7 +155,25 @@ def dashboard() -> str:
     my_cases_q = apply_tenant_filter(my_cases_q, Case)
     my_cases = my_cases_q.order_by(Case.updated_at.desc()).limit(10).all()
 
-    return render_template("cms/dashboard.html", stats=stats, my_cases=my_cases)
+    pending_portal_requests = apply_tenant_filter(
+        PortalRequest.query.filter(
+            PortalRequest.status.in_(["submitted", "in_review", "additional_info"])
+        ),
+        PortalRequest,
+    ).count()
+    unread_notifications = Notification.query.filter_by(
+        user_id=current_user.id, is_read=False
+    ).count()
+    health = _get_cached_health()
+
+    return render_template(
+        "cms/dashboard.html",
+        stats=stats,
+        my_cases=my_cases,
+        pending_portal_requests=pending_portal_requests,
+        unread_notifications=unread_notifications,
+        health=health,
+    )
 
 
 @cms_bp.route("/api/health-summary")
