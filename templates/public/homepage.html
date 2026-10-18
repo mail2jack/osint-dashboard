@@ -12,6 +12,24 @@
   <meta property="og:description" content="Zorgvuldig OSINT-onderzoek, verificatie en controleerbare rapportage.">
   <meta property="og:url" content="{{ public_site_url }}/">
   <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Iveras",
+    "url": {{ public_site_url|tojson }},
+    "description": "Zorgvuldig OSINT-onderzoek, verificatie en controleerbare rapportage.",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Charlotte de Bourbonstraat 67",
+      "postalCode": "2628 BN",
+      "addressLocality": "Delft",
+      "addressCountry": "NL"
+    },
+    "identifier": "92717144",
+    "email": "info@iveras.com"
+  }
+  </script>
   <title>Iveras — Onderzoek met overzicht</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
   <style>

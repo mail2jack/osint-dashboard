@@ -8,6 +8,9 @@
   <meta name="description" content="{% if page == 'privacy' %}Lees hoe Iveras persoonsgegevens verwerkt en beveiligt.{% elif page == 'terms' %}De algemene voorwaarden voor de diensten van Iveras.{% else %}Informatie over cookies en vergelijkbare technieken op Iveras.{% endif %}">
   {% set canonical_path = '/privacy' if page == 'privacy' else ('/voorwaarden' if page == 'terms' else '/cookies') %}
   <link rel="canonical" href="{{ public_site_url.rstrip('/') }}{{ canonical_path }}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="{% if page == 'privacy' %}Privacyverklaring{% elif page == 'terms' %}Algemene voorwaarden{% else %}Cookiebeleid{% endif %} — Iveras">
+  <meta property="og:url" content="{{ public_site_url.rstrip('/') }}{{ canonical_path }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
   <style>
     :root{--ink:#17213f;--muted:#5e6880;--blue:#2856c7;--line:#dfe5f1;--soft:#eef3ff}

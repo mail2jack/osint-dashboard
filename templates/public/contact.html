@@ -4,6 +4,16 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="index,follow">
   <meta name="description" content="Neem contact op met Iveras over een OSINT-onderzoek, klantomgeving of andere vraag.">
+  <link rel="canonical" href="{{ public_site_url.rstrip('/') }}/contact">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "name": "Contact — Iveras",
+    "url": {{ (public_site_url.rstrip('/') ~ '/contact')|tojson }},
+    "about": {"@type": "Organization", "name": "Iveras", "email": "info@iveras.com"}
+  }
+  </script>
   <title>Contact — Iveras</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-public.css') }}">
   <style>
