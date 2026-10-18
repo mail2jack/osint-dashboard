@@ -297,7 +297,16 @@
     const owner = document.querySelector('#action-owner').value;
     const status = button.id === 'save-start-action' ? 'In behandeling' : 'Gepland';
     const item = document.createElement('li');
-    item.innerHTML = `<span><strong>${type}</strong><br><small>${subject} · ${owner} · zojuist toegevoegd in demo</small></span><span class="review-chip">${status}</span>`;
+    const details = document.createElement('span');
+    const typeLabel = document.createElement('strong');
+    typeLabel.textContent = type;
+    const meta = document.createElement('small');
+    meta.textContent = `${subject} · ${owner} · zojuist toegevoegd in demo`;
+    details.append(typeLabel, document.createElement('br'), meta);
+    const statusLabel = document.createElement('span');
+    statusLabel.className = 'review-chip';
+    statusLabel.textContent = status;
+    item.append(details, statusLabel);
     document.querySelector('#action-list').prepend(item);
     closeActionForm();
   }));
