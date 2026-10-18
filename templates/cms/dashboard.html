@@ -124,6 +124,11 @@
     }
 </style>
 
+<div class="ui-page">
+<div class="ui-page-header">
+    <div><div class="ui-kicker">Iveras · werkoverzicht</div><h1>Mijn werkruimte</h1><p class="ui-lead">Zoek direct of ga naar de onderdelen die vandaag aandacht nodig hebben.</p></div>
+    <div class="ui-actions"><a class="btn-cms primary" href="{{ url_for('workflow.case_new') }}">+ {{ _('New case') }}</a><a class="btn-cms" href="{{ url_for('cms.create_subject') }}">+ {{ _('New Subject') }}</a></div>
+</div>
 <div class="search-hero">
     <h1>🔍 {{ _('Search cases') }}</h1>
     <p>{{ _('Search cases, subjects, clients, findings, and documents') }}</p>
@@ -146,44 +151,44 @@
     </div>
 </div>
 
-<div class="stats-row">
-    <div class="stat-card open">
+<div class="ui-stat-grid">
+    <div class="ui-stat stat-card open">
         <h3>{{ _('Open') }}</h3>
         <div class="value">{{ stats.open_cases }}</div>
     </div>
-    <div class="stat-card active">
+    <div class="ui-stat stat-card active">
         <h3>{{ _('Active') }}</h3>
         <div class="value">{{ stats.active_cases }}</div>
     </div>
-    <div class="stat-card suspended">
+    <div class="ui-stat stat-card suspended">
         <h3>{{ _('Suspended') }}</h3>
         <div class="value">{{ stats.suspended_cases }}</div>
     </div>
-    <div class="stat-card closed">
+    <div class="ui-stat stat-card closed">
         <h3>{{ _('Closed') }}</h3>
         <div class="value">{{ stats.closed_cases }}</div>
     </div>
-    <div class="stat-card">
+    <div class="ui-stat stat-card">
         <h3>{{ _('Clients') }}</h3>
         <div class="value">{{ stats.total_clients }}</div>
     </div>
-    <div class="stat-card">
+    <div class="ui-stat stat-card">
         <h3>{{ _('Subjects') }}</h3>
         <div class="value">{{ stats.total_subjects }}</div>
     </div>
-    <div class="stat-card">
+    <div class="ui-stat stat-card">
         <h3>{{ _('Findings') }}</h3>
         <div class="value">{{ stats.total_findings }}</div>
     </div>
 </div>
 
 {% if my_cases %}
-<div class="card">
+<div class="ui-panel">
     <div class="section-header">
         <h2>📋 {{ _('My Open / Active Cases') }}</h2>
         <a href="{{ url_for('cms.cases', assigned='me') }}">{{ _('View All') }} →</a>
     </div>
-    <table>
+    <div class="ui-table-wrap"><table>
         <thead>
             <tr>
                 <th>{{ _('Case') }}</th>
@@ -202,7 +207,10 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 </div>
+{% else %}
+<div class="ui-empty"><div class="ui-empty-icon">📋</div><h2>{{ _('No open cases') }}</h2><p>{{ _('There are no cases assigned to you that need attention right now.') }}</p><a class="btn-cms primary small" href="{{ url_for('workflow.case_new') }}">+ {{ _('New case') }}</a></div>
 {% endif %}
+</div>
 {% endblock %}
