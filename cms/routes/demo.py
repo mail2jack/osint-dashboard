@@ -192,6 +192,27 @@ def demo_workflow():
     return render_template("cms/demo_workflow.html", now=now)
 
 
+@cms_bp.route("/demo/ui-review")
+@login_required
+def demo_ui_review() -> str:
+    """Interactive, non-persistent demo of a unified detail-screen pattern."""
+    return render_template("cms/demo_ui_review.html")
+
+
+@cms_bp.route("/demo/dashboard-review")
+@login_required
+def demo_dashboard_review() -> str:
+    """Non-persistent dashboard and navigation proposal demo."""
+    return render_template("cms/demo_dashboard_review.html")
+
+
+@cms_bp.route("/demo/settings-review")
+@login_required
+def demo_settings_review() -> str:
+    """Non-persistent settings and analytics information architecture demo."""
+    return render_template("cms/demo_settings_review.html")
+
+
 def _build_kees_case() -> dict:
     """Build realistic demo data for 'Kees' case."""
     now = datetime.now()

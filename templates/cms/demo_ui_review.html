@@ -1,0 +1,314 @@
+{% extends "cms/base.html" %}
+{% block title %}UI-reviewdemo{% endblock %}
+{% block content %}
+<style>
+  .review-wrap { max-width: 1180px; margin: 0 auto; }
+  .review-kicker { color: var(--accent-primary); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .review-header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:1rem; }
+  .review-header h1 { margin:.2rem 0 .35rem; }
+  .review-note { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; padding:1rem 1.1rem; border-radius:10px; color:#1e3a8a; margin-bottom:1rem; }
+  .review-toolbar { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; padding:.75rem 1rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; margin-bottom:1rem; }
+  .review-tabs { display:flex; gap:.35rem; flex-wrap:wrap; }
+  .review-tab { border:1px solid var(--border-color); border-radius:7px; padding:.45rem .75rem; background:var(--bg); color:var(--text-secondary); cursor:pointer; font-weight:600; }
+  .review-tab.active { background:var(--accent-primary); color:#fff; border-color:var(--accent-primary); }
+  .review-status { display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.25rem .6rem; background:#dcfce7; color:#166534; font-size:.78rem; font-weight:700; }
+  .review-status::before { content:'●'; font-size:.62rem; }
+  .review-grid { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:1rem; align-items:start; }
+  .review-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:1.15rem; margin-bottom:1rem; }
+  .review-card h2 { font-size:1rem; margin:0 0 1rem; }
+  .review-card h3 { font-size:.86rem; margin:0 0 .65rem; }
+  .review-section { border-top:1px solid var(--border-color); padding-top:1rem; margin-top:1rem; }
+  .review-section:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  .review-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+  .review-field.wide { grid-column:1 / -1; }
+  .review-field label { display:block; margin-bottom:.25rem; font-size:.74rem; font-weight:700; color:var(--text-muted); }
+  .review-field input, .review-field select, .review-field textarea { width:100%; box-sizing:border-box; border:1px solid var(--border-color); border-radius:7px; padding:.58rem .65rem; background:var(--bg); color:var(--text); }
+  .review-field textarea { min-height:88px; resize:vertical; }
+  .review-field input:focus, .review-field select:focus, .review-field textarea:focus { outline:2px solid color-mix(in srgb, var(--accent-primary) 25%, transparent); border-color:var(--accent-primary); }
+  .review-field .hint { display:block; margin-top:.25rem; color:var(--text-muted); font-size:.72rem; }
+  .review-chip { display:inline-flex; padding:.2rem .5rem; border-radius:999px; font-size:.72rem; font-weight:700; background:#fef3c7; color:#92400e; }
+  .review-list { display:grid; gap:.5rem; margin:0; padding:0; list-style:none; }
+  .review-list li { display:flex; justify-content:space-between; gap:.75rem; padding:.6rem 0; border-bottom:1px solid var(--border-color); font-size:.82rem; }
+  .review-list li:last-child { border-bottom:0; }
+  .review-list small { color:var(--text-muted); }
+  .review-timeline { display:grid; gap:.7rem; }
+  .review-event { display:grid; grid-template-columns:10px 1fr; gap:.6rem; font-size:.8rem; }
+  .review-event i { display:block; width:10px; height:10px; border-radius:50%; background:var(--accent-primary); margin-top:.25rem; }
+  .review-event small { display:block; color:var(--text-muted); margin-top:.15rem; }
+  .review-actions { display:flex; justify-content:space-between; gap:.65rem; flex-wrap:wrap; align-items:center; }
+  .review-actions-right { display:flex; gap:.55rem; flex-wrap:wrap; }
+  .review-alert { display:none; margin-top:.75rem; padding:.65rem .75rem; border-radius:7px; background:#fef2f2; color:#991b1b; font-size:.8rem; }
+  .review-empty { padding:1rem; text-align:center; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-muted); font-size:.82rem; }
+  .report-preview { background:#fff; color:#17203a; border:1px solid #d9deea; border-radius:8px; padding:1rem; box-shadow:0 2px 8px rgba(15,23,42,.06); }
+  .report-preview h3 { color:#17203a; margin:.1rem 0 .6rem; }
+  .report-preview .report-meta { color:#64748b; font-size:.75rem; border-bottom:1px solid #e2e8f0; padding-bottom:.65rem; margin-bottom:.75rem; }
+  .report-preview .report-finding { padding:.55rem 0; border-bottom:1px solid #e2e8f0; font-size:.8rem; }
+  .report-preview .report-finding:last-child { border-bottom:0; }
+  .release-checklist { display:grid; gap:.55rem; }
+  .review-check, .release-check { display:grid !important; grid-template-columns:20px minmax(0,1fr); align-items:start; justify-content:initial !important; gap:.65rem; width:100%; box-sizing:border-box; padding:.7rem .8rem; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); font-size:.8rem; }
+  .review-check input, .release-check input { width:18px; height:18px; margin:.1rem 0 0; }
+  .review-check span, .release-check span { min-width:0; }
+  .release-check strong { display:block; }
+  .action-form { display:none; margin-top:1rem; padding:1rem; border:1px solid #bfdbfe; border-radius:10px; background:#f8fbff; }
+  .action-form.is-open { display:block; }
+  .action-form h3 { color:#1e3a8a; }
+  .action-form-actions { display:flex; justify-content:flex-end; gap:.55rem; flex-wrap:wrap; margin-top:.85rem; }
+  @media (max-width:850px) { .review-grid { grid-template-columns:1fr; } .review-fields { grid-template-columns:1fr; } .review-field.wide { grid-column:auto; } }
+</style>
+
+<div class="review-wrap">
+  <div class="review-header">
+    <div>
+      <div class="review-kicker">UI-review · demo · niets wordt opgeslagen</div>
+      <h1>Uniform detail- en bewerkscherm</h1>
+      <p class="muted" style="margin:0;">Voorstel voor Zaken, Onderzoeken, Subjecten, Klanten en Instellingen.</p>
+    </div>
+    <a class="btn-cms small" href="{{ url_for('cms.dashboard') }}">← Dashboard</a>
+  </div>
+
+  <div class="review-note">
+    <strong>Wat deze demo laat zien</strong><br>
+    Eén vaste structuur voor context, status, gegevens, relaties, auditinformatie en acties. De bestaande Person- en Client-formulieren blijven het uitgangspunt; dit scherm toont hoe dezelfde lijn op de overige schermen kan worden toegepast.
+  </div>
+
+  <div class="review-toolbar">
+    <div class="review-tabs" role="tablist" aria-label="Schermtype">
+      <button class="review-tab active" type="button" data-tab="case">Zaak</button>
+      <button class="review-tab" type="button" data-tab="investigation">Onderzoek</button>
+      <button class="review-tab" type="button" data-tab="subject">Subject</button>
+      <button class="review-tab" type="button" data-tab="actions">Onderzoeksacties</button>
+      <button class="review-tab" type="button" data-tab="findings">Bevindingen</button>
+      <button class="review-tab" type="button" data-tab="report">Rapportmodule</button>
+    </div>
+    <span class="review-status" id="save-state">Opgeslagen</span>
+  </div>
+
+  <div class="review-grid">
+    <main>
+      <section class="review-card">
+        <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div class="review-kicker" id="record-kicker">Zaak · 2026-00003</div>
+            <h2 id="record-title" style="font-size:1.35rem;margin:.2rem 0 .35rem;">Onderzoeksvraag Hermsen Bouw</h2>
+            <span class="review-chip" id="record-status">Open</span>
+          </div>
+          <div class="muted" style="text-align:right;font-size:.78rem;">Aangemaakt door Ivan Versteegh<br>12-10-2026 14:55 UTC</div>
+        </div>
+        <div class="review-section">
+          <div class="review-fields">
+            <div class="review-field"><label for="demo-title">Titel *</label><input id="demo-title" value="Onderzoeksvraag Hermsen Bouw"><span class="hint">Gebruik een korte, herkenbare omschrijving.</span></div>
+            <div class="review-field"><label for="demo-status">Status</label><select id="demo-status"><option>Open</option><option>In behandeling</option><option>Wacht op klant</option><option>Afgerond</option></select></div>
+            <div class="review-field"><label for="demo-priority">Prioriteit</label><select id="demo-priority"><option>Laag</option><option selected>Normaal</option><option>Hoog</option><option>Kritiek</option></select></div>
+            <div class="review-field"><label for="demo-owner">Behandelaar</label><select id="demo-owner"><option>Ivan Versteegh</option><option>Lisa van Dijk</option><option>Piet Jansen</option></select></div>
+            <div class="review-field wide"><label for="demo-description">Omschrijving</label><textarea id="demo-description">De klant wil een onderzoeksvraag laten beoordelen.</textarea></div>
+          </div>
+          <div class="review-alert" id="review-alert">Vul eerst een titel in voordat je verdergaat.</div>
+        </div>
+      </section>
+
+      <section class="review-card">
+        <h2>Relaties en vervolgacties</h2>
+        <div class="review-fields">
+          <div class="review-field"><label>Klant</label><input value="Jansen" readonly><span class="hint">Klikbare relatie naar de klantkaart.</span></div>
+          <div class="review-field"><label>Primair subject</label><input value="Patricia Jansen" readonly><span class="hint">Klikbare relatie naar de uniforme subjectkaart.</span></div>
+        </div>
+        <div class="review-section">
+          <ul class="review-list">
+            <li><span>Onderzoek 2026-00003-01</span><strong>Open</strong></li>
+            <li><span>Rapport</span><small>Nog niet vrijgegeven</small></li>
+            <li><span>Berichten</span><strong>2 ongelezen</strong></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="review-card" id="actions-panel">
+        <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;">
+          <div><h2 style="margin-bottom:.25rem;">Onderzoeksacties</h2><p class="muted" style="margin:0;">Wat is uitgevoerd, door wie, met welke bron en met welk resultaat.</p></div>
+          <button class="btn-cms primary small" type="button" id="add-action">+ Actie toevoegen</button>
+        </div>
+        <div class="action-form" id="action-form">
+          <h3>Nieuwe onderzoeksactie</h3>
+          <div class="review-fields">
+            <div class="review-field"><label for="action-type">Actietype *</label><select id="action-type"><option>Open bronnen zoeken</option><option>Website controleren</option><option>Socialmedia-profiel controleren</option><option>KvK/Kadaster/RDW-controle</option><option>Document analyseren</option><option>Klant om aanvullende informatie vragen</option><option>Anders</option></select></div>
+            <div class="review-field"><label for="action-subject">Onderwerp *</label><input id="action-subject" placeholder="Bijvoorbeeld: Patricia Jansen"></div>
+            <div class="review-field wide"><label for="action-question">Onderzoeksvraag / opdracht *</label><textarea id="action-question" placeholder="Wat moet precies worden gecontroleerd?"></textarea></div>
+            <div class="review-field"><label for="action-source">Bron</label><input id="action-source" placeholder="URL, register, document of klant"></div>
+            <div class="review-field"><label for="action-owner">Uitvoerder</label><select id="action-owner"><option>Ivan Versteegh</option><option>Lisa van Dijk</option><option>Piet Jansen</option></select></div>
+            <div class="review-field"><label for="action-status">Status</label><select id="action-status"><option>Gepland</option><option>In behandeling</option><option>Wacht op klant</option><option>Voltooid</option><option>Mislukt</option><option>Geannuleerd</option></select></div>
+            <div class="review-field"><label for="action-finding">Koppeling aan bevinding</label><select id="action-finding"><option>Geen bevinding</option><option>Nieuwe bevinding aanmaken</option><option>Bedrijfsnaam komt overeen</option><option>Socialmedia-account mogelijk gekoppeld</option></select></div>
+            <div class="review-field wide"><label for="action-result">Resultaat</label><textarea id="action-result" placeholder="Wat is daadwerkelijk gevonden of gecontroleerd?"></textarea></div>
+          </div>
+          <div class="action-form-actions"><button class="btn-cms gray small" type="button" id="cancel-action">Annuleren</button><button class="btn-cms small" type="button" id="save-action">Opslaan als concept</button><button class="btn-cms primary small" type="button" id="save-start-action">Opslaan en starten</button></div>
+          <div class="review-alert" id="action-alert">Vul minimaal een onderwerp en opdracht in.</div>
+        </div>
+        <div class="review-section">
+          <ul class="review-list" id="action-list">
+            <li><span><strong>Open bronnen zoeken</strong><br><small>Web · uitgevoerd door Ivan Versteegh · 12-10-2026 15:02 UTC</small></span><span class="review-chip" style="background:#dcfce7;color:#166534;">Voltooid</span></li>
+            <li><span><strong>Bedrijfsregistratie controleren</strong><br><small>Overheid/KvK · gepland · resultaat nog niet beoordeeld</small></span><span class="review-chip">In behandeling</span></li>
+            <li><span><strong>Documenten opvragen bij klant</strong><br><small>Portaalbericht · klantactie vereist</small></span><span class="review-chip" style="background:#dbeafe;color:#1e40af;">Wacht op klant</span></li>
+          </ul>
+        </div>
+        <div class="review-section" style="display:flex;gap:.5rem;flex-wrap:wrap;"><span class="review-chip" style="background:#f3f4f6;color:#4b5563;">3 acties</span><span class="review-chip" style="background:#dcfce7;color:#166534;">1 voltooid</span><span class="review-chip" style="background:#fef3c7;color:#92400e;">1 open</span><span class="review-chip" style="background:#dbeafe;color:#1e40af;">1 klantactie</span></div>
+      </section>
+
+      <section class="review-card" id="findings-panel">
+        <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;">
+          <div><h2 style="margin-bottom:.25rem;">Bevindingen</h2><p class="muted" style="margin:0;">Feiten, bronnen en beoordeling met expliciete rapportstatus.</p></div>
+          <button class="btn-cms primary small" type="button">+ Bevinding toevoegen</button>
+        </div>
+        <div class="review-section">
+          <ul class="review-list">
+            <li><span><strong>Bedrijfsnaam komt overeen met openbare registratie</strong><br><small>Bron: KvK · vastgelegd door Ivan Versteegh · 12-10-2026 15:08 UTC</small></span><span style="text-align:right;"><span class="review-chip" style="background:#dcfce7;color:#166534;">Geverifieerd</span><br><small>In rapport</small></span></li>
+            <li><span><strong>Socialmedia-account mogelijk gekoppeld aan subject</strong><br><small>Bron: LinkedIn · beoordeling vereist</small></span><span style="text-align:right;"><span class="review-chip">Onbeoordeeld</span><br><small>Intern</small></span></li>
+            <li><span><strong>Document ontvangen via klantportaal</strong><br><small>Bron: klant · vertrouwelijk document</small></span><span style="text-align:right;"><span class="review-chip" style="background:#dbeafe;color:#1e40af;">Beoordeeld</span><br><small>Niet in rapport</small></span></li>
+          </ul>
+        </div>
+        <div class="review-section"><div class="review-fields"><div class="review-field"><label>Rapportfilter</label><select><option>Alle bevindingen</option><option>Alleen opgenomen in rapport</option><option>Alleen interne bevindingen</option></select></div><div class="review-field"><label>Verificatiestatus</label><select><option>Alle statussen</option><option>Onbeoordeeld</option><option>Geverifieerd</option><option>Betwist</option></select></div></div></div>
+      </section>
+
+      <section class="review-card" id="report-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;">
+          <div><h2 style="margin-bottom:.25rem;">Rapportmodule</h2><p class="muted" style="margin:0;">Stel het rapport samen, controleer de inhoud en geef het daarna bewust vrij.</p></div>
+          <span class="review-chip" style="background:#fef3c7;color:#92400e;">Concept</span>
+        </div>
+        <div class="review-section">
+          <div class="review-fields">
+            <div class="review-field"><label for="report-title">Rapporttitel *</label><input id="report-title" value="Onderzoeksrapport Hermsen Bouw"></div>
+            <div class="review-field"><label for="report-version">Versie</label><input id="report-version" value="1.0" readonly></div>
+            <div class="review-field"><label for="report-audience">Bestemd voor</label><select id="report-audience"><option>Klantportaal</option><option>Intern gebruik</option><option>Klantportaal en intern</option></select></div>
+            <div class="review-field"><label for="report-language">Taal</label><select id="report-language"><option>Nederlands</option><option>English</option></select></div>
+            <div class="review-field wide"><label for="report-summary">Samenvatting voor de klant</label><textarea id="report-summary">In dit rapport zijn de gecontroleerde openbare bronnen en de geverifieerde bevindingen samengevat.</textarea><span class="hint">Interne notities en ruwe onderzoeksinformatie worden hier niet automatisch opgenomen.</span></div>
+          </div>
+        </div>
+        <div class="review-section">
+          <h3>Inhoud van het rapport</h3>
+          <div class="review-list">
+            <label class="review-check"><input type="checkbox" checked><span><strong>Managementsamenvatting</strong><small>Samenvatting en conclusie voor de klant</small></span></label>
+            <label class="review-check"><input type="checkbox" checked><span><strong>Geverifieerde bedrijfsregistratie</strong><small>Bevinding · bron: KvK · wordt opgenomen</small></span></label>
+            <label class="review-check"><input type="checkbox"><span><strong>Mogelijke socialmedia-koppeling</strong><small>Bevinding is nog onbeoordeeld en blijft intern</small></span></label>
+            <label class="review-check"><input type="checkbox" checked><span><strong>Bronnenoverzicht</strong><small>Alleen bronnen die voor klantweergave zijn gemarkeerd</small></span></label>
+          </div>
+        </div>
+        <div class="review-section">
+          <div class="review-actions"><strong>Voorbeeldweergave</strong><button class="btn-cms small" type="button" id="toggle-report-preview">Voorbeeld tonen</button></div>
+          <div class="report-preview" id="report-preview" style="display:none;margin-top:.75rem;"><h3 id="preview-report-title">Onderzoeksrapport Hermsen Bouw</h3><div class="report-meta">Zaak 2026-00003 · versie 1.0 · klantweergave</div><p id="preview-report-summary" style="font-size:.82rem;">In dit rapport zijn de gecontroleerde openbare bronnen en de geverifieerde bevindingen samengevat.</p><div class="report-finding"><strong>Geverifieerde bedrijfsregistratie</strong><br><small>De bedrijfsnaam en registratiegegevens komen overeen met de geraadpleegde openbare bron.</small></div><div class="report-finding"><strong>Bronnenoverzicht</strong><br><small>KvK · geraadpleegd 12-10-2026</small></div></div>
+        </div>
+        <div class="review-section">
+          <h3>Vrijgavecontrole</h3>
+          <div class="release-checklist">
+            <label class="release-check"><input type="checkbox" checked><span><strong>Alle opgenomen bevindingen zijn beoordeeld</strong><small>Onbeoordeelde bevindingen blijven buiten het klantrapport.</small></span></label>
+            <label class="release-check"><input type="checkbox" checked><span><strong>Interne notities zijn uitgesloten</strong><small>Ruwe findings en interne opmerkingen worden niet vrijgegeven.</small></span></label>
+            <label class="release-check"><input type="checkbox"><span><strong>Behandelaar heeft de eindcontrole uitgevoerd</strong><small>Deze controle is vereist voordat vrijgave mogelijk is.</small></span></label>
+          </div>
+          <div class="review-alert" id="release-alert" style="display:block;margin-top:.75rem;background:#fffbeb;color:#92400e;">Eindcontrole door de bevoegde behandelaar ontbreekt nog. Vrijgave blijft daarom geblokkeerd.</div>
+        </div>
+        <div class="review-actions"><span class="muted">Vrijgave wordt vastgelegd in de audit trail en maakt een klantmelding aan.</span><div class="review-actions-right"><button class="btn-cms small" type="button">Concept opslaan</button><button class="btn-cms primary small" type="button" disabled>Rapport vrijgeven</button></div></div>
+      </section>
+
+      <section class="review-card">
+        <div class="review-actions">
+          <span class="muted" id="dirty-message">Geen niet-opgeslagen wijzigingen</span>
+          <div class="review-actions-right">
+            <button class="btn-cms gray small" type="button" data-demo-action="cancel">Annuleren</button>
+            <button class="btn-cms primary small" type="button" data-demo-action="save">Wijzigingen opslaan</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside>
+      <section class="review-card">
+        <h2>Audit trail</h2>
+        <div class="review-timeline">
+          <div class="review-event"><i></i><div><strong>Zaak aangemaakt</strong><small>Ivan Versteegh · 12-10-2026 14:55 UTC</small></div></div>
+          <div class="review-event"><i></i><div><strong>Status gewijzigd naar Open</strong><small>Ivan Versteegh · 12-10-2026 14:56 UTC</small></div></div>
+          <div class="review-event"><i></i><div><strong>Klantrelatie gekoppeld</strong><small>Systeem · 12-10-2026 14:56 UTC</small></div></div>
+        </div>
+      </section>
+      <section class="review-card">
+        <h2>Consistente patronen</h2>
+        <ul class="review-list">
+          <li><span>Context en breadcrumb</span><strong>✓</strong></li>
+          <li><span>Status + eigenaar bovenaan</span><strong>✓</strong></li>
+          <li><span>Inline validatie</span><strong>✓</strong></li>
+          <li><span>Relaties als links</span><strong>✓</strong></li>
+          <li><span>Audit naast gegevens</span><strong>✓</strong></li>
+          <li><span>Vaste actiezone</span><strong>✓</strong></li>
+        </ul>
+      </section>
+      <section class="review-card">
+        <h2>Lege toestand</h2>
+        <div class="review-empty">Geen documenten vrijgegeven.<br><button class="btn-cms small" type="button" style="margin-top:.6rem;">Document toevoegen</button></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(() => {
+  const tabData = {
+    case: ['Zaak · 2026-00003', 'Onderzoeksvraag Hermsen Bouw', 'Open'],
+    investigation: ['Onderzoek · 2026-00003-01', 'Onderzoek naar Hermsen Bouw', 'In behandeling'],
+    subject: ['Subject · P. Jansen', 'Patricia Jansen', 'Actief'],
+    actions: ['Onderzoeksacties · 3 acties', 'Onderzoeksacties Hermsen Bouw', 'In uitvoering'],
+    findings: ['Bevindingen · 3 bevindingen', 'Bevindingen Hermsen Bouw', 'Beoordeling nodig'],
+    report: ['Rapport · concept v1.0', 'Onderzoeksrapport Hermsen Bouw', 'Concept']
+  };
+  const state = document.querySelector('#save-state');
+  const dirty = document.querySelector('#dirty-message');
+  const title = document.querySelector('#demo-title');
+  const alert = document.querySelector('#review-alert');
+  document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('[data-tab]').forEach(item => item.classList.remove('active'));
+    button.classList.add('active');
+    const values = tabData[button.dataset.tab];
+    document.querySelector('#record-kicker').textContent = values[0];
+    document.querySelector('#record-title').textContent = values[1];
+    document.querySelector('#record-status').textContent = values[2];
+    title.value = values[1];
+    document.querySelector('#actions-panel').style.display = ['findings', 'report'].includes(button.dataset.tab) ? 'none' : '';
+    document.querySelector('#findings-panel').style.display = ['actions', 'report'].includes(button.dataset.tab) ? 'none' : '';
+    document.querySelector('#report-panel').style.display = button.dataset.tab === 'report' ? '' : 'none';
+  }));
+  document.querySelectorAll('input, select, textarea').forEach(field => field.addEventListener('input', () => {
+    state.textContent = 'Niet-opgeslagen wijzigingen';
+    state.style.background = '#fef3c7';
+    state.style.color = '#92400e';
+    dirty.textContent = 'Wijzigingen zijn nog niet opgeslagen';
+  }));
+  document.querySelector('[data-demo-action="save"]').addEventListener('click', () => {
+    if (!title.value.trim()) { alert.style.display = 'block'; title.focus(); return; }
+    alert.style.display = 'none'; state.textContent = 'Opgeslagen'; state.style.background = '#dcfce7'; state.style.color = '#166534'; dirty.textContent = 'Geen niet-opgeslagen wijzigingen';
+  });
+  document.querySelector('[data-demo-action="cancel"]').addEventListener('click', () => {
+    title.value = document.querySelector('#record-title').textContent; alert.style.display = 'none'; state.textContent = 'Opgeslagen'; state.style.background = '#dcfce7'; state.style.color = '#166534'; dirty.textContent = 'Geen niet-opgeslagen wijzigingen';
+  });
+  const actionForm = document.querySelector('#action-form');
+  const actionAlert = document.querySelector('#action-alert');
+  const closeActionForm = () => { actionForm.classList.remove('is-open'); actionAlert.style.display = 'none'; };
+  document.querySelector('#add-action').addEventListener('click', () => { actionForm.classList.add('is-open'); document.querySelector('#action-subject').focus(); });
+  document.querySelector('#cancel-action').addEventListener('click', closeActionForm);
+  document.querySelectorAll('#save-action, #save-start-action').forEach(button => button.addEventListener('click', () => {
+    const subject = document.querySelector('#action-subject').value.trim();
+    const question = document.querySelector('#action-question').value.trim();
+    if (!subject || !question) { actionAlert.style.display = 'block'; return; }
+    actionAlert.style.display = 'none';
+    const type = document.querySelector('#action-type').value;
+    const owner = document.querySelector('#action-owner').value;
+    const status = button.id === 'save-start-action' ? 'In behandeling' : 'Gepland';
+    const item = document.createElement('li');
+    item.innerHTML = `<span><strong>${type}</strong><br><small>${subject} · ${owner} · zojuist toegevoegd in demo</small></span><span class="review-chip">${status}</span>`;
+    document.querySelector('#action-list').prepend(item);
+    closeActionForm();
+  }));
+  document.querySelector('#toggle-report-preview').addEventListener('click', (event) => {
+    const preview = document.querySelector('#report-preview');
+    const visible = preview.style.display !== 'none';
+    preview.style.display = visible ? 'none' : 'block';
+    event.currentTarget.textContent = visible ? 'Voorbeeld tonen' : 'Voorbeeld verbergen';
+    document.querySelector('#preview-report-title').textContent = document.querySelector('#report-title').value || 'Onderzoeksrapport';
+    document.querySelector('#preview-report-summary').textContent = document.querySelector('#report-summary').value || 'Geen samenvatting ingevuld.';
+  });
+})();
+</script>
+{% endblock %}

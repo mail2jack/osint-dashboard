@@ -50,6 +50,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ g.css_version }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}?v={{ g.css_version }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/iveras-ui.css') }}?v={{ g.css_version }}">
     {% if theme_style == 'professional' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}?v={{ g.css_version }}">
     {% endif %}
@@ -138,7 +139,7 @@
         .cms-toast-close:hover { opacity: 1; }
     </style>
 </head>
-<body data-help-topic="{{ help_topic|default('general') }}">
+<body class="iveras-cms" data-help-topic="{{ help_topic|default('general') }}">
     <div class="app-loader" id="appLoader">
         <div class="app-loader-icon">📋</div>
         <div class="app-loader-text">Loading OSINT...</div>
