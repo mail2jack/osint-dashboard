@@ -37,9 +37,11 @@
 .nav-dropdown { position: relative; display: inline-block; margin-left: 1.5rem; }
 .nav-dropdown-trigger { color: white; text-decoration: none; cursor: pointer; display: inline-block; background: none; border: none; padding: 0; font: inherit; line-height: inherit; }
 .nav-dropdown-trigger:hover { opacity: 0.8; }
-.nav-dropdown-menu { display: none !important; position: absolute; top: 100%; left: 0; background: var(--bg-header, #1a1a2e); min-width: 200px; border-radius: 0 0 8px 8px; padding: 0.5rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; }
+.nav-dropdown-menu { display: none !important; position: absolute; top: 100%; left: 0; background: var(--bg-header, #1a1a2e); min-width: 220px; border-radius: 0 0 8px 8px; padding: 0.5rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; }
 .nav-dropdown-menu a { display: block; margin-left: 0 !important; padding: 0.5rem 1rem; white-space: nowrap; }
 .nav-dropdown-menu a:hover { background: rgba(255,255,255,0.1); opacity: 1 !important; }
+.nav-dropdown-menu .nav-group-label { padding: 0.45rem 1rem 0.15rem; color: rgba(255,255,255,0.55); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.nav-dropdown-menu .nav-group-label:not(:first-child) { margin-top: 0.35rem; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 0.65rem; }
 .nav-dropdown.is-open .nav-dropdown-menu { display: block !important; }
 .nav-dropdown-trigger[aria-expanded="true"] { opacity: 0.8; }
 .nav-dropdown-menu::before { content: ''; position: absolute; top: -6px; left: 16px; width: 12px; height: 12px; background: var(--bg-header, #1a1a2e); transform: rotate(45deg); }
@@ -165,35 +167,37 @@
             {% else %}
             <strong>CMS</strong>
             {% endif %}
-            <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
             <div class="nav-dropdown">
-              <button type="button" class="nav-dropdown-trigger" aria-expanded="false" aria-controls="entity-nav-menu">📁 {{ _('Entity') }}</button>
-              <div class="nav-dropdown-menu" id="entity-nav-menu">
+              <button type="button" class="nav-dropdown-trigger" aria-expanded="false" aria-controls="work-nav-menu">📊 {{ _('Workspace') }}</button>
+              <div class="nav-dropdown-menu" id="work-nav-menu">
+                <div class="nav-group-label">Start</div>
+                <a href="{{ url_for('cms.dashboard') }}">📊 {{ _('Overview') }}</a>
+                <a href="{{ url_for('cms.notification_history') }}">🔔 {{ _('Notifications') }}</a>
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') %}
-                <a href="{{ url_for('workflow.dashboard') }}">{{ _('Cases') }}</a>
-                {% endif %}
-                <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
-                <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
-                <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
-                {% if current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') %}
-            <a href="{{ url_for('cms.portal_requests') }}">📨 Portal-aanvragen</a>
-            {% if current_user.has_role('admin', 'owner') %}<a href="{{ url_for('cms.customer_registrations') }}">🧾 Klantregistraties</a>{% endif %}
+                <div class="nav-group-label">Werk</div>
+                <a href="{{ url_for('workflow.dashboard') }}">📁 {{ _('Cases') }}</a>
+                <a href="{{ url_for('workflow.findings_dashboard') }}">🧩 {{ _('Findings dashboard') }}</a>
+                <a href="{{ url_for('workflow.findings_index', report='in') }}">📄 {{ _('Reports & release') }}</a>
+                <div class="nav-group-label">Relaties</div>
+                <a href="{{ url_for('cms.clients') }}">🏢 {{ _('Clients') }}</a>
+                <a href="{{ url_for('cms.subjects') }}">👤 {{ _('Subjects') }}</a>
+                <a href="{{ url_for('cms.portal_requests') }}">📨 Portal-aanvragen</a>
+                {% if current_user.has_role('admin', 'owner') %}<a href="{{ url_for('cms.customer_registrations') }}">🧾 Klantregistraties</a>{% endif %}
+                <div class="nav-group-label">Communicatie</div>
+                <a href="{{ url_for('cms.notification_history') }}">💬 {{ _('Messages & notifications') }}</a>
+                <a href="{{ url_for('cms.reminders') }}">⏰ {{ _('Reminders') }}</a>
                 {% endif %}
                 {% if current_user.has_role('admin', 'senior_investigator') %}
-                <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
+                <a href="{{ url_for('cms.spiderfoot_index') }}">🕸️ SpiderFoot</a>
                 {% endif %}
-                <div style="border-top:1px solid rgba(255,255,255,0.15);margin:0.4rem 0.5rem;"></div>
+                <div class="nav-group-label">Beheer</div>
+                {% if current_user.is_admin %}<a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>{% endif %}
+                {% if current_user.has_role('senior_investigator', 'admin', 'owner') %}<a href="{{ url_for('cms.audit_log') }}">🛡️ {{ _('Audit trail') }}</a>{% endif %}
+                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">💶 {{ _('Invoices') }}</a>{% endif %}
+                <a href="{{ url_for('cms.search') }}">🔎 {{ _('Search') }}</a>
                 <a href="{{ url_for('cms.cases') }}">{{ _('Legacy cases') }}</a>
               </div>
             </div>
-            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Invoices') }}</a>{% endif %}
-            <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
-                {% if current_user.has_role('investigator', 'senior_investigator', 'admin', 'owner') %}
-                <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('Findings') }}</a>
-                {% endif %}
-                {% if current_user.is_admin %}
-                <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
-                {% endif %}
                 {% if current_user.is_admin or current_user.has_role('senior_investigator') or current_user.is_super_admin %}
                 <div class="nav-dropdown">
                   <button type="button" class="nav-dropdown-trigger" aria-expanded="false" aria-controls="super-nav-menu">🔱 {{ _('Super') }}</button>
