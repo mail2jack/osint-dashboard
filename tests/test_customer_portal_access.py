@@ -550,6 +550,7 @@ def test_public_registration_rate_limit_blocks_repeated_submissions(client):
                     "contact_name": "Synthetic User",
                     "email": f"rate-limit-{index}@example.test",
                     "registration_type": "other",
+                    "message": "Synthetische vraag voor rate-limit-test.",
                 },
             )
             for index in range(6)
@@ -560,6 +561,45 @@ def test_public_registration_rate_limit_blocks_repeated_submissions(client):
         assert responses[5].headers["Retry-After"]
     finally:
         _api_rate_limits.clear()
+
+
+def test_public_registration_scenarios_apply_distinct_required_fields(client):
+    private_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "one_off",
+            "contact_name": "Particuliere aanvrager",
+            "email": "private-scenario@example.test",
+            "message": "Ik wil een eenmalig OSINT-onderzoek aanvragen.",
+        },
+    )
+    assert private_response.status_code == 200
+    private_registration = CustomerRegistrationRequest.query.filter_by(
+        email="private-scenario@example.test"
+    ).one()
+    assert private_registration.organization_name == "Particuliere aanvrager"
+
+    organization_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "organization",
+            "contact_name": "Organisatiecontact",
+            "email": "organization-scenario@example.test",
+        },
+    )
+    assert organization_response.status_code == 400
+    assert b"organisatienaam" in organization_response.data
+
+    other_response = client.post(
+        "/portal/register",
+        data={
+            "registration_type": "other",
+            "contact_name": "Andere vraag",
+            "email": "other-scenario@example.test",
+        },
+    )
+    assert other_response.status_code == 400
+    assert b"onderzoeksvraag" in other_response.data
 
 
 def test_internal_reviewer_can_accept_request_and_customer_sees_status(
