@@ -117,7 +117,7 @@
     <label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.3rem;">{{ _('Website URL to capture') }}
       <input class="capture-target-url" type="url" value="{{ fd.source_url or '' }}" required maxlength="2000" style="display:block;width:100%;box-sizing:border-box;margin-top:0.2rem;border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
     </label>
-    <label style="display:flex;gap:0.35rem;align-items:flex-start;font-size:0.75rem;color:var(--text-secondary);margin:0.45rem 0;">
+    <label class="capture-confirm-row" style="display:flex;gap:0.35rem;align-items:flex-start;font-size:0.75rem;color:var(--text-secondary);margin:0.45rem 0;">
       <input class="capture-confirm" type="checkbox" required>
       <span>{{ _('I confirm that this website may be captured as evidence for this finding.') }}</span>
     </label>
