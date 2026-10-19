@@ -354,7 +354,9 @@
             {% endif %}
         {% endwith %}
         
+        {% if current_user.is_authenticated and request.endpoint not in ['cms.dashboard', 'cms.notification_history', 'cms.notification_preferences'] %}<div class="global-workspace-layout">{% include 'cms/_workspace_shell_nav.html' %}<main class="global-workspace-main">{% endif %}
         {% block content %}{% endblock %}
+        {% if current_user.is_authenticated and request.endpoint not in ['cms.dashboard', 'cms.notification_history', 'cms.notification_preferences'] %}</main></div>{% endif %}
     </div>
     
     <div class="keyboard-hint">

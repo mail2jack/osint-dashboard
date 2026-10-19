@@ -134,6 +134,17 @@
 .iveras-cms .workflow-step-header { padding:1rem 1.15rem; background:color-mix(in srgb,var(--bg-secondary) 78%,var(--bg-card)); }
 .iveras-cms .workflow-step-body { padding:1.15rem; }
 .iveras-cms .wf-card { border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+
+/* Shared shell for CMS screens that have not yet adopted a page-specific layout. */
+.iveras-cms .global-workspace-layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:1rem; align-items:start; }
+.iveras-cms .global-workspace-main { min-width:0; }
+.iveras-cms .global-workspace-nav { padding:.7rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; position:sticky; top:1rem; }
+.iveras-cms .global-workspace-nav-title { padding:.55rem .65rem .8rem; font-weight:800; border-bottom:1px solid var(--border-color); margin-bottom:.45rem; }
+.iveras-cms .global-workspace-nav-title span { float:right; color:var(--text-muted); font-weight:400; }
+.iveras-cms .global-workspace-nav-section { margin:.25rem 0 .55rem; }
+.iveras-cms .global-workspace-nav-section h2 { margin:.5rem .65rem .25rem; font-size:.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+.iveras-cms .global-workspace-nav a { display:flex; align-items:center; border-radius:7px; padding:.55rem .65rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
+.iveras-cms .global-workspace-nav a:hover { background:var(--info-bg,#eff6ff); color:var(--accent-primary); }
 .iveras-cms .page-header { gap:1rem; flex-wrap:wrap; }
 .iveras-cms .back { margin-bottom:1rem; }
 .iveras-cms .back a { display:inline-flex; align-items:center; gap:.35rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
@@ -148,6 +159,11 @@
     .ui-page-header { margin-bottom:1rem; }
     .ui-actions { width:100%; }
     .ui-actions .btn, .ui-actions .btn-cms { flex:1 1 auto; }
+}
+
+@media (max-width: 900px) {
+    .iveras-cms .global-workspace-layout { grid-template-columns:1fr; }
+    .iveras-cms .global-workspace-nav { position:static; }
 }
 
 @media (max-width: 700px) {
