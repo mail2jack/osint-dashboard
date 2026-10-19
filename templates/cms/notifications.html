@@ -51,8 +51,12 @@
 .notif-badge-general { background:#f3f4f6;color:#374151; }
 .sub-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem; }
 .empty-state { text-align:center;padding:3rem 1rem;color:var(--text-muted); }
+.notifications-workspace{max-width:1400px;margin:0 auto}.notifications-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:1rem;align-items:start}.notifications-nav{padding:.7rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;position:sticky;top:1rem}.notifications-nav-title{padding:.55rem .65rem .8rem;font-weight:800;border-bottom:1px solid var(--border-color);margin-bottom:.45rem}.notifications-nav-section{margin:.25rem 0 .55rem}.notifications-nav-section h2{margin:.5rem .65rem .25rem;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}.notifications-nav a{display:flex;align-items:center;border-radius:7px;padding:.55rem .65rem;color:var(--text-secondary);text-decoration:none;font-size:.82rem}.notifications-nav a:hover,.notifications-nav a.active{background:var(--info-bg,#eff6ff);color:var(--accent-primary)}.notifications-main{min-width:0}.notif-page-header{margin-top:0}@media(max-width:900px){.notifications-layout{grid-template-columns:1fr}.notifications-nav{position:static}}
 </style>
 
+<div class="notifications-workspace"><div class="notifications-layout">
+<aside class="notifications-nav" aria-label="Werkruimtemenu"><div class="notifications-nav-title">Iveras CMS <span style="float:right;color:var(--text-muted);font-weight:400;">werkruimte</span></div><div class="notifications-nav-section"><h2>Start</h2><a href="{{ url_for('cms.dashboard') }}">📊 Overzicht</a><a class="active" href="{{ url_for('cms.notification_history') }}">🔔 Meldingen</a></div><div class="notifications-nav-section"><h2>Werk</h2><a href="{{ url_for('workflow.dashboard') }}">📁 Zaken</a><a href="{{ url_for('workflow.findings_dashboard') }}">🧩 Bevindingen</a><a href="{{ url_for('workflow.findings_index', report='in') }}">📄 Rapporten & vrijgave</a></div><div class="notifications-nav-section"><h2>Relaties</h2><a href="{{ url_for('cms.clients') }}">🏢 Klanten</a><a href="{{ url_for('cms.subjects') }}">👤 Subjecten</a><a href="{{ url_for('cms.portal_requests') }}">📨 Portal-aanvragen</a></div><div class="notifications-nav-section"><h2>Communicatie</h2><a href="{{ url_for('cms.reminders') }}">⏰ Herinneringen</a></div>{% if current_user.is_admin %}<div class="notifications-nav-section"><h2>Beheer</h2><a href="{{ url_for('cms.settings') }}">⚙️ Instellingen</a><a href="{{ url_for('cms.audit_log') }}">🛡️ Audit trail</a></div>{% endif %}</aside>
+<main class="notifications-main">
 <div class="notif-page-header">
     <h1>🔔 {{ _('Notifications') }}</h1>
     <div class="notif-filters">
@@ -86,6 +90,7 @@
 </div>
 
 <div class="pagination" id="pagination"></div>
+</main></div></div>
 
 <script nonce="{{ csp_nonce }}">
 var currentPage = 0;
