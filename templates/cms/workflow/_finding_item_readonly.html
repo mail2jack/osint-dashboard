@@ -116,6 +116,7 @@
   <div class="capture-status capture-status-{{ capture_job.status if capture_job else 'none' }}" data-capture-status-for="{{ fd.id }}"{% if not capture_job %} hidden{% endif %}>
     <span class="capture-status-dot" aria-hidden="true"></span>
     <span class="capture-status-label">{% if capture_job.status == 'queued' %}In wachtrij{% elif capture_job.status == 'running' %}Bezig{% elif capture_job.status == 'completed' %}Afgerond{% elif capture_job.status == 'failed' %}Mislukt{% elif capture_job.status == 'cancelled' %}Geannuleerd{% endif %}</span>
+    <button type="button" class="capture-cancel-button" data-action="cancel-capture-job" data-finding-id="{{ fd.id }}" data-job-id="{{ capture_job.id if capture_job else '' }}"{% if not capture_job or capture_job.status not in ['queued', 'running'] %} hidden{% endif %}>Annuleren</button>
   </div>
 
   {% if finding_capture_enabled %}

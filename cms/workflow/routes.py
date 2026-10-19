@@ -4288,6 +4288,48 @@ def finding_capture_request_status(case_id, finding_id, job_id):
     )
 
 
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/capture-requests/<job_id>/cancel",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def cancel_finding_capture_request(case_id, finding_id, job_id):
+    """Cancel a queued or running capture request owned by the current tenant."""
+    if not check_feature("finding_screenshot_capture", current_user.tenant_id):
+        return jsonify({"error": "Not found"}), 404
+
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    job = FindingCaptureJob.query.filter_by(
+        id=job_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case_id,
+        finding_id=finding.id,
+    ).first()
+    if job is None:
+        return jsonify({"error": "Not found"}), 404
+    if job.status not in {"queued", "running"}:
+        return jsonify({"error": "Capture is no longer active", "status": job.status}), 409
+
+    job.status = "cancelled"
+    job.completed_at = datetime.now(UTC)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="finding_capture_job",
+        entity_id=job.id,
+        tenant_id=current_user.tenant_id,
+        case_id=case_id,
+        ip_address=request.remote_addr,
+        new_values={"status": "cancelled"},
+        description=f"Cancelled screenshot capture for finding {finding_id}",
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "job": {"id": job.id, "status": job.status}})
+
+
 @workflow_bp.route("/uploads/<finding_id>/<filename>")
 @login_required
 def serve_screenshot(finding_id, filename):

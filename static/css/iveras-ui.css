@@ -177,6 +177,8 @@
 .iveras-cms .capture-status { display:inline-flex; align-items:center; gap:.4rem; margin-top:.5rem; padding:.3rem .6rem; border-radius:999px; background:var(--bg-secondary); color:var(--text-secondary); font-size:.75rem; font-weight:700; }
 .iveras-cms .capture-status[hidden] { display:none; }
 .iveras-cms .capture-status-dot { width:.45rem; height:.45rem; border-radius:50%; background:var(--text-muted); }
+.iveras-cms .capture-cancel-button { border:1px solid currentColor; border-radius:999px; padding:.15rem .45rem; background:transparent; color:inherit; cursor:pointer; font:inherit; font-weight:700; }
+.iveras-cms .capture-cancel-button[hidden] { display:none; }
 .iveras-cms .capture-status-queued { background:var(--warning-bg); color:var(--warning-text); }
 .iveras-cms .capture-status-queued .capture-status-dot { background:var(--warning-text); }
 .iveras-cms .capture-status-running { background:var(--info-bg); color:var(--info-text); }

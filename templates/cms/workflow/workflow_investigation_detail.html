@@ -1098,6 +1098,31 @@ document.addEventListener('click', function (e) {
   }
 
   {% if finding_capture_enabled %}
+  var cancelJob = e.target.closest('[data-action="cancel-capture-job"]');
+  if (cancelJob) {
+    var cancelFindingId = cancelJob.getAttribute('data-finding-id');
+    var cancelJobId = cancelJob.getAttribute('data-job-id');
+    if (!cancelJobId) return;
+    cancelJob.disabled = true;
+    fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/' + cancelFindingId + '/capture-requests/' + cancelJobId + '/cancel', {
+      method: 'POST', headers: {'X-CSRFToken': CSRF, 'Accept': 'application/json'}
+    }).then(function (response) { return response.json(); }).then(function (data) {
+      if (!data.ok) throw new Error(data.error || 'Annuleren mislukt');
+      var statusBadge = document.querySelector('[data-capture-status-for="' + cancelFindingId + '"]');
+      if (statusBadge) {
+        statusBadge.className = 'capture-status capture-status-cancelled';
+        statusBadge.hidden = false;
+        var label = statusBadge.querySelector('.capture-status-label');
+        if (label) label.textContent = 'Geannuleerd';
+      }
+      cancelJob.hidden = true;
+      showToast('Capture geannuleerd.', 'success');
+    }).catch(function (error) {
+      cancelJob.disabled = false;
+      showToast(error.message || 'Annuleren mislukt', 'error');
+    });
+    return;
+  }
   var openCapture = e.target.closest('[data-action="open-capture-request"]');
   if (openCapture) {
     var openForm = document.querySelector('.capture-request-form[data-finding-id="' + openCapture.getAttribute('data-finding-id') + '"]');
@@ -1143,6 +1168,8 @@ document.addEventListener('submit', function (e) {
       statusBadge.hidden = false;
       statusBadge.className = 'capture-status capture-status-' + status;
       if (statusLabel) statusLabel.textContent = label;
+      var cancelButton = statusBadge.querySelector('.capture-cancel-button');
+      if (cancelButton) { cancelButton.setAttribute('data-job-id', data.job.id); cancelButton.hidden = !['queued', 'running'].includes(status); cancelButton.disabled = false; }
     };
     setCaptureStatus('queued', 'In wachtrij');
     form.style.display = 'none';
