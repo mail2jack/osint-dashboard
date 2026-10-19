@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m playwright install --with-deps chromium
+
+COPY . .
+
+RUN useradd --create-home --shell /usr/sbin/nologin osint \
+    && mkdir -p /app/instance/finding_screenshots \
+    && chown -R osint:osint /app /ms-playwright \
+    && chmod -R go-w /ms-playwright
+
+USER osint
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "scripts/run_finding_capture_worker.py", "--loop"]
