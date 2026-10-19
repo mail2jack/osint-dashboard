@@ -15,7 +15,11 @@ def test_manifest_is_narrow_and_has_no_broad_web_access():
 
     assert manifest["manifest_version"] == 3
     assert manifest["permissions"] == ["activeTab", "storage", "tabs"]
-    assert manifest["host_permissions"] == ["https://joost.iveras.com/*"]
+    assert manifest["host_permissions"] == [
+        "https://joost.iveras.com/*",
+        "http://localhost:5051/*",
+    ]
+    assert "http://localhost:5051/cms/workflow/*" in manifest["content_scripts"][0]["matches"]
     assert manifest["action"]["default_popup"] == "popup.html"
     assert "<all_urls>" not in json.dumps(manifest)
 
