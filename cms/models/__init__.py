@@ -2364,6 +2364,11 @@ class FindingScreenshot(db.Model):
     # values atomically before the feature is enabled for any tenant.
     file_size = db.Column(db.Integer, nullable=True)
     capture_provenance = db.Column(SafeJSON, nullable=True)
+    rejected_at = db.Column(db.DateTime, nullable=True)
+    rejected_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
+    )
+    rejection_reason = db.Column(db.String(500), nullable=True)
     captured_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

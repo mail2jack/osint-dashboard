@@ -145,6 +145,7 @@
         <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>
         {% endif %}
         <span style="font-size:0.72rem;color:var(--text-muted);">{{ ss.captured_at.strftime('%d-%m-%Y %H:%M') if ss.captured_at else '-' }}</span>
+        <button type="button" data-action="reject-screenshot" data-screenshot-id="{{ ss.id }}" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--danger-text);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.72rem;color:var(--danger-text);">✕ {{ _('Reject screenshot') }}</button>
       </div>
       {% if ss.url %}
       <div style="margin-top:0.3rem;">

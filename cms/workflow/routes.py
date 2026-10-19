@@ -784,12 +784,14 @@ def _finding_json_with_context(f, case=None, subject=None):
         "subject_name": subject.name if subject else None,
         "screenshots": [
             {
+                "id": ss.id,
                 "url": ss.url,
                 "source_url": ss.source_url,
                 "captured_at": ss.captured_at.isoformat() if ss.captured_at else None,
                 "notes": ss.notes,
             }
             for ss in (f.finding_screenshots or [])
+            if not ss.rejected_at
         ],
     }
 
@@ -3349,6 +3351,7 @@ def case_status(case_id):
             "action_ids": finding_actions.get(f.id, []),
             "screenshots": [
                 {
+                    "id": ss.id,
                     "url": ss.url,
                     "source_url": ss.source_url,
                     "captured_at": ss.captured_at.isoformat()
@@ -3357,6 +3360,7 @@ def case_status(case_id):
                     "notes": ss.notes,
                 }
                 for ss in (f.finding_screenshots or [])
+                if not ss.rejected_at
             ],
         }
 
@@ -4174,6 +4178,46 @@ def add_screenshot(case_id, finding_id):
         "notes": ss.notes,
     }
     return jsonify({"ok": True, "screenshot": ss_data})
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/screenshots/<screenshot_id>/reject",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def reject_screenshot(case_id, finding_id, screenshot_id):
+    """Soft-reject screenshot evidence while retaining its audit record."""
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+
+    screenshot = WorkflowScreenshot.query.filter_by(
+        id=screenshot_id,
+        finding_id=finding_id,
+        tenant_id=current_user.tenant_id,
+    ).first()
+    if not screenshot:
+        return jsonify({"error": "Screenshot not found"}), 404
+    if screenshot.rejected_at:
+        return jsonify({"ok": True, "rejected": True})
+
+    body = request.get_json(silent=True) or {}
+    reason = str(body.get("reason") or "").strip()[:500]
+    screenshot.rejected_at = datetime.now(UTC)
+    screenshot.rejected_by = current_user.id
+    screenshot.rejection_reason = reason or "Rejected by investigator"
+    AuditLog.log(
+        user_id=current_user.id,
+        action="reject",
+        entity_type="finding_screenshot",
+        entity_id=screenshot.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Rejected screenshot evidence for finding {finding_id}: {screenshot.rejection_reason}",
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "rejected": True})
 
 
 @workflow_bp.route(
