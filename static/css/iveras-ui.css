@@ -145,6 +145,30 @@
 .iveras-cms .global-workspace-nav-section h2 { margin:.5rem .65rem .25rem; font-size:.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
 .iveras-cms .global-workspace-nav a { display:flex; align-items:center; border-radius:7px; padding:.55rem .65rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
 .iveras-cms .global-workspace-nav a:hover { background:var(--info-bg,#eff6ff); color:var(--accent-primary); }
+
+/* Legacy CMS content rendered inside the shared shell. */
+.iveras-cms .global-workspace-main > .container,
+.iveras-cms .global-workspace-main > div:not(.ui-page):not(.page-header) { box-sizing:border-box; }
+.iveras-cms .global-workspace-main .page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin:0 0 1rem; }
+.iveras-cms .global-workspace-main .card,
+.iveras-cms .global-workspace-main .settings-content,
+.iveras-cms .global-workspace-main .settings-sidebar { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--iveras-radius-card); box-shadow:var(--iveras-shadow-card); }
+.iveras-cms .global-workspace-main .card { padding:1rem; }
+.iveras-cms .global-workspace-main .form-group { margin-bottom:1rem; }
+.iveras-cms .global-workspace-main .form-group label { display:block; margin-bottom:.35rem; color:var(--text-secondary); font-weight:650; font-size:.82rem; }
+.iveras-cms .global-workspace-main input:not([type=checkbox]):not([type=radio]),
+.iveras-cms .global-workspace-main select,
+.iveras-cms .global-workspace-main textarea { border:1px solid var(--border-color); border-radius:8px; background:var(--input-bg,#fff); color:var(--text-primary); padding:.65rem .75rem; }
+.iveras-cms .global-workspace-main input:focus,
+.iveras-cms .global-workspace-main select:focus,
+.iveras-cms .global-workspace-main textarea:focus { outline:2px solid color-mix(in srgb,var(--accent-primary) 20%,transparent); border-color:var(--accent-primary); }
+.iveras-cms .global-workspace-main table { border-collapse:collapse; width:100%; }
+.iveras-cms .global-workspace-main th { color:var(--text-muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; }
+.iveras-cms .global-workspace-main th,
+.iveras-cms .global-workspace-main td { padding:.7rem .65rem; border-bottom:1px solid var(--border-color); }
+.iveras-cms .global-workspace-main tr:last-child td { border-bottom:0; }
+.iveras-cms .global-workspace-main .empty-state { padding:2.5rem 1rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--iveras-radius-card); text-align:center; color:var(--text-secondary); }
+.iveras-cms .global-workspace-main .pagination { display:flex; justify-content:center; align-items:center; gap:.45rem; margin:1rem 0; }
 .iveras-cms .page-header { gap:1rem; flex-wrap:wrap; }
 .iveras-cms .back { margin-bottom:1rem; }
 .iveras-cms .back a { display:inline-flex; align-items:center; gap:.35rem; color:var(--text-secondary); text-decoration:none; font-size:.82rem; }
