@@ -1695,6 +1695,19 @@ def investigation_detail(case_id, investigation_id):
     investigation_findings = ws.findings[
         finding_start : finding_start + investigation_findings_per_page
     ]
+    capture_jobs = {}
+    investigation_finding_ids = [finding.id for finding in investigation_findings]
+    if investigation_finding_ids:
+        for job in (
+            FindingCaptureJob.query.filter(
+                FindingCaptureJob.tenant_id == case.tenant_id,
+                FindingCaptureJob.case_id == case.id,
+                FindingCaptureJob.finding_id.in_(investigation_finding_ids),
+            )
+            .order_by(FindingCaptureJob.created_at.desc())
+            .all()
+        ):
+            capture_jobs.setdefault(job.finding_id, job)
 
     # PR4: minimal "Start Action" modal context (action types + case subjects).
     # photo_analysis needs its file-upload picker and manual_entry its rich form,
@@ -1799,6 +1812,7 @@ def investigation_detail(case_id, investigation_id):
         created_by_name=ws.created_by_name or "",
         ws=ws,
         investigation_findings=investigation_findings,
+        capture_jobs=capture_jobs,
         investigation_findings_page=investigation_findings_page,
         investigation_findings_pages=investigation_findings_pages,
         investigation_findings_total=investigation_findings_total,

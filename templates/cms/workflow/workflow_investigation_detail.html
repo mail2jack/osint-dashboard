@@ -1136,6 +1136,15 @@ document.addEventListener('submit', function (e) {
   .then(function (data) {
     if (!data.ok) throw new Error(data.error || '{{ _('Could not queue capture') }}');
     showToast('{{ _('Capture queued. This page will refresh when it is ready.') }}', 'success');
+    var statusBadge = document.querySelector('[data-capture-status-for="' + form.getAttribute('data-finding-id') + '"]');
+    var statusLabel = statusBadge ? statusBadge.querySelector('.capture-status-label') : null;
+    var setCaptureStatus = function (status, label) {
+      if (!statusBadge) return;
+      statusBadge.hidden = false;
+      statusBadge.className = 'capture-status capture-status-' + status;
+      if (statusLabel) statusLabel.textContent = label;
+    };
+    setCaptureStatus('queued', 'In wachtrij');
     form.style.display = 'none';
     var statusUrl = '/cms/workflow/api/case/' + CASE_ID + '/findings/' + form.getAttribute('data-finding-id') + '/capture-requests/' + data.job.id;
     var pollsRemaining = 45;
@@ -1149,12 +1158,15 @@ document.addEventListener('submit', function (e) {
           .then(function (response) { return response.json(); })
           .then(function (state) {
             if (!state.ok) throw new Error(state.error || '{{ _('Could not check capture status') }}');
+            if (state.job.status === 'running') setCaptureStatus('running', 'Bezig');
             if (state.job.status === 'completed') {
+              setCaptureStatus('completed', 'Afgerond');
               showToast('{{ _('Capture complete. Refreshing this page…') }}', 'success');
               window.setTimeout(function () { window.location.reload(); }, 250);
               return;
             }
             if (state.job.status === 'failed' || state.job.status === 'cancelled') {
+              setCaptureStatus(state.job.status, state.job.status === 'cancelled' ? 'Geannuleerd' : 'Mislukt');
               showToast('{{ _('Capture could not be completed.') }}', 'error');
               return;
             }

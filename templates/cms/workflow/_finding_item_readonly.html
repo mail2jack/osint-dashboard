@@ -112,6 +112,12 @@
     </div>
   </div>
 
+  {% set capture_job = capture_jobs.get(fd.id) if capture_jobs is defined else none %}
+  <div class="capture-status capture-status-{{ capture_job.status if capture_job else 'none' }}" data-capture-status-for="{{ fd.id }}"{% if not capture_job %} hidden{% endif %}>
+    <span class="capture-status-dot" aria-hidden="true"></span>
+    <span class="capture-status-label">{% if capture_job.status == 'queued' %}In wachtrij{% elif capture_job.status == 'running' %}Bezig{% elif capture_job.status == 'completed' %}Afgerond{% elif capture_job.status == 'failed' %}Mislukt{% elif capture_job.status == 'cancelled' %}Geannuleerd{% endif %}</span>
+  </div>
+
   {% if finding_capture_enabled %}
   <form class="capture-request-form" data-finding-id="{{ fd.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
     <label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.3rem;">{{ _('Website URL to capture') }}
