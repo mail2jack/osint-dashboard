@@ -3,7 +3,10 @@
 {% block title %}{{ _('Cases') }} - CMS{% endblock %}
 
 {% block content %}
-<div style="padding: 0 2rem; margin-top: 1rem;">
+<style>
+.cases-screen{max-width:1400px;margin:0 auto}.cases-screen .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin:0 0 1rem}.cases-screen .page-header h1{margin:.2rem 0}.cases-screen .card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;box-shadow:var(--iveras-shadow-card,0 1px 3px rgba(15,23,42,.06))}.cases-screen .filters{display:grid;grid-template-columns:minmax(180px,1.6fr) repeat(4,minmax(120px,1fr));gap:.65rem;align-items:center}.cases-screen .filters input,.cases-screen .filters select{min-width:0;padding:.62rem .7rem;border:1px solid var(--border-color);border-radius:8px;background:var(--input-bg,#fff);color:var(--text-primary)}.cases-screen .filters label{grid-column:1 / -1}.cases-screen .data-table{width:100%;border-collapse:collapse}.cases-screen .data-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:left}.cases-screen .data-table th,.cases-screen .data-table td{padding:.75rem .65rem;border-bottom:1px solid var(--border-color)}.cases-screen .data-table tr:last-child td{border-bottom:0}.cases-screen .empty-state{padding:2.5rem 1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;text-align:center;color:var(--text-secondary)}@media(max-width:900px){.cases-screen .filters{grid-template-columns:repeat(2,minmax(0,1fr))}.cases-screen .filters input{grid-column:1/-1}}@media(max-width:600px){.cases-screen .filters{grid-template-columns:1fr}}
+</style>
+<div class="ui-page cases-screen">
     <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1 style="margin: 0;">{{ _('Cases') }}</h1>
         <div style="display: flex; gap: 0.5rem;">
