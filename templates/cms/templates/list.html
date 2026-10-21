@@ -5,14 +5,14 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <p style="color: #666;">Templates are used to generate investigation reports and summaries.</p>
-        <a href="{{ url_for('cms.create_template') }}" class="btn-cms teal">+ New Template</a>
+        <a href="{{ url_for('cms.create_template') }}" class="btn-cms teal">+ Nieuw sjabloon</a>
     </div>
     
     {% if templates %}
     <table class="data-table">
         <thead>
             <tr>
-                <th>Name</th>
+                <th>Naam</th>
                 <th>Type</th>
                 <th>Category</th>
                 <th>Default</th>
@@ -36,7 +36,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="{{ url_for('cms.edit_template', template_id=template.id) }}" class="btn-cms small">Edit</a>
+                    <a href="{{ url_for('cms.edit_template', template_id=template.id) }}" class="btn-cms small">Bewerken</a>
                     <button data-click="previewTemplate" data-arg0="{{ template.id }}" class="btn-cms purple small">Preview</button>
                 </td>
             </tr>
@@ -44,7 +44,7 @@
         </tbody>
     </table>
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div><p>No templates found. Create your first template!</p></div>
+    <div class="empty-state"><div class="icon">📭</div><p>Geen sjablonen gevonden. Maak uw eerste sjabloon aan.</p></div>
     {% endif %}
 </div>
 
@@ -64,7 +64,7 @@
 
 <script nonce="{{ csp_nonce }}">
 function previewTemplate(btn, templateId) {
-    document.getElementById('previewContent').innerHTML = 'Loading...';
+    document.getElementById('previewContent').innerHTML = 'Laden...';
     document.getElementById('previewModal').classList.add('show');
     
     apiFetch(`/cms/templates/${templateId}/preview`)
@@ -73,7 +73,7 @@ function previewTemplate(btn, templateId) {
             document.getElementById('previewContent').textContent = data.rendered;
         })
         .catch(err => {
-            document.getElementById('previewContent').innerHTML = '<p style="color: red;">Error loading preview</p>';
+    document.getElementById('previewContent').innerHTML = '<p style="color: red;">Fout bij laden van voorbeeld</p>';
         });
 }
 

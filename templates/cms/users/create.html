@@ -1,9 +1,9 @@
 {% extends "cms/base.html" %}
-{% block title %}Create User — CMS{% endblock %}
+{% block title %}Gebruiker aanmaken — CMS{% endblock %}
 {% block content %}
-    <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
+    <div class="back"><a href="{{ url_for('users.list_users') }}">← Terug naar gebruikers</a></div>
     
-    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Create New User</h1><p class="ui-lead">Maak een gebruiker aan met een expliciete rol en tenantcontext.</p></div></div>
+    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Nieuwe gebruiker aanmaken</h1><p class="ui-lead">Maak een gebruiker aan met een expliciete rol en tenantcontext.</p></div></div>
 
     <div class="card">
         <form method="POST" id="createUserForm">
@@ -24,7 +24,7 @@
             </div>
             
             <div class="form-group">
-                <label for="password">Generated Password *</label>
+                <label for="password">Gegenereerd wachtwoord *</label>
                 <div class="pw-wrapper">
                     <input type="password" id="password" name="password" value="{{ generated_password }}" readonly required>
                     <button type="button" class="btn-icon" id="togglePassword" title="Toggle password visibility" data-click="togglePw">👁️</button>
@@ -49,7 +49,7 @@
             <div class="form-group">
                 <label for="role">Role *</label>
                 <select id="role" name="role" required>
-                    <option value=""{% if not role %} selected{% endif %}>Select a role...</option>
+                    <option value=""{% if not role %} selected{% endif %}>Selecteer een rol...</option>
                     <option value="admin"{% if role == 'admin' %} selected{% endif %}>Admin - Full access to all features</option>
                     <option value="senior_investigator"{% if role == 'senior_investigator' %} selected{% endif %}>Senior Investigator - Can manage cases and financials</option>
                     <option value="investigator"{% if role == 'investigator' %} selected{% endif %}>Investigator - Can view and update assigned cases</option>
@@ -63,7 +63,7 @@
             <div class="form-group">
                 <label for="tenant_id">Tenant</label>
                 <select id="tenant_id" name="tenant_id">
-                    <option value="">-- Select tenant (optional) --</option>
+                    <option value="">-- Selecteer tenant (optioneel) --</option>
                     {% for t in tenants %}
                     <option value="{{ t.id }}"{% if t.id == current_user.tenant_id %} selected{% endif %}>{{ t.name }}</option>
                     {% endfor %}
@@ -75,8 +75,8 @@
             <input type="hidden" name="generated_password" value="{{ generated_password }}">
             
             <div class="btn-group" style="margin:1.5rem 0 0;">
-                <button type="submit" class="btn-cms primary">Create User</button>
-                <a href="{{ url_for('users.list_users') }}" class="btn-cms">Cancel</a>
+                <button type="submit" class="btn-cms primary">Gebruiker aanmaken</button>
+                <a href="{{ url_for('users.list_users') }}" class="btn-cms">Annuleren</a>
             </div>
         </form>
     </div>

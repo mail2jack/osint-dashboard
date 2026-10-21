@@ -1,6 +1,6 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 1.5rem;">Generate Report</h2>
+<h2 style="margin-bottom: 1.5rem;">Rapport genereren</h2>
 
 <div class="card">
     <p style="margin-bottom: 1.5rem;">
@@ -10,9 +10,9 @@
 <form method="POST" id="reportForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="template_id">Select Template *</label>
+        <label for="template_id">Sjabloon selecteren *</label>
             <select name="template_id" id="template_id" required data-change="loadPreview">
-                <option value="">Choose a template...</option>
+                <option value="">Kies een sjabloon...</option>
                 {% for t in templates %}
                 <option value="{{ t.id }}"{% if selected_template_id == t.id|string %} selected{% endif %}>{{ t.name }}{% if t.is_default %} (Default){% endif %}</option>
                 {% endfor %}
@@ -40,16 +40,16 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn-cms teal">Generate & Save</button>
+            <button type="submit" class="btn-cms teal">Genereren en opslaan</button>
             <button type="button" data-click="loadPreview" class="btn-cms primary">Preview</button>
-            <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray">Cancel</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray">Annuleren</a>
         </div>
     </form>
 </div>
 
 <!-- Preview Section -->
 <div class="card" id="previewSection" style="display: none;">
-    <h3 style="margin-bottom: 1rem;">Report Preview</h3>
+    <h3 style="margin-bottom: 1rem;">Rapportvoorbeeld</h3>
     <div id="previewContent" style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 1rem; border-radius: 8px; max-height: 60vh; overflow-y: auto;"></div>
 </div>
 
@@ -64,7 +64,7 @@ function loadPreview() {
         return;
     }
     
-    previewContent.innerHTML = 'Loading preview...';
+    previewContent.innerHTML = 'Voorbeeld laden...';
     previewSection.style.display = 'block';
     
     const formData = {
@@ -85,7 +85,7 @@ function loadPreview() {
         previewContent.textContent = data.rendered || 'Unable to generate preview';
     })
     .catch(err => {
-        previewContent.innerHTML = '<p style="color: red;">Error loading preview</p>';
+        previewContent.innerHTML = '<p style="color: red;">Fout bij laden van voorbeeld</p>';
     });
 }
 </script>

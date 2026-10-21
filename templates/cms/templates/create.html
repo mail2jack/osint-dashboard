@@ -1,13 +1,13 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 1.5rem;">Create Document Template</h2>
+<h2 style="margin-bottom: 1.5rem;">Documentsjabloon aanmaken</h2>
 
 <div class="card">
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="name">Template Name *</label>
-            <input type="text" name="name" id="name" required placeholder="e.g., Investigation Report">
+            <label for="name">Naam sjabloon *</label>
+            <input type="text" name="name" id="name" required placeholder="bijv. Onderzoeksrapport">
         </div>
         
         <div class="form-group">
@@ -19,7 +19,7 @@
             <div class="form-group">
                 <label for="template_type">Type</label>
                 <select name="template_type" id="template_type">
-                    <option value="report">Report</option>
+                <option value="report">Rapport</option>
                     <option value="summary">Summary</option>
                     <option value="letter">Letter</option>
                     <option value="memo">Memo</option>
@@ -29,7 +29,7 @@
             <div class="form-group">
                 <label for="category">Category</label>
                 <select name="category" id="category">
-                    <option value="">Select category</option>
+                    <option value="">Selecteer categorie</option>
                     <option value="investigation">Investigation</option>
                     <option value="compliance">Compliance</option>
                     <option value="financial">Financial</option>
@@ -56,8 +56,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn-cms primary">Create Template</button>
-            <a href="{{ url_for('cms.list_templates') }}" class="btn-cms gray">Cancel</a>
+            <button type="submit" class="btn-cms primary">Sjabloon aanmaken</button>
+            <a href="{{ url_for('cms.list_templates') }}" class="btn-cms gray">Annuleren</a>
         </div>
     </form>
 </div>

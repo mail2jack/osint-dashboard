@@ -1,11 +1,11 @@
 {% extends "cms/base.html" %}
-{% block title %}Workflow — Edit Report — {{ case.case_number }}{% endblock %}
+{% block title %}Workflow — Rapport bewerken — {{ case.case_number }}{% endblock %}
 {% block content %}
 <div style="max-width:960px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-    <h1 style="margin:0;">📄 Edit report</h1>
+    <h1 style="margin:0;">📄 Rapport bewerken</h1>
     <div style="display:flex;gap:0.5rem;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">← Back to report</a>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">← Terug naar rapport</a>
       <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">To case</a>
     </div>
   </div>
@@ -39,8 +39,8 @@
       <textarea name="pv_body" rows="40" style="width:100%;font-family:monospace;font-size:0.85rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary, #fafafa);">{{ case.pv_body or '' }}</textarea>
     </div>
     <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Cancel</a>
-      <button type="submit" name="action" value="save" class="btn-cms primary">Save draft and view →</button>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Annuleren</a>
+      <button type="submit" name="action" value="save" class="btn-cms primary">Concept opslaan en bekijken →</button>
       <button type="submit" name="action" value="release" class="btn-cms" data-confirm="Dit rapport wordt zichtbaar voor de klant. Doorgaan?">Release to customer portal</button>
       {% if case.report_status == 'released' %}
       <button type="submit" name="action" value="revoke" class="btn-cms" data-confirm="Dit rapport wordt tijdelijk verborgen voor de klant. Doorgaan?" style="background:#b45309;">Withdraw from customer portal</button>

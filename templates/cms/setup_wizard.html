@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup Wizard - Iveras OSINT</title>
+    <title>Installatiewizard - Iveras OSINT</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -224,8 +224,8 @@
 <body>
     <div class="wizard-container">
         <div class="wizard-header">
-            <h1>🚀 {{ icons[step] }} First-Time Setup</h1>
-            <p>Configure your Iveras OSINT Dashboard — step {{ current }} of {{ total }}</p>
+            <h1>🚀 {{ icons[step] }} Eerste installatie</h1>
+            <p>Configureer uw Iveras OSINT Dashboard — stap {{ current }} van {{ total }}</p>
         </div>
 
         <div class="progress-bar">
@@ -254,26 +254,26 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="step-icon">👋</div>
-                <div class="step-title">Welcome to Iveras OSINT Dashboard</div>
+                <div class="step-title">Welkom bij het Iveras OSINT Dashboard</div>
                 <div class="step-desc">
-                    Your server is installed and running. This wizard will help you configure
-                    the essential settings before you start investigating.<br><br>
-                    <strong>You'll set up:</strong>
+                    Uw server is geïnstalleerd en actief. Deze wizard helpt u de belangrijkste
+                    instellingen te configureren voordat u begint met onderzoeken.<br><br>
+                    <strong>U configureert:</strong>
                 </div>
                 <div style="margin: 0 0 1.5rem; display:grid; gap:0.5rem; font-size:0.9rem; color:#555;">
-                    <div>🔑 &nbsp;<strong>Admin password</strong> — change the default password</div>
-                    <div>🔌 &nbsp;<strong>API keys</strong> — Brave Search, Overheid.io, HIBP</div>
-                    <div>📧 &nbsp;<strong>Email (SMTP)</strong> — for user invitations and notifications</div>
-                    <div>🤖 &nbsp;<strong>AI Provider</strong> — OpenRouter or Ollama</div>
-                    <div>📱 &nbsp;<strong>Telegram Bot</strong> — optional messaging integration</div>
+                    <div>🔑 &nbsp;<strong>Beheerderswachtwoord</strong> — wijzig het standaardwachtwoord</div>
+                    <div>🔌 &nbsp;<strong>API-sleutels</strong> — Brave Search, Overheid.io, HIBP</div>
+                    <div>📧 &nbsp;<strong>E-mail (SMTP)</strong> — voor gebruikersuitnodigingen en meldingen</div>
+                    <div>🤖 &nbsp;<strong>AI-provider</strong> — OpenRouter of Ollama</div>
+                    <div>📱 &nbsp;<strong>Telegram-bot</strong> — optionele berichtenintegratie</div>
                 </div>
                 <div style="text-align:center; font-size:0.85rem; color:#888; margin-bottom:1.5rem;">
-                    Every step can be skipped — you can configure these later in Settings.
+                    Elke stap kan worden overgeslagen — u kunt deze later configureren via Instellingen.
                 </div>
                 <div class="btn-row">
                     <div></div>
                     <div class="right">
-                        <button type="submit" class="btn btn-primary">Let's Go →</button>
+                        <button type="submit" class="btn btn-primary">Aan de slag →</button>
                     </div>
                 </div>
             </form>
@@ -282,46 +282,46 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="step-icon">🔑</div>
-                <div class="step-title">Change Admin Password</div>
+                <div class="step-title">Beheerderswachtwoord wijzigen</div>
                 <div class="step-desc">
                     {% if is_default %}
-                    <span style="color:#dc2626;">⚠️ You are still using the default password (changeme123). Please change it now.</span>
+                    <span style="color:#dc2626;">⚠️ U gebruikt nog het standaardwachtwoord (changeme123). Wijzig dit nu.</span>
                     {% else %}
-                    Your password is already changed. You can update it or skip.
+                    Uw wachtwoord is al gewijzigd. U kunt het bijwerken of deze stap overslaan.
                     {% endif %}
                 </div>
 
                 {% if is_default %}
                 <div class="form-group">
-                    <label for="current_password">Current Password</label>
+                    <label for="current_password">Huidig wachtwoord</label>
                     <input type="password" name="current_password" id="current_password" placeholder="changeme123">
-                    <div class="help-text">The default password is <strong>changeme123</strong></div>
+                    <div class="help-text">Het standaardwachtwoord is <strong>changeme123</strong></div>
                 </div>
                 {% else %}
                 <div class="form-group">
-                    <label for="current_password">Current Password <span class="hint">(leave blank to keep current)</span></label>
-                    <input type="password" name="current_password" id="current_password" placeholder="Enter current password to confirm change">
+                    <label for="current_password">Huidig wachtwoord <span class="hint">(leeg laten om het huidige te behouden)</span></label>
+                    <input type="password" name="current_password" id="current_password" placeholder="Voer uw huidige wachtwoord in ter bevestiging">
                 </div>
                 {% endif %}
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="new_password">New Password</label>
-                        <input type="password" name="new_password" id="new_password" placeholder="At least 8 characters" minlength="8">
+                        <label for="new_password">Nieuw wachtwoord</label>
+                        <input type="password" name="new_password" id="new_password" placeholder="Minimaal 8 tekens" minlength="8">
                     </div>
                     <div class="form-group">
-                        <label for="confirm_password">Confirm New Password</label>
-                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Repeat new password">
+                        <label for="confirm_password">Nieuw wachtwoord bevestigen</label>
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Herhaal het nieuwe wachtwoord">
                     </div>
                 </div>
 
                 <div class="btn-row">
                     <div class="left">
-                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                     </div>
                     <div class="right">
-                        <button type="submit" name="skip" value="1" class="btn btn-skip">Skip</button>
-                        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+                        <button type="submit" name="skip" value="1" class="btn btn-skip">Overslaan</button>
+                        <button type="submit" class="btn btn-primary">Opslaan en doorgaan →</button>
                     </div>
                 </div>
             </form>
@@ -332,41 +332,41 @@
                 <div class="step-icon">🔌</div>
                 <div class="step-title">API Keys</div>
                 <div class="step-desc">
-                    Connect to external data sources. You can skip this and add keys later
-                    via <strong>Settings → API Keys</strong>.
+                    Koppel externe gegevensbronnen. U kunt dit overslaan en sleutels later
+                    toevoegen via <strong>Instellingen → API-sleutels</strong>.
                 </div>
 
                 <div class="form-group">
-                    <label for="brave_api_key">🔍 Brave Search API <span class="hint">(recommended — 2000 free queries/month)</span></label>
+                    <label for="brave_api_key">🔍 Brave Search API <span class="hint">(aanbevolen — 2.000 gratis zoekopdrachten per maand)</span></label>
                     <input type="text" name="brave_api_key" id="brave_api_key" placeholder="BSA...">
                     <div class="help-text">
-                        Get your free API key at <a href="https://brave.com/search/api/" target="_blank" rel="noopener">brave.com/search/api/</a>
+                        Vraag uw gratis API-sleutel aan via <a href="https://brave.com/search/api/" target="_blank" rel="noopener">brave.com/search/api/</a>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="overheid_api_key">🇳🇱 Overheid.io API <span class="hint">(free for non-commercial)</span></label>
+                    <label for="overheid_api_key">🇳🇱 Overheid.io API <span class="hint">(gratis voor niet-commercieel gebruik)</span></label>
                     <input type="text" name="overheid_api_key" id="overheid_api_key" placeholder="...">
                     <div class="help-text">
-                        Get a key at <a href="https://overheid.io" target="_blank" rel="noopener">overheid.io</a> — Dutch government data (KVK, etc.)
+                        Vraag een sleutel aan via <a href="https://overheid.io" target="_blank" rel="noopener">overheid.io</a> — Nederlandse overheidsgegevens (KVK enzovoort)
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="hibp_api_key">🔐 Have I Been Pwned <span class="hint">(check if emails/accounts appear in breaches)</span></label>
+                    <label for="hibp_api_key">🔐 Have I Been Pwned <span class="hint">(controleer of e-mails/accounts in datalekken voorkomen)</span></label>
                     <input type="text" name="hibp_api_key" id="hibp_api_key" placeholder="...">
                     <div class="help-text">
-                        Get a key at <a href="https://haveibeenpwned.com/API/Key" target="_blank" rel="noopener">haveibeenpwned.com/API/Key</a>
+                        Vraag een sleutel aan via <a href="https://haveibeenpwned.com/API/Key" target="_blank" rel="noopener">haveibeenpwned.com/API/Key</a>
                     </div>
                 </div>
 
                 <div class="btn-row">
                     <div class="left">
-                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                     </div>
                     <div class="right">
-                        <button type="submit" name="skip" value="1" class="btn btn-skip">Skip</button>
-                        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+                        <button type="submit" name="skip" value="1" class="btn btn-skip">Overslaan</button>
+                        <button type="submit" class="btn btn-primary">Opslaan en doorgaan →</button>
                     </div>
                 </div>
             </form>
@@ -375,50 +375,50 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="step-icon">📧</div>
-                <div class="step-title">Email (SMTP)</div>
+                <div class="step-title">E-mail (SMTP)</div>
                 <div class="step-desc">
-                    Required to invite new users and send notifications.
-                    You can skip this and configure later via <strong>Settings → Email</strong>.
+                    Nodig om nieuwe gebruikers uit te nodigen en meldingen te versturen.
+                    U kunt dit overslaan en later configureren via <strong>Instellingen → E-mail</strong>.
                 </div>
 
                 <div class="form-group">
-                    <label for="smtp_server">SMTP Server</label>
+                        <label for="smtp_server">SMTP-server</label>
                     <input type="text" name="smtp_server" id="smtp_server" placeholder="smtp.example.com">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="smtp_port">Port</label>
+                        <label for="smtp_port">Poort</label>
                         <input type="number" name="smtp_port" id="smtp_port" value="587" placeholder="587">
-                        <div class="help-text">Typically 587 (STARTTLS) or 465 (SSL)</div>
+                        <div class="help-text">Meestal 587 (STARTTLS) of 465 (SSL)</div>
                     </div>
                     <div class="form-group">
-                        <label for="smtp_from_name">Sender Name</label>
+                        <label for="smtp_from_name">Naam afzender</label>
                         <input type="text" name="smtp_from_name" id="smtp_from_name" value="Iveras CMS" placeholder="Iveras CMS">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="smtp_username">Username</label>
+                        <label for="smtp_username">Gebruikersnaam</label>
                         <input type="text" name="smtp_username" id="smtp_username" placeholder="postmaster@example.com">
                     </div>
                     <div class="form-group">
-                        <label for="smtp_password">Password</label>
-                        <input type="password" name="smtp_password" id="smtp_password" placeholder="SMTP password">
+                        <label for="smtp_password">Wachtwoord</label>
+                        <input type="password" name="smtp_password" id="smtp_password" placeholder="SMTP-wachtwoord">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="smtp_from_email">Sender Email</label>
+                    <label for="smtp_from_email">E-mailadres afzender</label>
                     <input type="email" name="smtp_from_email" id="smtp_from_email" placeholder="noreply@example.com">
-                    <div class="help-text">This address appears in the "From" field of all outgoing emails</div>
+                    <div class="help-text">Dit adres verschijnt in het veld ‘Van’ van alle uitgaande e-mails</div>
                 </div>
 
                 <div class="btn-row">
                     <div class="left">
-                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                     </div>
                     <div class="right">
-                        <button type="submit" name="skip" value="1" class="btn btn-skip">Skip</button>
-                        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+                        <button type="submit" name="skip" value="1" class="btn btn-skip">Overslaan</button>
+                        <button type="submit" class="btn btn-primary">Opslaan en doorgaan →</button>
                     </div>
                 </div>
             </form>
@@ -427,10 +427,10 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="step-icon">🤖</div>
-                <div class="step-title">AI Provider</div>
+                <div class="step-title">AI-provider</div>
                 <div class="step-desc">
-                    Choose OpenRouter (cloud, 300+ models) or Ollama (local, free).
-                    Skip to configure later via <strong>Settings → AI Provider</strong>.
+                    Kies OpenRouter (cloud, meer dan 300 modellen) of Ollama (lokaal, gratis).
+                    U kunt dit overslaan en later configureren via <strong>Instellingen → AI-provider</strong>.
                 </div>
 
                 <div class="form-group">
@@ -438,7 +438,7 @@
                     <input type="text" name="openrouter_api_key" id="openrouter_api_key" placeholder="sk-or-v1-...">
                     <div class="help-text">
                         Get a key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
-                        Supports GPT-4, Claude, Gemini, Llama, and 300+ other models.
+                        Ondersteunt GPT-4, Claude, Gemini, Llama en meer dan 300 andere modellen.
                     </div>
                 </div>
 
@@ -453,17 +453,17 @@
                     <div class="form-group">
                         <label for="ollama_model">Ollama Model</label>
                         <input type="text" name="ollama_model" id="ollama_model" placeholder="llama3.2">
-                        <div class="help-text">Run <code>ollama list</code> on your server to see available models</div>
+                        <div class="help-text">Voer <code>ollama list</code> uit op uw server om beschikbare modellen te bekijken</div>
                     </div>
                 </div>
 
                 <div class="btn-row">
                     <div class="left">
-                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                     </div>
                     <div class="right">
-                        <button type="submit" name="skip" value="1" class="btn btn-skip">Skip</button>
-                        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+                        <button type="submit" name="skip" value="1" class="btn btn-skip">Overslaan</button>
+                        <button type="submit" class="btn btn-primary">Opslaan en doorgaan →</button>
                     </div>
                 </div>
             </form>
@@ -472,81 +472,81 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="step-icon">📱</div>
-                <div class="step-title">Telegram Bot</div>
+                <div class="step-title">Telegram-bot</div>
                 <div class="step-desc">
-                    Optional: receive investigation results and notifications via Telegram.
-                    Skip to configure later via <strong>Settings → Telegram Bot</strong>.
+                    Optioneel: ontvang onderzoeksresultaten en meldingen via Telegram.
+                    U kunt dit overslaan en later configureren via <strong>Instellingen → Telegram-bot</strong>.
                 </div>
 
                 <div class="form-group">
-                    <label for="telegram_bot_token">Bot Token</label>
+                    <label for="telegram_bot_token">Bottoken</label>
                     <input type="password" name="telegram_bot_token" id="telegram_bot_token" placeholder="123456:ABC...">
                     <div class="help-text">
-                        Get a token from <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> on Telegram.
+                        Vraag een token aan via <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> op Telegram.
                     </div>
                 </div>
 
                 <div class="checkbox-group">
                     <input type="checkbox" name="telegram_enabled" id="telegram_enabled" checked>
-                    <label for="telegram_enabled">Enable Telegram bot immediately</label>
+                    <label for="telegram_enabled">Telegram-bot direct inschakelen</label>
                 </div>
 
                 <div class="form-group">
-                    <label for="telegram_allowed_users">Allowed Usernames <span class="hint">(comma-separated, optional)</span></label>
+                    <label for="telegram_allowed_users">Toegestane gebruikersnamen <span class="hint">(komma-gescheiden, optioneel)</span></label>
                     <input type="text" name="telegram_allowed_users" id="telegram_allowed_users" placeholder="@user1, @user2">
-                    <div class="help-text">Leave empty to allow all users in your Telegram chat</div>
+                    <div class="help-text">Laat leeg om alle gebruikers in uw Telegram-chat toe te staan</div>
                 </div>
 
                 <div class="btn-row">
                     <div class="left">
-                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                        <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                     </div>
                     <div class="right">
-                        <button type="submit" name="skip" value="1" class="btn btn-skip">Skip</button>
-                        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+                        <button type="submit" name="skip" value="1" class="btn btn-skip">Overslaan</button>
+                        <button type="submit" class="btn btn-primary">Opslaan en doorgaan →</button>
                     </div>
                 </div>
             </form>
 
             {% elif step == "finish" %}
             <div class="step-icon">✅</div>
-            <div class="step-title">Setup Complete!</div>
+            <div class="step-title">Installatie voltooid!</div>
             <div class="step-desc">
-                Your Iveras OSINT Dashboard is ready to use.
-                Here's a summary of what you configured:
+                Uw Iveras OSINT Dashboard is klaar voor gebruik.
+                Hieronder staat een overzicht van uw configuratie:
             </div>
 
             <div class="summary-grid">
                 <div class="summary-item">
-                    <span class="name">🔑 Admin Password</span>
+                    <span class="name">🔑 Beheerderswachtwoord</span>
                     {% if "password" in skipped %}
-                    <span class="status-skipped">⏭️ Skipped</span>
+                    <span class="status-skipped">⏭️ Overgeslagen</span>
                     {% else %}
-                    <span class="status-done">✅ Changed</span>
+                    <span class="status-done">✅ Gewijzigd</span>
                     {% endif %}
                 </div>
                 <div class="summary-item">
-                    <span class="name">🔌 API Keys</span>
+                    <span class="name">🔌 API-sleutels</span>
                     {% if "api_keys" in skipped %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% elif configured.get("brave_api_key") or configured.get("overheid_api_key") or configured.get("hibp_api_key") %}
-                    <span class="status-done">✅ Saved</span>
+                    <span class="status-done">✅ Opgeslagen</span>
                     {% else %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% endif %}
                 </div>
                 <div class="summary-item">
-                    <span class="name">📧 Email (SMTP)</span>
+                    <span class="name">📧 E-mail (SMTP)</span>
                     {% if "smtp" in skipped %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% elif configured.get("smtp_server") %}
-                    <span class="status-done">✅ Configured</span>
+                    <span class="status-done">✅ Geconfigureerd</span>
                     {% else %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% endif %}
                 </div>
                 <div class="summary-item">
-                    <span class="name">🤖 AI Provider</span>
+                    <span class="name">🤖 AI-provider</span>
                     {% if "ai" in skipped %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% elif configured.get("openrouter_api_key") or configured.get("ollama_url") %}
@@ -556,7 +556,7 @@
                     {% endif %}
                 </div>
                 <div class="summary-item">
-                    <span class="name">📱 Telegram Bot</span>
+                    <span class="name">📱 Telegram-bot</span>
                     {% if "telegram" in skipped %}
                     <span class="status-skipped">⏭️ Skipped</span>
                     {% elif configured.get("telegram_bot_token") %}
@@ -568,19 +568,19 @@
             </div>
 
             <div class="alert alert-info">
-                <strong>📌 Still to do:</strong><br>
-                • Configure <strong>Stripe billing</strong> if you want SaaS subscriptions<br>
-                • Set up <strong>Sentry monitoring</strong> with <code>SENTRY_DSN</code> in .env<br>
-                • Review <strong>Feature Flags</strong> in Settings<br>
-                • Add more <strong>users</strong> in Settings → Users (needs SMTP!)
+                <strong>📌 Nog te doen:</strong><br>
+                • Configureer <strong>Stripe-facturatie</strong> als u SaaS-abonnementen wilt aanbieden<br>
+                • Stel <strong>Sentry-monitoring</strong> in met <code>SENTRY_DSN</code> in .env<br>
+                • Controleer de <strong>functievlaggen</strong> via Instellingen<br>
+                • Voeg meer <strong>gebruikers</strong> toe via Instellingen → Gebruikers (SMTP vereist)
             </div>
 
             <div class="btn-row">
                 <div class="left">
-                    <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Back</a>
+                    <a href="{{ url_for('setup_wizard.' + prev) }}" class="btn btn-secondary">← Terug</a>
                 </div>
                 <div class="right">
-                    <a href="{{ url_for('cms.dashboard') }}" class="btn btn-success">Go to Dashboard →</a>
+                    <a href="{{ url_for('cms.dashboard') }}" class="btn btn-success">Naar dashboard →</a>
                 </div>
             </div>
             {% endif %}
@@ -588,10 +588,10 @@
             <div class="footer-links">
                 <form method="POST" action="{{ url_for('setup_wizard.skip') }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" style="border:0;background:none;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">Skip setup and go to Dashboard</button>
+                    <button type="submit" style="border:0;background:none;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">Installatie overslaan en naar dashboard</button>
                 </form>
                 &nbsp;·&nbsp;
-                <a href="{{ url_for('static', filename='INSTALL.md') }}" target="_blank">Installation docs</a>
+                <a href="{{ url_for('static', filename='INSTALL.md') }}" target="_blank">Installatiedocumentatie</a>
             </div>
         </div>
     </div>

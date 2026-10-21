@@ -108,7 +108,7 @@ function pollStatus() {
           var cb = btn.querySelector('.action-cancel');
           if (cb) cb.style.display = 'none';
           stopTimer();
-          document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' completed — ' + (a.result_summary || '');
+          document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' afgerond — ' + (a.result_summary || '');
           if (CREDIT_LIMITS.hasOwnProperty(a.action_type)) updateCredits(a.action_type);
         }
         if ((a.status === 'error' || a.status === 'failed') && btn.classList.contains('running')) {
@@ -358,7 +358,7 @@ function findingHtml(f) {
         '<input type="text" class="ss-notes-input" placeholder="Note (optional)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
         '<div style="display:flex;gap:0.3rem;">' +
           '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Save</button>' +
-          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Cancel</button>' +
+          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -375,8 +375,8 @@ function updateFindings(findings, actions) {
   const totalEl = document.getElementById('totalFindings');
   if (!container) return;
 
-  countEl.textContent = findings.length + ' findings';
-  if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' findings';
+  countEl.textContent = findings.length + ' bevindingen';
+  if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' bevindingen';
 
   var statusSig = findings.map(function(f) { return f.id + ':' + (f.status || '') + ':' + (f.verified ? '1' : '0'); }).join(',');
   var hash = findings.length + ':' + actions.length + ':' + statusSig;
@@ -490,7 +490,7 @@ function updateFindings(findings, actions) {
       '<div class="finding-group-header" data-toggle="grp-ungrouped">' +
         '<span class="toggle-icon">▶</span>' +
         '<span class="fg-icon">📋</span>' +
-        '<span class="fg-label">Other findings</span>' +
+        '<span class="fg-label">Overige bevindingen</span>' +
         '<span class="fg-count">' + ungrouped.length + '</span>' +
       '</div>' +
       '<div class="finding-group-body" id="grp-ungrouped">' +

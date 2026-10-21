@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ 'Edit announcement' if announcement else 'New announcement' }}{% endblock %}
+{% block title %}{{ 'Aankondiging bewerken' if announcement else 'Nieuwe aankondiging' }}{% endblock %}
 {% block content %}
 <style>
   .af-form { max-width:700px; }
@@ -10,8 +10,8 @@
 </style>
 
 <div class="ann-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-  <h1>{{ '✏️ Edit announcement' if announcement else '➕ New announcement' }}</h1>
-  <a href="{{ url_for('cms.list_announcements') }}" class="btn-cms small">← Back</a>
+  <h1>{{ '✏️ Aankondiging bewerken' if announcement else '➕ Nieuwe aankondiging' }}</h1>
+  <a href="{{ url_for('cms.list_announcements') }}" class="btn-cms small">← Terug</a>
 </div>
 
 <form method="POST" class="af-form">
@@ -24,8 +24,8 @@
     <label for="severity">Severity</label>
     <select id="severity" name="severity">
       <option value="info" {% if announcement and announcement.severity == 'info' %}selected{% endif %}>ℹ️ Info</option>
-      <option value="warning" {% if announcement and announcement.severity == 'warning' %}selected{% endif %}>⚠️ Warning</option>
-      <option value="error" {% if announcement and announcement.severity == 'error' %}selected{% endif %}>❌ Error</option>
+      <option value="warning" {% if announcement and announcement.severity == 'warning' %}selected{% endif %}>⚠️ Waarschuwing</option>
+      <option value="error" {% if announcement and announcement.severity == 'error' %}selected{% endif %}>❌ Fout</option>
       <option value="critical" {% if announcement and announcement.severity == 'critical' %}selected{% endif %}>🔴 Critical</option>
     </select>
   </div>
@@ -38,8 +38,8 @@
     <input type="datetime-local" id="expires_at" name="expires_at" value="{{ announcement.expires_at.strftime('%Y-%m-%dT%H:%M') if announcement and announcement.expires_at else '' }}">
   </div>
   <div style="display:flex;gap:0.5rem;">
-    <button type="submit" class="btn-cms primary">{{ 'Save' if announcement else 'Create' }}</button>
-    <a href="{{ url_for('cms.list_announcements') }}" class="btn-cms">Cancel</a>
+    <button type="submit" class="btn-cms primary">{{ 'Opslaan' if announcement else 'Aanmaken' }}</button>
+    <a href="{{ url_for('cms.list_announcements') }}" class="btn-cms">Annuleren</a>
   </div>
 </form>
 {% endblock %}

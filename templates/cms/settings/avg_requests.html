@@ -54,16 +54,16 @@
                     </td>
                     <td class="request-detail" title="{{ r.description or '' }}">{{ r.description or '-' }}</td>
                     <td>
-                        {% set status_labels = {"received":"Received","in_progress":"In Progress","completed":"Completed","rejected":"Rejected"} %}
+                        {% set status_labels = {"received":"Ontvangen","in_progress":"In behandeling","completed":"Afgerond","rejected":"Afgewezen"} %}
                         <span class="badge badge-{{ r.status }}">{{ status_labels.get(r.status, r.status) }}</span>
                     </td>
                     <td>
                         <form class="status-form" data-request-id="{{ r.id }}" style="display:flex;gap:.25rem;align-items:center;">
                             <select class="status-select">
-                                <option value="received" {% if r.status == 'received' %}selected{% endif %}>Received</option>
-                                <option value="in_progress" {% if r.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                <option value="completed" {% if r.status == 'completed' %}selected{% endif %}>Completed</option>
-                                <option value="rejected" {% if r.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                                <option value="received" {% if r.status == 'received' %}selected{% endif %}>Ontvangen</option>
+                                <option value="in_progress" {% if r.status == 'in_progress' %}selected{% endif %}>In behandeling</option>
+                                <option value="completed" {% if r.status == 'completed' %}selected{% endif %}>Afgerond</option>
+                                <option value="rejected" {% if r.status == 'rejected' %}selected{% endif %}>Afgewezen</option>
                             </select>
                             <button type="submit" class="btn-cms blue btn-icon" title="Update status">&#10003;</button>
                         </form>

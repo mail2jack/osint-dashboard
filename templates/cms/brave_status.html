@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}🦁 Brave Search Status{% endblock %}
+{% block title %}🦁 Brave Search-status{% endblock %}
 {% block content %}
 <style>
   .bs-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
@@ -26,7 +26,7 @@
 </style>
 
 <div class="bs-header">
-  <h1>🦁 Brave Search Status</h1>
+  <h1>🦁 Brave Search-status</h1>
   <a href="{{ url_for('cms.brave_status') }}" class="bs-refresh">🔄 Verversen</a>
 </div>
 
@@ -34,13 +34,13 @@
 <div class="bs-card" style="text-align:center;padding:2rem;">
   <div style="font-size:2rem;margin-bottom:0.5rem;">⚙️</div>
   <p><strong>Brave Search niet geconfigureerd</strong></p>
-  <p style="font-size:0.85rem;color:var(--text-muted);">Voeg een API key toe in <a href="{{ url_for('cms.list_api_keys') }}">Settings → API Keys</a>.</p>
+  <p style="font-size:0.85rem;color:var(--text-muted);">Voeg een API-sleutel toe via <a href="{{ url_for('cms.list_api_keys') }}">Instellingen → API-sleutels</a>.</p>
 </div>
 {% elif data.status_code == 402 %}
 <div class="bs-card" style="text-align:center;padding:2rem;border-color:#fca5a5;background:#fef2f2;">
   <div style="font-size:2rem;margin-bottom:0.5rem;">⚠️</div>
-  <p><strong>Brave Search quota exhausted (402)</strong></p>
-  <p style="font-size:0.85rem;color:var(--text-muted);">Het maandelijkse quotum is bereikt of er is een betalingsprobleem. Controleer je saldo op het <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--link-color);">Brave dashboard</a> of vernieuw je API key in <a href="{{ url_for('cms.list_api_keys') }}">Settings → API Keys</a>.</p>
+  <p><strong>Brave Search-quotum opgebruikt (402)</strong></p>
+  <p style="font-size:0.85rem;color:var(--text-muted);">Het maandelijkse quotum is bereikt of er is een betalingsprobleem. Controleer uw saldo op het <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--link-color);">Brave-dashboard</a> of vernieuw uw API-sleutel via <a href="{{ url_for('cms.list_api_keys') }}">Instellingen → API-sleutels</a>.</p>
   {% if data.api_error %}
   <p style="font-size:0.8rem;color:var(--text-muted);background:var(--bg-primary);padding:0.5rem;border-radius:4px;margin-top:0.5rem;font-family:monospace;">{{ data.api_error }}</p>
   {% endif %}

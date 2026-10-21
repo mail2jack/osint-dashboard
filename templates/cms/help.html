@@ -18,8 +18,8 @@
 {% block content %}
 <div class="help-container">
     {% if topics %}
-    <h1>Help & Documentation</h1>
-    <p style="color:var(--text-secondary);">Select a topic below, or press <kbd>?</kbd> from any page to open context-sensitive help.</p>
+    <h1>Help en documentatie</h1>
+    <p style="color:var(--text-secondary);">Selecteer hieronder een onderwerp of druk op <kbd>?</kbd> op een pagina voor contextgevoelige help.</p>
     <div class="topic-grid">
         {% for t in topics %}
         <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card">
@@ -29,7 +29,7 @@
         {% endfor %}
     </div>
     {% elif topic_html %}
-    <a href="{{ url_for('cms.help_index') }}" style="color:var(--text-secondary);text-decoration:none;font-size:0.9rem;">&larr; All topics</a>
+    <a href="{{ url_for('cms.help_index') }}" style="color:var(--text-secondary);text-decoration:none;font-size:0.9rem;">&larr; Alle onderwerpen</a>
     <div class="help-content">{{ topic_html|safe }}</div>
     {% endif %}
 </div>

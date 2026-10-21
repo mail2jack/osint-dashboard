@@ -407,7 +407,7 @@ async function loadFaceApi() {
     
     const statusEl = document.getElementById('faceSearchStatus');
     try {
-        statusEl.innerHTML = '<span style="color: #c4b5fd;">Loading face recognition models...</span>';
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Gezichtsherkenningsmodellen laden...</span>';
         
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
         
@@ -416,7 +416,7 @@ async function loadFaceApi() {
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
         
         faceApiLoaded = true;
-        statusEl.innerHTML = '<span style="color: #c4b5fd;">Face recognition ready - upload a photo</span>';
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Gezichtsherkenning gereed — upload een foto</span>';
         return true;
     } catch (err) {
         statusEl.innerHTML = '<span style="color: #fca5a5;">Failed to load face recognition</span>';
@@ -436,7 +436,7 @@ async function searchByFace(input) {
     if (!loaded) return;
     
     try {
-        statusEl.innerHTML = '<span style="color: #c4b5fd;">Detecting face...</span>';
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Gezicht zoeken...</span>';
         
         const img = await faceapi.bufferToImage(file);
         
@@ -446,11 +446,11 @@ async function searchByFace(input) {
             .withFaceDescriptor();
         
         if (!detection) {
-            statusEl.innerHTML = '<span style="color: #fcd34d;">No face detected in the image. Try another photo.</span>';
+            statusEl.innerHTML = '<span style="color: #fcd34d;">Geen gezicht gevonden in de afbeelding. Probeer een andere foto.</span>';
             return;
         }
         
-        statusEl.innerHTML = '<span style="color: #c4b5fd;">Finding matches...</span>';
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Overeenkomsten zoeken...</span>';
         
         const encoding = Array.from(detection.descriptor);
         
@@ -463,14 +463,14 @@ async function searchByFace(input) {
         const data = await response.json();
         
         if (data.error) {
-            statusEl.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(data.error) + '</span>';
+            statusEl.innerHTML = '<span style="color: #fca5a5;">Fout: ' + esc(data.error) + '</span>';
             return;
         }
         
-        statusEl.innerHTML = '<span style="color: #86efac;">Found ' + esc(data.matches.length) + ' matches (searched ' + esc(data.total_searched) + ' subjects with faces)</span>';
+        statusEl.innerHTML = '<span style="color: #86efac;">' + esc(data.matches.length) + ' overeenkomsten gevonden (gezocht in ' + esc(data.total_searched) + ' subjects met foto)</span>';
         
         if (data.matches.length === 0) {
-            matchesList.innerHTML = '<p style="color: #c4b5fd;">No matching faces found.</p>';
+            matchesList.innerHTML = '<p style="color: #c4b5fd;">Geen overeenkomende gezichten gevonden.</p>';
         } else {
             matchesList.innerHTML = data.matches.map(match => {
                 const sim = match.similarity;
@@ -481,16 +481,16 @@ async function searchByFace(input) {
                     '<div style="font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">' + esc(match.subject_type) + '</div>' +
                     '<div style="display: flex; justify-content: space-between; align-items: center;">' +
                         '<span style="background: ' + simColor + '; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">' +
-                            esc(sim) + '% match' +
+                            esc(sim) + '% overeenkomst' +
                         '</span>' +
-                        '<a href="/cms/subjects/' + esc(match.id) + '" style="color: #7c3aed; font-size: 0.75rem;">View →</a>' +
+                        '<a href="/cms/subjects/' + esc(match.id) + '" style="color: #7c3aed; font-size: 0.75rem;">Bekijken →</a>' +
                     '</div></div>';
             }).join('');
         }
         
         resultsEl.style.display = 'block';
     } catch (err) {
-        statusEl.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(err.message) + '</span>';
+        statusEl.innerHTML = '<span style="color: #fca5a5;">Fout: ' + esc(err.message) + '</span>';
     }
 }
 </script>

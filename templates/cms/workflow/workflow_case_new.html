@@ -47,14 +47,14 @@ input:-webkit-autofill:focus {
   <div>
     <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('New case') }}</h1>
   </div>
-  <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
+  <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Overzicht</a>
 </div>
 
 <form method="POST">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="existing_client_id" id="existingClientId" value="">
   <div class="form-section">
-    <h2>📋 Case details</h2>
+    <h2>📋 Zaakgegevens</h2>
     <div class="form-grid">
       <div class="form-group">
         <label>Case number</label>
@@ -106,7 +106,7 @@ input:-webkit-autofill:focus {
         <input type="text" name="client_name" placeholder="Client B.V.">
       </div>
       <div class="form-group">
-        <label>Contact person</label>
+        <label>Contactpersoon</label>
         <input type="text" name="client_contact" placeholder="J. Janssen">
       </div>
       <div class="form-group">
@@ -114,11 +114,11 @@ input:-webkit-autofill:focus {
         <input type="email" name="client_email" placeholder="contact@company.nl">
       </div>
       <div class="form-group">
-        <label>Phone</label>
+        <label>Telefoon</label>
         <input type="text" name="client_phone" placeholder="+31 6 12345678">
       </div>
       <div class="form-group">
-        <label>Reference</label>
+        <label>Referentie</label>
         <input type="text" name="reference" placeholder="Internal reference">
       </div>
       <div class="form-group">
@@ -162,7 +162,7 @@ input:-webkit-autofill:focus {
         <textarea name="client_contract_info" rows="2" placeholder="Contract details"></textarea>
       </div>
       <div class="form-group full-width">
-        <label>Notes</label>
+        <label>Notities</label>
         <textarea name="client_notes" rows="2" placeholder="Internal notes about the client"></textarea>
       </div>
     </div>
@@ -170,11 +170,11 @@ input:-webkit-autofill:focus {
   </div>
 
   <div class="form-section" id="subjects-section">
-    <h2 style="margin:0 0 1rem 0;">🎯 Subjects</h2>
+    <h2 style="margin:0 0 1rem 0;">🎯 Subjecten</h2>
     <div id="subjects-container">
       <div class="subject-block" data-index="0">
         <div class="subject-type-row">
-          <label>Subject type</label>
+          <label>Subjecttype</label>
           <select name="subject_0_type" data-action="update-fields" required>
             <option value="person" selected>Person</option>
             <option value="company">Company</option>
@@ -603,7 +603,7 @@ input:-webkit-autofill:focus {
           </div>
         </div>
       </div>
-    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Subject</button>
+    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Subject toevoegen</button>
   </div>
 
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/workflowCase.js') }}?v={{ g.css_version }}"></script>
@@ -816,7 +816,7 @@ document.addEventListener('DOMContentLoaded', function() {
         '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
-        '<label>Subject type</label>' +
+        '<label>Subjecttype</label>' +
         '<select name="subject_' + i + '_type" data-action="update-fields" required>' +
           '<option value="">— Select type —</option>' +
           '<option value="person">Person</option>' +
@@ -1150,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Cancel</a>
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Annuleren</a>
     <button type="submit" class="btn-cms primary" id="wfCreateBtn">{{ _('New case') }} →</button>
   </div>
 </form>

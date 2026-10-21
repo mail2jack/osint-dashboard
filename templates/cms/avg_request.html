@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Submit DSAR — Iveras CMS</title>
+    <title>AVG-verzoek indienen — Iveras CMS</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -72,11 +72,11 @@
 </head>
 <body>
     <div class="container">
-        <h1>📝 Submit a DSAR</h1>
+        <h1>📝 AVG-verzoek indienen</h1>
         <p class="subtitle">Use this form to submit a request based on your rights under the General Data Protection Regulation (GDPR).</p>
 
         <div class="disclaimer">
-            <strong>Note:</strong> We will process your request within 30 days.
+            <strong>Let op:</strong> Wij verwerken uw verzoek binnen 30 dagen.
             For complex requests, this period may be extended by up to 60 days.
             We may ask you to verify your identity before processing your request.
         </div>
@@ -98,21 +98,21 @@
             </div>
 
             <div class="form-group">
-                <label for="email">Email address *</label>
+                <label for="email">E-mailadres *</label>
                 <input type="email" name="email" id="email" required autocomplete="email">
             </div>
 
             <div class="form-group">
-                <label for="phone">Phone number (optional)</label>
+                <label for="phone">Telefoonnummer (optioneel)</label>
                 <input type="tel" name="phone" id="phone" autocomplete="tel">
             </div>
 
             <div class="form-group">
                 <label for="request_type">Request type *</label>
                 <select name="request_type" id="request_type" required>
-                    <option value="access">Access (Art. 15 GDPR) — View all data</option>
+                    <option value="access">Inzage (art. 15 AVG) — alle gegevens bekijken</option>
                     <option value="rectification">Rectification (Art. 16 GDPR) — Correct data</option>
-                    <option value="erasure">Erasure (Art. 17 GDPR) — Delete data</option>
+                    <option value="erasure">Verwijdering (art. 17 AVG) — gegevens verwijderen</option>
                     <option value="portability">Data Portability (Art. 20 GDPR) — Transfer data</option>
                     <option value="restrict">Restriction (Art. 18 GDPR) — Restrict processing</option>
                     <option value="object">Objection (Art. 21 GDPR) — Object to processing</option>
@@ -124,11 +124,11 @@
                 <textarea name="description" id="description" placeholder="Describe your request as specifically as possible. For an access request: what data are you looking for? For a deletion request: what data is involved?"></textarea>
             </div>
 
-            <button type="submit" class="btn-cms primary">Submit request</button>
+            <button type="submit" class="btn-cms primary">Verzoek indienen</button>
         </form>
 
         <div class="back-link">
-            <a href="{{ url_for('cms.privacy_policy') }}">← Back to Privacy Policy</a>
+            <a href="{{ url_for('cms.privacy_policy') }}">← Terug naar privacybeleid</a>
         </div>
     </div>
 </body>

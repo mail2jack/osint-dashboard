@@ -260,24 +260,24 @@ input:-webkit-autofill:focus {
       <span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span>
     </div>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
-      Investigator: {{ case.lead_investigator }}
-      · Created {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+      Onderzoeker: {{ case.lead_investigator }}
+      · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
     </p>
   </div>
   <div class="case-detail-toolbar" style="display:flex;gap:0.5rem;align-items:center;">
-    <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
-    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
+    <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} bevindingen</span>
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Bewerken</a>
     <a href="{{ url_for('cms.staff_case_messages', case_id=case.id) }}" class="btn-cms small">💬 Berichten</a>
-    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
-    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
+    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Rapport</a>
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Overzicht</a>
   </div>
 </div>
 
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">1</span>
-    Client
-    {% if client %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Ready ✓</span>{% endif %}
+    Klant
+    {% if client %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>{% endif %}
   </div>
   <div class="workflow-step-body">
     {% if client %}
@@ -290,7 +290,7 @@ input:-webkit-autofill:focus {
       <div class="subject-info-grid">
         {% if client.contact_person %}
         <div class="subject-info-item">
-          <div class="lbl">Contact person</div>
+          <div class="lbl">Contactpersoon</div>
           <div class="val">{{ client.contact_person }}</div>
         </div>
         {% endif %}
@@ -299,35 +299,35 @@ input:-webkit-autofill:focus {
           <div class="val">{{ client.contact_email or '—' }}</div>
         </div>
         <div class="subject-info-item">
-          <div class="lbl">📞 Phone</div>
+          <div class="lbl">📞 Telefoon</div>
           <div class="val">{{ client.contact_phone or '—' }}</div>
         </div>
         {% if client.address_street or client.address_city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
-          <div class="lbl">🏠 Address</div>
+          <div class="lbl">🏠 Adres</div>
           <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
         </div>
         {% endif %}
         {% if client.reference %}
         <div class="subject-info-item">
-          <div class="lbl">Reference</div>
+          <div class="lbl">Referentie</div>
           <div class="val">{{ client.reference }}</div>
         </div>
         {% endif %}
         {% if client.financial_notes %}
         <div class="subject-info-item" style="grid-column:1/-1;">
-          <div class="lbl">Notes</div>
+          <div class="lbl">Notities</div>
           <div class="val">{{ client.financial_notes }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">
-          <div class="lbl">Request date</div>
+          <div class="lbl">Aanvraagdatum</div>
           <div class="val">{{ case.created_at.strftime('%d-%m-%Y') if case.created_at else '-' }}</div>
         </div>
       </div>
     </div>
     {% else %}
-    <p style="color:var(--text-muted);">No client assigned</p>
+    <p style="color:var(--text-muted);">Geen klant gekoppeld</p>
     {% endif %}
   </div>
 </div>
@@ -335,9 +335,9 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">2</span>
-    Subject{% if subjects_data|length != 1 %}s{% endif %}
-    {% if subjects_data %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects_data|length }} subject{% if subjects_data|length > 1 %}s{% endif %} ✓</span>{% endif %}
-    <a href="{{ url_for('workflow.case_edit', case_id=case.id, add='1') }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
+    Subjecten
+    {% if subjects_data %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects_data|length }} subject(en) ✓</span>{% endif %}
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id, add='1') }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ toevoegen</a>
   </div>
   <div class="workflow-step-body">
     {% if subjects_data %}
@@ -387,7 +387,7 @@ input:-webkit-autofill:focus {
         {# ── Address ── #}
         {% if sd.street or sd.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
-          <div class="lbl">🏠 Address</div>
+          <div class="lbl">🏠 Adres</div>
           <div class="val">{{ sd.street or '' }} {{ sd.house_number or '' }}{{ sd.house_number_addition or '' }}{% if sd.postal_code or sd.city %}<br>{% endif %}{{ sd.postal_code or '' }} {{ sd.city or '' }}</div>
         </div>
         {% endif %}

@@ -53,7 +53,7 @@ input:-webkit-autofill:focus {
   <div>
     <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ case.case_number }} — Edit</h1>
   </div>
-  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">← Back to case</a>
+  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">← Terug naar zaak</a>
 </div>
 
 <form method="POST">
@@ -62,7 +62,7 @@ input:-webkit-autofill:focus {
   <input type="hidden" name="removed_subject_ids" id="removed_subject_ids" value="[]">
 
   <div class="form-section">
-    <h2>📋 Case details</h2>
+    <h2>📋 Zaakgegevens</h2>
     <div class="form-grid">
       <div class="form-group">
         <label>Case number</label>
@@ -109,7 +109,7 @@ input:-webkit-autofill:focus {
         <input type="text" name="client_name" value="{{ client.name if client else '' }}">
       </div>
       <div class="form-group">
-        <label>Contact person</label>
+        <label>Contactpersoon</label>
         <input type="text" name="client_contact" value="{{ client.contact_person or '' }}">
       </div>
       <div class="form-group">
@@ -117,11 +117,11 @@ input:-webkit-autofill:focus {
         <input type="email" name="client_email" value="{{ client.contact_email or '' }}">
       </div>
       <div class="form-group">
-        <label>Phone</label>
+        <label>Telefoon</label>
         <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}">
       </div>
       <div class="form-group">
-        <label>Reference</label>
+        <label>Referentie</label>
         <input type="text" name="reference" value="{{ client.reference or '' }}">
       </div>
       <div class="form-group">
@@ -161,7 +161,7 @@ input:-webkit-autofill:focus {
         <textarea name="client_contract_info" rows="2">{{ client.contract_info or '' }}</textarea>
       </div>
       <div class="form-group full-width">
-        <label>Notes</label>
+        <label>Notities</label>
         <textarea name="client_notes" rows="2">{{ client.financial_notes or '' }}</textarea>
       </div>
     </div>
@@ -636,8 +636,8 @@ input:-webkit-autofill:focus {
   </div>
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Cancel</a>
-    <button type="submit" class="btn-cms primary" id="wfSaveBtn">Save changes →</button>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Annuleren</a>
+    <button type="submit" class="btn-cms primary" id="wfSaveBtn">Wijzigingen opslaan →</button>
   </div>
 </form>
 <datalist id="social-platforms">

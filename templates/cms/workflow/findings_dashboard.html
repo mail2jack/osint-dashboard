@@ -8,7 +8,7 @@
 <div class="ui-page">
 <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Werk</span><span>›</span><span>Findings</span></div>
 <div class="fd-head">
-  <div><h1>📊 Findings dashboard</h1><p>Overzicht van zichtbare findings binnen jouw toegankelijke zaken.</p></div>
+  <div><h1>📊 Bevindingendashboard</h1><p>Overzicht van zichtbare bevindingen binnen jouw toegankelijke zaken.</p></div>
   <div class="fd-actions"><a class="btn-cms small" href="{{ url_for('workflow.findings_index') }}">📋 Lijstweergave</a></div>
 </div>
 
@@ -49,6 +49,6 @@
 <section class="fd-panel"><h2>Instroom in de tijd</h2>
   {% if timeline %}{% set timeline_max = (timeline|map(attribute=1)|max) or 1 %}<div class="fd-timeline">{% for day, count in timeline %}<div class="fd-day" title="{{ day }}: {{ count }}"><strong>{{ count }}</strong><div class="column" style="height:{{ ((count / timeline_max) * 100)|round(1) }}%"></div><span>{{ day }}</span></div>{% endfor %}</div>{% else %}<div class="fd-empty">Nog geen tijdlijngegevens.</div>{% endif %}
 </section>
-<div class="fd-footer"><a class="btn-cms primary small" href="{{ url_for('workflow.findings_index') }}">Open findings en valideer →</a></div>
+<div class="fd-footer"><a class="btn-cms primary small" href="{{ url_for('workflow.findings_index') }}">Bevindingen openen en valideren →</a></div>
 </div>
 {% endblock %}

@@ -1,30 +1,30 @@
 {% extends "cms/base.html" %}
-{% block title %}Active Sessions{% endblock %}
+{% block title %}Actieve sessies{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>🔐 Active Sessions</h1>
-    <p style="color: var(--text-secondary);">Manage active server-side sessions. Revoke sessions to force logout.</p>
+    <h1>🔐 Actieve sessies</h1>
+    <p style="color: var(--text-secondary);">Beheer actieve sessies op de server. Trek een sessie in om de gebruiker uit te loggen.</p>
 </div>
 
 <div class="card" style="padding: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <span id="sessionCount" style="font-weight: 600;"></span>
-        <button type="button" data-click="deleteAllSessions" class="btn-cms danger">Delete All (except mine)</button>
+        <button type="button" data-click="deleteAllSessions" class="btn-cms danger">Alles verwijderen (behalve mijn sessie)</button>
     </div>
 
     <table class="data-table">
         <thead>
             <tr>
                 <th>Session ID</th>
-                <th>User ID</th>
+                <th>Gebruikers-ID</th>
                 <th>IP</th>
-                <th>Current</th>
-                <th>Actions</th>
+                <th>Huidig</th>
+                <th>Acties</th>
             </tr>
         </thead>
         <tbody id="sessionsBody">
-            <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading...</td></tr>
+            <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Laden...</td></tr>
         </tbody>
     </table>
 </div>
@@ -35,17 +35,17 @@ async function loadSessions() {
         const r = await apiFetch('/cms/admin/sessions');
         const d = await r.json();
         const tbody = document.getElementById('sessionsBody');
-        document.getElementById('sessionCount').textContent = d.count + ' active session(s)';
+        document.getElementById('sessionCount').textContent = d.count + ' actieve sessie(s)';
 
         if (!d.sessions.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No active sessions.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Geen actieve sessies.</td></tr>';
             return;
         }
 
         tbody.innerHTML = d.sessions.map(s => {
             const sid = s.session_id ? s.session_id.slice(0, 16) + '...' : '-';
-            const currentBadge = s.is_current ? '<span style="color: #059669;">✓ Current</span>' : '';
-            const revokeCell = s.is_current ? '—' : '<button type="button" data-click="deleteSession" data-arg0="' + esc(s.session_id) + '" class="btn-cms danger small">Revoke</button>';
+            const currentBadge = s.is_current ? '<span style="color: #059669;">✓ Huidig</span>' : '';
+            const revokeCell = s.is_current ? '—' : '<button type="button" data-click="deleteSession" data-arg0="' + esc(s.session_id) + '" class="btn-cms danger small">Intrekken</button>';
             return '<tr>' +
                 '<td><code>' + esc(sid) + '</code></td>' +
                 '<td>' + esc(s.user_id || '-') + '</td>' +
@@ -54,7 +54,7 @@ async function loadSessions() {
                 '<td>' + revokeCell + '</td></tr>';
         }).join('');
     } catch (e) {
-        document.getElementById('sessionsBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--danger-text);">Failed to load sessions: ' + esc(e.message) + '</td></tr>';
+        document.getElementById('sessionsBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--danger-text);">Sessies laden mislukt: ' + esc(e.message) + '</td></tr>';
     }
 }
 
@@ -74,7 +74,7 @@ window.deleteSession = async function(btn, id) {
 };
 
 window.deleteAllSessions = async function() {
-    if (!confirm('Revoke ALL sessions except your current one? All other users will be logged out.')) return;
+    if (!confirm('Alle sessies behalve uw huidige sessie intrekken? Alle andere gebruikers worden uitgelogd.')) return;
     try {
         const r = await apiFetch('/cms/admin/sessions/delete-all', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
         const d = await r.json();

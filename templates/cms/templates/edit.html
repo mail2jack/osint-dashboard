@@ -1,12 +1,12 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 1.5rem;">Edit Document Template</h2>
+<h2 style="margin-bottom: 1.5rem;">Documentsjabloon bewerken</h2>
 
 <div class="card">
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="name">Template Name *</label>
+                    <label for="name">Naam sjabloon *</label>
             <input type="text" name="name" id="name" value="{{ template.name }}" required>
         </div>
         
@@ -19,7 +19,7 @@
             <div class="form-group">
                 <label for="template_type">Type</label>
                 <select name="template_type" id="template_type">
-                    <option value="report" {% if template.template_type == 'report' %}selected{% endif %}>Report</option>
+                    <option value="report" {% if template.template_type == 'report' %}selected{% endif %}>Rapport</option>
                     <option value="summary" {% if template.template_type == 'summary' %}selected{% endif %}>Summary</option>
                     <option value="letter" {% if template.template_type == 'letter' %}selected{% endif %}>Letter</option>
                     <option value="memo" {% if template.template_type == 'memo' %}selected{% endif %}>Memo</option>
@@ -29,7 +29,7 @@
             <div class="form-group">
                 <label for="category">Category</label>
                 <select name="category" id="category">
-                    <option value="">Select category</option>
+                    <option value="">Selecteer categorie</option>
                     <option value="investigation" {% if template.category == 'investigation' %}selected{% endif %}>Investigation</option>
                     <option value="compliance" {% if template.category == 'compliance' %}selected{% endif %}>Compliance</option>
                     <option value="financial" {% if template.category == 'financial' %}selected{% endif %}>Financial</option>
@@ -52,11 +52,11 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn-cms primary">Save Changes</button>
-            <a href="{{ url_for('cms.list_templates') }}" class="btn-cms gray">Cancel</a>
-<form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" data-confirm="Delete this template?">
+            <button type="submit" class="btn-cms primary">Wijzigingen opslaan</button>
+            <a href="{{ url_for('cms.list_templates') }}" class="btn-cms gray">Annuleren</a>
+<form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" data-confirm="Dit sjabloon verwijderen?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms danger">Delete</button>
+    <button type="submit" class="btn-cms danger">Verwijderen</button>
             </form>
         </div>
     </form>
