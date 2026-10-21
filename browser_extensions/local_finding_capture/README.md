@@ -19,6 +19,10 @@ store website cookies, passwords or login sessions.
 4. In the extension select **Go to upload**. It returns you to the selected case.
 5. Explicitly select **Upload screenshot** in the dashboard prompt.
 
+For local development, reload the unpacked extension after starting the local
+dashboard. The extension supports both `https://joost.iveras.com` and
+`http://localhost:5051`.
+
 The final upload is performed by the selected dashboard page itself, using its
 normal signed-in session and CSRF protection. If the dashboard was reloaded
 while you were capturing, reload the extension once and try the upload again.

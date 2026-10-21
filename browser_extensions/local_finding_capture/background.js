@@ -1,4 +1,7 @@
-const DASHBOARD_ORIGIN = "https://joost.iveras.com";
+const DASHBOARD_ORIGINS = new Set([
+  "https://joost.iveras.com",
+  "http://localhost:5051",
+]);
 const PENDING_KEY = "pendingLocalFindingCapture";
 const MAX_AGE_MS = 10 * 60 * 1000;
 const MAX_CAPTURE_DATA_URL_BYTES = 7 * 1024 * 1024;
@@ -6,7 +9,7 @@ const MAX_CAPTURE_DATA_URL_BYTES = 7 * 1024 * 1024;
 function isDashboardCaseUrl(rawUrl, caseId) {
   try {
     const url = new URL(rawUrl);
-    return url.origin === DASHBOARD_ORIGIN && url.pathname.startsWith(
+    return DASHBOARD_ORIGINS.has(url.origin) && url.pathname.startsWith(
       `/cms/workflow/case/${encodeURIComponent(caseId)}`,
     );
   } catch (_) {
@@ -114,9 +117,11 @@ async function focusDashboardForUpload() {
   if (!pending || pending.state !== "ready") {
     return {ok: false, error: "No completed local capture is available"};
   }
-  const tabs = await chrome.tabs.query({
-    url: `${DASHBOARD_ORIGIN}/cms/workflow/case/${pending.caseId}*`,
-  });
+  const tabs = (await Promise.all(
+    [...DASHBOARD_ORIGINS].map((origin) =>
+      chrome.tabs.query({url: `${origin}/cms/workflow/case/${pending.caseId}*`}),
+    ),
+  )).flat();
   const dashboardTab = tabs.find((tab) => isDashboardCaseUrl(tab.url, pending.caseId));
   if (!dashboardTab?.id || !dashboardTab.windowId) {
     return {ok: false, error: "Return to the selected case in OSINT Dashboard"};

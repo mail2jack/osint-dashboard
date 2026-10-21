@@ -110,6 +110,7 @@ class ActionDTO:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class ScreenshotDTO:
+    id: str
     image_url: str | None
     image_url_is_same_origin: bool
     source_url: str | None
@@ -308,6 +309,7 @@ def _resolve_entity_display(
 def _screenshot_dtos(finding: WorkflowFinding) -> list[ScreenshotDTO]:
     return [
         ScreenshotDTO(
+            id=ss.id,
             image_url=ss.url,
             image_url_is_same_origin=_is_same_origin_screenshot(ss.url, finding.id),
             source_url=ss.source_url,
@@ -316,6 +318,7 @@ def _screenshot_dtos(finding: WorkflowFinding) -> list[ScreenshotDTO]:
             notes=ss.notes,
         )
         for ss in (finding.finding_screenshots or [])
+        if not ss.rejected_at
     ]
 
 

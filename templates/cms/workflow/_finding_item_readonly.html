@@ -49,6 +49,9 @@
         <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 {{ _('Open website') }}</a>
         {% endif %}
         <span style="font-size:0.72rem;color:var(--text-muted);">{{ ss.captured_at.strftime('%d-%m-%Y %H:%M') if ss.captured_at else '-' }}</span>
+        {% if can_write %}
+        <button type="button" data-action="reject-screenshot" data-screenshot-id="{{ ss.id }}" data-finding-id="{{ fd.id }}" style="background:none;border:1px solid var(--danger-text);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.72rem;color:var(--danger-text);">✕ {{ _('Reject screenshot') }}</button>
+        {% endif %}
       </div>
       {% if ss.image_url_is_same_origin %}
       <div style="margin-top:0.3rem;">
@@ -112,12 +115,19 @@
     </div>
   </div>
 
+  {% set capture_job = capture_jobs.get(fd.id) if capture_jobs is defined else none %}
+  <div class="capture-status capture-status-{{ capture_job.status if capture_job else 'none' }}" data-capture-status-for="{{ fd.id }}"{% if not capture_job %} hidden{% endif %}>
+    <span class="capture-status-dot" aria-hidden="true"></span>
+    <span class="capture-status-label">{% if capture_job.status == 'queued' %}In wachtrij{% elif capture_job.status == 'running' %}Bezig{% elif capture_job.status == 'completed' %}Afgerond{% elif capture_job.status == 'failed' %}Mislukt{% elif capture_job.status == 'cancelled' %}Geannuleerd{% endif %}</span>
+    <button type="button" class="capture-cancel-button" data-action="cancel-capture-job" data-finding-id="{{ fd.id }}" data-job-id="{{ capture_job.id if capture_job else '' }}"{% if not capture_job or capture_job.status not in ['queued', 'running'] %} hidden{% endif %}>Annuleren</button>
+  </div>
+
   {% if finding_capture_enabled %}
   <form class="capture-request-form" data-finding-id="{{ fd.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
     <label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.3rem;">{{ _('Website URL to capture') }}
       <input class="capture-target-url" type="url" value="{{ fd.source_url or '' }}" required maxlength="2000" style="display:block;width:100%;box-sizing:border-box;margin-top:0.2rem;border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
     </label>
-    <label style="display:flex;gap:0.35rem;align-items:flex-start;font-size:0.75rem;color:var(--text-secondary);margin:0.45rem 0;">
+    <label class="capture-confirm-row" style="display:flex;gap:0.35rem;align-items:flex-start;font-size:0.75rem;color:var(--text-secondary);margin:0.45rem 0;">
       <input class="capture-confirm" type="checkbox" required>
       <span>{{ _('I confirm that this website may be captured as evidence for this finding.') }}</span>
     </label>

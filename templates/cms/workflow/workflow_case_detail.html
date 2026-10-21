@@ -1,6 +1,7 @@
 {% extends "cms/base.html" %}
 {% block title %}Workflow — {{ case.case_number }}{% endblock %}
 {% block content %}
+<div class="case-detail-page ui-page">
 <nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
     <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
     <span style="margin:0 0.35rem;">›</span>
@@ -10,12 +11,12 @@
 </nav>
 <style>
 .workflow-step {
-  border: 2px solid var(--border-color); border-radius: 10px;
-  margin-bottom: 1.5rem; overflow: hidden;
+  border: 1px solid var(--border-color); border-radius: var(--iveras-radius-card, 14px);
+  margin-bottom: 1rem; overflow: hidden; box-shadow: var(--iveras-shadow-card, 0 6px 20px rgba(15,23,42,.06));
 }
 .workflow-step-header {
   display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  padding: 1rem 1.15rem; background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
   font-weight: 600; font-size: 1rem;
 }
@@ -25,7 +26,13 @@
   background: var(--accent-primary); color: #fff; font-size: 0.85rem;
   flex-shrink: 0;
 }
-.workflow-step-body { padding: 1rem; }
+.workflow-step-body { padding: 1.15rem; }
+.case-detail-page > nav { display:flex; align-items:center; gap:.4rem; margin-bottom:1rem !important; font-size:.8rem; }
+.case-detail-page > nav a:hover { color:var(--link-color) !important; text-decoration:underline !important; }
+.case-detail-header { margin-bottom:1.25rem !important; padding-bottom:.15rem; }
+.case-detail-header h1 { font-size:clamp(1.45rem,2.2vw,2rem) !important; letter-spacing:-.025em; }
+.case-detail-toolbar { display:flex !important; gap:.45rem !important; align-items:center; flex-wrap:wrap; }
+.case-detail-toolbar .btn-cms { min-height:2.35rem; }
 .action-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.75rem;
@@ -244,7 +251,7 @@ input:-webkit-autofill:focus {
   caret-color: var(--text);
 }
 </style>
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+<div class="case-detail-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
     <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
       <h1 style="margin:0;font-size:1.1rem;">{{ case.case_number }} — {{ case.title }}</h1>
@@ -257,7 +264,7 @@ input:-webkit-autofill:focus {
       · Created {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
     </p>
   </div>
-  <div style="display:flex;gap:0.5rem;align-items:center;">
+  <div class="case-detail-toolbar" style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
     <a href="{{ url_for('cms.staff_case_messages', case_id=case.id) }}" class="btn-cms small">💬 Berichten</a>
@@ -990,4 +997,5 @@ html.picker-open body { overflow-x:hidden; }
   border-radius: 4px; word-break: break-all;
 }
 </style>
+</div>
 {% endblock %}

@@ -1,0 +1,35 @@
+# Production-only Compose overlay.
+# Use together with docker-compose.yml; never combine with the local override.
+services:
+  postgres:
+    command: ["postgres", "-c", "ssl=on", "-c", "ssl_cert_file=/var/lib/postgresql/data/tls/server.crt", "-c", "ssl_key_file=/var/lib/postgresql/data/tls/server.key"]
+
+  app:
+    environment:
+      FLASK_ENV: production
+      DB_SSL_MODE: require
+      CORS_ORIGINS: https://joost.iveras.com
+
+  worker:
+    environment:
+      FLASK_ENV: production
+      DB_SSL_MODE: require
+
+  health-refresh:
+    environment:
+      FLASK_ENV: production
+      DB_SSL_MODE: require
+
+volumes:
+  pgdata:
+    external: true
+    name: ${PRODUCTION_PGDATA_VOLUME:-joost-production_pgdata}
+  redis_data:
+    external: true
+    name: ${PRODUCTION_REDIS_VOLUME:-joost-production_redis_data}
+  uploads:
+    external: true
+    name: ${PRODUCTION_UPLOADS_VOLUME:-joost-production_uploads}
+  wa_auth:
+    external: true
+    name: ${PRODUCTION_WA_VOLUME:-joost-production_wa_auth}

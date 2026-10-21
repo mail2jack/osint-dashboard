@@ -16,6 +16,43 @@ services:
       FLASK_ENV: development
       DB_SSL_MODE: disable
       DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable
+    volumes:
+      - instance_data:/app/instance
+
+  capture-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.capture
+    command: >-
+      sh -c 'export FINDING_CAPTURE_CHROMIUM_PATH="$$(find /ms-playwright -type f -path "*/chrome-linux*/chrome" -perm -111 -print -quit)";
+      test -n "$$FINDING_CAPTURE_CHROMIUM_PATH";
+      exec python3 scripts/run_finding_capture_worker.py --loop'
+    environment:
+      FLASK_ENV: development
+      DB_SSL_MODE: disable
+      DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      FINDING_CAPTURE_WORKER_ENABLED: "1"
+      FINDING_CAPTURE_WORKER_POLL_SECONDS: "15"
+      PYTHONUNBUFFERED: "1"
+      LOG_FILE: /dev/null
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - instance_data:/app/instance
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    # Chromium's user-namespace sandbox needs this capability inside the
+    # Docker Desktop VM. No --no-sandbox fallback is used.
+    cap_add:
+      - SYS_ADMIN
+    healthcheck:
+      disable: true
 
   worker:
     environment:
@@ -28,3 +65,6 @@ services:
       FLASK_ENV: development
       DB_SSL_MODE: disable
       DATABASE_URL: postgresql+psycopg2://cms:${DB_PASSWORD}@postgres:5432/cms_db?sslmode=disable
+
+volumes:
+  instance_data:

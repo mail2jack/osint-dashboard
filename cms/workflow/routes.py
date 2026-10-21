@@ -784,12 +784,14 @@ def _finding_json_with_context(f, case=None, subject=None):
         "subject_name": subject.name if subject else None,
         "screenshots": [
             {
+                "id": ss.id,
                 "url": ss.url,
                 "source_url": ss.source_url,
                 "captured_at": ss.captured_at.isoformat() if ss.captured_at else None,
                 "notes": ss.notes,
             }
             for ss in (f.finding_screenshots or [])
+            if not ss.rejected_at
         ],
     }
 
@@ -1695,6 +1697,19 @@ def investigation_detail(case_id, investigation_id):
     investigation_findings = ws.findings[
         finding_start : finding_start + investigation_findings_per_page
     ]
+    capture_jobs = {}
+    investigation_finding_ids = [finding.id for finding in investigation_findings]
+    if investigation_finding_ids:
+        for job in (
+            FindingCaptureJob.query.filter(
+                FindingCaptureJob.tenant_id == case.tenant_id,
+                FindingCaptureJob.case_id == case.id,
+                FindingCaptureJob.finding_id.in_(investigation_finding_ids),
+            )
+            .order_by(FindingCaptureJob.created_at.desc())
+            .all()
+        ):
+            capture_jobs.setdefault(job.finding_id, job)
 
     # PR4: minimal "Start Action" modal context (action types + case subjects).
     # photo_analysis needs its file-upload picker and manual_entry its rich form,
@@ -1799,6 +1814,7 @@ def investigation_detail(case_id, investigation_id):
         created_by_name=ws.created_by_name or "",
         ws=ws,
         investigation_findings=investigation_findings,
+        capture_jobs=capture_jobs,
         investigation_findings_page=investigation_findings_page,
         investigation_findings_pages=investigation_findings_pages,
         investigation_findings_total=investigation_findings_total,
@@ -3335,6 +3351,7 @@ def case_status(case_id):
             "action_ids": finding_actions.get(f.id, []),
             "screenshots": [
                 {
+                    "id": ss.id,
                     "url": ss.url,
                     "source_url": ss.source_url,
                     "captured_at": ss.captured_at.isoformat()
@@ -3343,6 +3360,7 @@ def case_status(case_id):
                     "notes": ss.notes,
                 }
                 for ss in (f.finding_screenshots or [])
+                if not ss.rejected_at
             ],
         }
 
@@ -4163,6 +4181,46 @@ def add_screenshot(case_id, finding_id):
 
 
 @workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/screenshots/<screenshot_id>/reject",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def reject_screenshot(case_id, finding_id, screenshot_id):
+    """Soft-reject screenshot evidence while retaining its audit record."""
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+
+    screenshot = WorkflowScreenshot.query.filter_by(
+        id=screenshot_id,
+        finding_id=finding_id,
+        tenant_id=current_user.tenant_id,
+    ).first()
+    if not screenshot:
+        return jsonify({"error": "Screenshot not found"}), 404
+    if screenshot.rejected_at:
+        return jsonify({"ok": True, "rejected": True})
+
+    body = request.get_json(silent=True) or {}
+    reason = str(body.get("reason") or "").strip()[:500]
+    screenshot.rejected_at = datetime.now(UTC)
+    screenshot.rejected_by = current_user.id
+    screenshot.rejection_reason = reason or "Rejected by investigator"
+    AuditLog.log(
+        user_id=current_user.id,
+        action="reject",
+        entity_type="finding_screenshot",
+        entity_id=screenshot.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Rejected screenshot evidence for finding {finding_id}: {screenshot.rejection_reason}",
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "rejected": True})
+
+
+@workflow_bp.route(
     "/api/case/<case_id>/findings/<finding_id>/capture-requests", methods=["POST"]
 )
 @login_required
@@ -4272,6 +4330,48 @@ def finding_capture_request_status(case_id, finding_id, job_id):
             },
         }
     )
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/capture-requests/<job_id>/cancel",
+    methods=["POST"],
+)
+@login_required
+@_investigator_required
+def cancel_finding_capture_request(case_id, finding_id, job_id):
+    """Cancel a queued or running capture request owned by the current tenant."""
+    if not check_feature("finding_screenshot_capture", current_user.tenant_id):
+        return jsonify({"error": "Not found"}), 404
+
+    finding, err = _resolve_mutable_finding(case_id, finding_id)
+    if err is not None:
+        return jsonify(err[0]), err[1]
+    job = FindingCaptureJob.query.filter_by(
+        id=job_id,
+        tenant_id=current_user.tenant_id,
+        case_id=case_id,
+        finding_id=finding.id,
+    ).first()
+    if job is None:
+        return jsonify({"error": "Not found"}), 404
+    if job.status not in {"queued", "running"}:
+        return jsonify({"error": "Capture is no longer active", "status": job.status}), 409
+
+    job.status = "cancelled"
+    job.completed_at = datetime.now(UTC)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="finding_capture_job",
+        entity_id=job.id,
+        tenant_id=current_user.tenant_id,
+        case_id=case_id,
+        ip_address=request.remote_addr,
+        new_values={"status": "cancelled"},
+        description=f"Cancelled screenshot capture for finding {finding_id}",
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "job": {"id": job.id, "status": job.status}})
 
 
 @workflow_bp.route("/uploads/<finding_id>/<filename>")

@@ -78,6 +78,26 @@ function refreshFindingAfterMutation() {
   }
 }
 
+function rejectFindingScreenshot(button) {
+  var screenshotId = button.getAttribute('data-screenshot-id');
+  var findingId = button.getAttribute('data-finding-id');
+  if (!screenshotId || !findingId) return;
+  if (!window.confirm('{{ _('Reject this screenshot? It will no longer be used as evidence or shown in reports.') }}')) return;
+  button.disabled = true;
+  fetch('/cms/workflow/api/case/' + findingCaseId(button) + '/findings/' + findingId + '/screenshots/' + screenshotId + '/reject', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}', 'Accept': 'application/json'},
+    body: JSON.stringify({reason: '{{ _('Rejected by investigator') }}'})
+  }).then(function (response) { return response.json(); }).then(function (data) {
+    if (!data.ok) throw new Error(data.error || '{{ _('Could not reject screenshot') }}');
+    if (typeof showToast === 'function') showToast('{{ _('Screenshot rejected and excluded from reports.') }}', 'success');
+    refreshFindingAfterMutation();
+  }).catch(function (error) {
+    button.disabled = false;
+    if (typeof showToast === 'function') showToast(error.message || '{{ _('Could not reject screenshot') }}', 'error');
+  });
+}
+
 // ── Comment auto-save (debounced, out-of-order safe, registered once) ──
 var commentTimers = commentTimers || {};
 var commentSeq = commentSeq || {};
@@ -274,7 +294,13 @@ function handleFindingClick(e) {
     return true;
   }
 
-  var ssBtn = e.target.closest('[data-action="add-screenshot-btn"]');
+    var rejectScreenshot = e.target.closest('[data-action="reject-screenshot"]');
+    if (rejectScreenshot) {
+      e.preventDefault();
+      rejectFindingScreenshot(rejectScreenshot);
+      return;
+    }
+    var ssBtn = e.target.closest('[data-action="add-screenshot-btn"]');
   if (ssBtn) {
     e.preventDefault();
     var fid = ssBtn.getAttribute('data-finding-id');

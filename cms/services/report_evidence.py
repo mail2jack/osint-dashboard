@@ -112,4 +112,5 @@ def report_screenshots(finding, *, for_pdf: bool = False) -> list[dict]:
     return [
         report_screenshot(screenshot, for_pdf=for_pdf)
         for screenshot in (finding.finding_screenshots or [])
+        if not screenshot.rejected_at
     ]
