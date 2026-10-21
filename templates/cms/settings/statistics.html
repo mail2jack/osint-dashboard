@@ -136,7 +136,7 @@
 </style>
 
 <div class="back">
-    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+    <a href="{{ url_for('cms.settings') }}">← Terug naar instellingen</a>
 </div>
 
 <h1 style="margin-bottom: 1rem;">📊 Statistieken</h1>
@@ -368,11 +368,11 @@
         <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div>
-                <span>Completed: {{ sf_completed }}</span>
+                <span>Afgerond: {{ sf_completed }}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
-                <span>Running: {{ sf_running }}</span>
+                <span>Actief: {{ sf_running }}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>

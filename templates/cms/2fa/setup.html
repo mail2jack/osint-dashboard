@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2FA Setup</title>
+    <title>2FA instellen</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -85,7 +85,7 @@
                 <label for="code">Verification code</label>
                 <input type="text" name="code" id="code" placeholder="000000" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
             </div>
-            <button type="submit" class="btn-cms primary">Verify &amp; Enable 2FA</button>
+            <button type="submit" class="btn-cms primary">2FA verifiëren en inschakelen</button>
         </form>
 
         {% if not partial_login %}

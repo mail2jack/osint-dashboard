@@ -75,12 +75,12 @@
 </style>
 
 <div class="back">
-    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+    <a href="{{ url_for('cms.settings') }}">← Terug naar instellingen</a>
 </div>
 
 <div class="tenants-header">
-    <h1>🏢 Tenants</h1>
-    <button class="btn-cms primary" data-click="showCreateModal">+ Create Tenant</button>
+    <h1>🏢 Organisaties</h1>
+    <button class="btn-cms primary" data-click="showCreateModal">+ Organisatie toevoegen</button>
 </div>
 
 <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
@@ -96,14 +96,14 @@
 <table class="data-table">
     <thead>
         <tr>
-            <th>Name</th>
+            <th>Naam</th>
             <th>Slug</th>
             <th>Code</th>
             <th>Status</th>
-            <th>Users</th>
-            <th>Tier</th>
-            <th>Created</th>
-            <th>Actions</th>
+            <th>Gebruikers</th>
+            <th>Abonnement</th>
+            <th>Aangemaakt</th>
+            <th>Acties</th>
         </tr>
     </thead>
     <tbody>
@@ -114,9 +114,9 @@
             <td><code style="font-size:0.9rem;letter-spacing:0.05em;background:var(--info-bg, #dbeafe);padding:0.15rem 0.5rem;border-radius:4px;">{{ tenant.join_code }}</code></td>
             <td>
                 {% if tenant.is_active %}
-                <span class="badge-active">Active</span>
+                <span class="badge-active">Actief</span>
                 {% else %}
-                <span class="badge-inactive">Inactive</span>
+                <span class="badge-inactive">Inactief</span>
                 {% endif %}
             </td>
             <td>{{ user_counts.get(tenant.id, 0) }}</td>
@@ -125,13 +125,13 @@
                 {{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '—' }}
             </td>
             <td>
-                <button class="btn-cms small" data-click="editTenant" data-arg0="{{ tenant.id }}">Edit</button>
+                <button class="btn-cms small" data-click="editTenant" data-arg0="{{ tenant.id }}">Bewerken</button>
                 {% if tenant.is_active %}
-                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Deactivate</button>
+                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Deactiveren</button>
                 {% else %}
-                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Activate</button>
+                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Activeren</button>
                 {% endif %}
-                <button class="btn-cms danger small" data-click="deleteTenant" data-arg0="{{ tenant.id }}">Delete</button>
+                <button class="btn-cms danger small" data-click="deleteTenant" data-arg0="{{ tenant.id }}">Verwijderen</button>
             </td>
         </tr>
         {% endfor %}
@@ -139,21 +139,21 @@
 </table>
 {% else %}
 <div style="text-align:center;padding:3rem;color:var(--text-secondary)">
-    <p>No tenants configured yet.</p>
+    <p>Er zijn nog geen organisaties ingesteld.</p>
 </div>
 {% endif %}
 
-<!-- Create Tenant Modal -->
+<!-- Modal voor organisatie toevoegen -->
 <div id="createModal" class="modal-overlay">
     <div class="modal-box">
-        <h2>Create Tenant</h2>
-        <label for="tenantName">Tenant Name</label>
+        <h2>Organisatie toevoegen</h2>
+        <label for="tenantName">Naam organisatie</label>
         <input type="text" id="tenantName" placeholder="e.g. Acme Corp">
 
         <label for="tenantSlug">Slug</label>
         <input type="text" id="tenantSlug" placeholder="e.g. acme-corp">
 
-        <label for="tenantTier">Tier</label>
+        <label for="tenantTier">Abonnement</label>
         <select id="tenantTier">
             <option value="free">Free</option>
             <option value="starter">Starter</option>
@@ -162,29 +162,29 @@
         </select>
 
         <div style="display:flex;gap:0.5rem;margin-top:1rem">
-            <button class="btn-cms primary" data-click="createTenant">Create</button>
-            <button class="btn-cms" data-click="closeCreateModal">Cancel</button>
+            <button class="btn-cms primary" data-click="createTenant">Toevoegen</button>
+            <button class="btn-cms" data-click="closeCreateModal">Annuleren</button>
         </div>
     </div>
 </div>
 
-<!-- Edit Tenant Modal -->
+<!-- Modal voor organisatie bewerken -->
 <div id="editModal" class="modal-overlay">
     <div class="modal-box">
-        <h2>Edit Tenant</h2>
+        <h2>Organisatie bewerken</h2>
         <input type="hidden" id="editTenantId">
-        <label for="editTenantName">Tenant Name</label>
+        <label for="editTenantName">Naam organisatie</label>
         <input type="text" id="editTenantName" placeholder="e.g. Acme Corp">
 
         <label for="editTenantSlug">Slug</label>
         <input type="text" id="editTenantSlug" placeholder="e.g. acme-corp">
 
-        <label for="editTenantDomain">Custom Domain</label>
+        <label for="editTenantDomain">Aangepast domein</label>
         <input type="text" id="editTenantDomain" placeholder="e.g. acme.example.com">
 
-        <label for="editTenantTier">Tier</label>
+        <label for="editTenantTier">Abonnement</label>
         <select id="editTenantTier">
-            <option value="">— No change —</option>
+            <option value="">— Niet wijzigen —</option>
             <option value="free">Free</option>
             <option value="starter">Starter</option>
             <option value="professional">Professional</option>
@@ -192,8 +192,8 @@
         </select>
 
         <div style="display:flex;gap:0.5rem;margin-top:1rem">
-            <button class="btn-cms primary" data-click="saveTenant">Save</button>
-            <button class="btn-cms" data-click="closeEditModal">Cancel</button>
+            <button class="btn-cms primary" data-click="saveTenant">Opslaan</button>
+            <button class="btn-cms" data-click="closeEditModal">Annuleren</button>
         </div>
     </div>
 </div>
@@ -212,8 +212,8 @@ function createTenant(btn) {
     const slug = document.getElementById('tenantSlug').value.trim();
     const tier = document.getElementById('tenantTier').value;
 
-    if (!name) { showToast('Please enter a tenant name.', 'warning'); return; }
-    if (!slug) { showToast('Please enter a slug.', 'warning'); return; }
+    if (!name) { showToast('Vul een organisatienaam in.', 'warning'); return; }
+    if (!slug) { showToast('Vul een slug in.', 'warning'); return; }
 
     apiFetch('{{ url_for("cms.create_tenant") }}', {
         method: 'POST',

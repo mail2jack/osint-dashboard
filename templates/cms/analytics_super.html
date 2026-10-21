@@ -131,7 +131,7 @@
 
     <div class="panel">
         <h3>{{ _('Subscription Status') }}</h3>
-        {% set sub_labels = {'active':'Active','incomplete':'Incomplete','past_due':'Past Due','canceled':'Canceled','trialing':'Trialing','incomplete_expired':'Expired'} %}
+        {% set sub_labels = {'active':'Actief','incomplete':'Onvolledig','past_due':'Achterstallig','canceled':'Geannuleerd','trialing':'Proefperiode','incomplete_expired':'Verlopen'} %}
         {% if sub_counts %}
         {% set max_sub = sub_counts.values()|max or 1 %}
         {% for s, c in sub_counts.items() %}

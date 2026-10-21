@@ -146,7 +146,7 @@
 </style>
 
 <div class="back">
-    <a href="{{ url_for('cms.list_tenants') }}">← Back to Tenants</a>
+    <a href="{{ url_for('cms.list_tenants') }}">← Terug naar organisaties</a>
 </div>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin:1rem 0;">
@@ -318,7 +318,7 @@
         </div>
         <div class="detail-row">
             <span class="key">{{ _('Subscription') }}</span>
-            <span>{% if tenant.subscription_status == 'active' %}<span class="badge-active">Active</span>{% elif tenant.subscription_status == 'past_due' %}<span style="display:inline-block;background:#f59e0b;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Past Due ⚠️</span>{% elif tenant.subscription_status == 'canceled' %}<span style="display:inline-block;background:#ef4444;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Canceled</span>{% elif tenant.subscription_status == 'trialing' %}<span style="display:inline-block;background:#8b5cf6;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Trialing</span>{% elif tenant.subscription_status == 'incomplete' %}<span style="display:inline-block;background:#9ca3af;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Incomplete</span>{% else %}{{ tenant.subscription_status|capitalize }}{% endif %}</span>
+            <span>{% if tenant.subscription_status == 'active' %}<span class="badge-active">Actief</span>{% elif tenant.subscription_status == 'past_due' %}<span style="display:inline-block;background:#f59e0b;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Achterstallig ⚠️</span>{% elif tenant.subscription_status == 'canceled' %}<span style="display:inline-block;background:#ef4444;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Geannuleerd</span>{% elif tenant.subscription_status == 'trialing' %}<span style="display:inline-block;background:#8b5cf6;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Proefperiode</span>{% elif tenant.subscription_status == 'incomplete' %}<span style="display:inline-block;background:#9ca3af;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Onvolledig</span>{% else %}{{ tenant.subscription_status|capitalize }}{% endif %}</span>
         </div>
         <div class="detail-row">
             <span class="key">{{ _('Period End') }}</span>

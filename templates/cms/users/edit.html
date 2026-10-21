@@ -1,20 +1,20 @@
 {% extends "cms/base.html" %}
-{% block title %}Edit User — CMS{% endblock %}
+{% block title %}Gebruiker bewerken — CMS{% endblock %}
 {% block content %}
-    <div class="back"><a href="{{ url_for('users.view_user', user_id=user.id) }}">← Back to User</a></div>
+    <div class="back"><a href="{{ url_for('users.view_user', user_id=user.id) }}">← Terug naar gebruiker</a></div>
     
-    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Edit User</h1><p class="ui-lead">Wijzig profiel, rol, tenant en beveiligingsinstellingen.</p></div></div>
+    <div class="ui-page-header"><div><div class="ui-kicker">Beheer · toegang</div><h1>Gebruiker bewerken</h1><p class="ui-lead">Wijzig profiel, rol, tenant en beveiligingsinstellingen.</p></div></div>
 
     <div class="card" style="max-width:500px;">
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="full_name">Full Name</label>
+                <label for="full_name">Volledige naam</label>
                 <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}">
             </div>
             
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email">E-mailadres</label>
                 <input type="email" id="email" name="email" value="{{ user.email }}">
             </div>
             
@@ -54,14 +54,14 @@
             </div>
             
             <div class="form-group">
-                <label for="password">New Password (leave blank to keep current)</label>
+                <label for="password">Nieuw wachtwoord (leeg laten om het huidige te behouden)</label>
                 <input type="password" id="password" name="password" minlength="8">
             </div>
             {% endif %}
             
             <div class="btn-group" style="margin:1.5rem 0 0;">
-                <button type="submit" class="btn-cms primary">Save Changes</button>
-                <a href="{{ url_for('users.view_user', user_id=user.id) }}" class="btn-cms">Cancel</a>
+                <button type="submit" class="btn-cms primary">Wijzigingen opslaan</button>
+                <a href="{{ url_for('users.view_user', user_id=user.id) }}" class="btn-cms">Annuleren</a>
             </div>
         </form>
     </div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ current_locale or 'en' }}">
+<html lang="{{ current_locale or 'nl' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -145,7 +145,7 @@
 <body class="iveras-cms" data-help-topic="{{ help_topic|default('general') }}">
     <div class="app-loader" id="appLoader">
         <div class="app-loader-icon">📋</div>
-        <div class="app-loader-text">Loading OSINT...</div>
+        <div class="app-loader-text">OSINT laden...</div>
         <div class="app-loader-spinner"></div>
     </div>
     <script nonce="{{ csp_nonce }}">
@@ -277,7 +277,7 @@
 
     <div id="sessionTimeoutModal" class="modal" style="display:none;">
         <div class="modal-content" style="max-width:400px;text-align:center;">
-            <h3>⏰ Session Timeout Warning</h3>
+            <h3>⏰ Waarschuwing sessieduur</h3>
             <p id="sessionTimeoutText" style="color:var(--text-secondary);margin:1rem 0;">Your session will expire in <strong id="sessionTimeoutCountdown">5:00</strong>.</p>
             <button class="btn btn-primary" data-click="extendSession">Extend Session</button>
             <button class="btn-cms" data-click="closeParentModal">Dismiss</button>
@@ -297,7 +297,7 @@
                 </p>
                 <div id="updateChangelog" style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-card,#f9fafb);border-radius:6px;font-size:0.85rem;line-height:1.6;max-height:320px;overflow-y:auto;display:none;"></div>
                 <div id="updateReviewActions" style="margin-top:1rem;display:flex;gap:0.5rem;">
-                    <button id="updateReviewConfirmBtn" data-click="confirmUpdate" class="btn-cms">Continue to Update →</button>
+                    <button id="updateReviewConfirmBtn" data-click="confirmUpdate" class="btn-cms">Bijwerken →</button>
                     <button id="updateReviewLaterBtn" data-click="closeParentModal" class="btn-cms small bg-gray">Later</button>
                 </div>
             </div>
@@ -305,7 +305,7 @@
                 <p>Review the changes above, then proceed:</p>
                 <div id="updateActions" style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
                     <button id="updateNowBtn" data-click="runUpdate" class="btn-cms small bg-green">⬆️ Update Now</button>
-                    <button id="updateBackBtn" data-click="backToReview" class="btn-cms small">← Back to changes</button>
+                    <button id="updateBackBtn" data-click="backToReview" class="btn-cms small">← Terug naar wijzigingen</button>
                     <button id="updateLaterBtn" data-click="closeParentModal" class="btn-cms small bg-gray">Later</button>
                     <button id="updateAbortBtn" data-click="cancelUpdate" class="btn-cms small danger" style="display:none;">✕ Afbreken</button>
                     <button id="updateRollbackBtn" data-click="rollbackUpdate" class="btn-cms small danger" style="display:none;">↩ Rollback</button>
@@ -371,7 +371,7 @@
             {% endif %}
         </span>
         <span class="kh-center" style="display:none;" id="keyboardHints">
-            <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
+            <kbd>s</kbd> Zoeken &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigeren &nbsp; <kbd>Enter</kbd> Bekijken &nbsp; <kbd>?</kbd> Help
         </span>
         <span class="kh-right">
             <button data-click="toggleKeyboardHints" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1rem;padding:0.1rem 0.4rem;vertical-align:middle;" title="{{ _('Keyboard shortcuts') }}">⌨</button>
@@ -436,14 +436,14 @@
     <div class="action-loader" id="actionLoader">
         <div class="action-loader-box">
             <div class="action-loader-spinner"></div>
-            <div id="actionLoaderText" style="color:var(--text-primary);">Loading...</div>
+            <div id="actionLoaderText" style="color:var(--text-primary);">Laden...</div>
         </div>
     </div>
     <script nonce="{{ csp_nonce }}">
 window.CMS = {
     csrfToken: '{{ csrf_token() }}',
     isAdmin: {{ "true" if current_user.is_authenticated and current_user.is_admin else "false" }},
-    locale: '{{ current_locale }}' || 'en',
+    locale: '{{ current_locale }}' || 'nl',
     sfHealth: '{{ spiderfoot_health|tojson }}'.replace(/^"|"$/g, '') || '',
     loginAnomalyCount: {{ login_anomaly_count|tojson }},
     notificationCount: {{ notification_count|tojson }},
@@ -498,7 +498,7 @@ function toggleHealthModal() {
     var body = document.getElementById('healthModalBody');
     var data = document.getElementById('healthTrafficLight')._healthData;
     if (!data) {
-        body.innerHTML = '<div class="health-loading">' + esc(window.CMS.noStatusText || 'No status available') + '</div>';
+        body.innerHTML = '<div class="health-loading">' + esc(window.CMS.noStatusText || 'Geen status beschikbaar') + '</div>';
         return;
     }
     var html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
@@ -518,7 +518,7 @@ function toggleHealthModal() {
         } else if (status === 'disabled') {
             color = '#9ca3af'; label = '○ Disabled';
         } else if (status === 'no key configured') {
-            color = '#f59e0b'; label = '⚙️ No key';
+            color = '#f59e0b'; label = '⚙️ Geen sleutel';
         } else if (status === 'auth error') {
             color = '#f97316'; label = '🔑 Auth error';
         } else if (status === 'quota exhausted') {
@@ -535,7 +535,7 @@ function toggleHealthModal() {
             + '</div>';
     }
     html += '<div style="margin-top:0.75rem;color:var(--text-secondary);font-size:0.8rem;">'
-        + (data.stale ? 'Status stale' : 'Bijgewerkt: ' + (data.checked_at || 'onbekend'))
+        + (data.stale ? 'Status verouderd' : 'Bijgewerkt: ' + (data.checked_at || 'onbekend'))
         + (data.age_seconds == null ? '' : ' · leeftijd ' + Math.round(data.age_seconds) + 's')
         + '</div>';
     html += '</div>';

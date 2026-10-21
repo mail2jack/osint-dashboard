@@ -1,6 +1,6 @@
 {% extends "cms/base.html" %}
 
-{% block title %}API Keys - Settings{% endblock %}
+{% block title %}API-sleutels - Instellingen{% endblock %}
 
 {% block content %}
 <style>
@@ -128,20 +128,20 @@
 </style>
 
 <div class="back">
-    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+    <a href="{{ url_for('cms.settings') }}">← Terug naar instellingen</a>
 </div>
 
 <div class="api-key-header">
-    <h1>🔑 Per-User API Keys</h1>
-    <button class="btn-cms primary" data-click="showCreateModal">+ New API Key</button>
+    <h1>🔑 API-sleutels per gebruiker</h1>
+    <button class="btn-cms primary" data-click="showCreateModal">+ Nieuwe API-sleutel</button>
 </div>
 
 {% if keys %}
 <table class="key-table">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>User</th>
+            <th>Naam</th>
+            <th>Gebruiker</th>
             <th>Key Prefix</th>
             <th>Scopes</th>
             <th>Status</th>
@@ -180,7 +180,7 @@
                 {% else %}
                 <button class="btn-cms small" data-click="activateKey" data-arg0="{{ key.id }}">Activate</button>
                 {% endif %}
-                <button class="btn-cms danger small" data-click="deleteKey" data-arg0="{{ key.id }}">Delete</button>
+                <button class="btn-cms danger small" data-click="deleteKey" data-arg0="{{ key.id }}">Verwijderen</button>
             </td>
         </tr>
         {% endfor %}
@@ -188,18 +188,18 @@
 </table>
 {% else %}
 <div style="text-align:center;padding:3rem;color:var(--text-secondary)">
-    <p>No API keys configured yet.</p>
+    <p>Er zijn nog geen API-sleutels geconfigureerd.</p>
 </div>
 {% endif %}
 
 <!-- Create Key Modal -->
 <div id="createModal" class="modal-overlay">
     <div class="modal-box">
-        <h2>Create API Key</h2>
-        <label for="keyName">Key Name</label>
+        <h2>API-sleutel aanmaken</h2>
+        <label for="keyName">Naam van sleutel</label>
         <input type="text" id="keyName" placeholder="e.g. Development">
 
-        <label for="keyUser">User</label>
+        <label for="keyUser">Gebruiker</label>
         <select id="keyUser">
             {% for user in users %}
             <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
@@ -218,8 +218,8 @@
         </div>
 
         <div style="display:flex;gap:0.5rem;margin-top:1rem">
-            <button class="btn-cms primary" data-click="createKey">Create</button>
-            <button class="btn-cms" data-click="closeCreateModal">Cancel</button>
+            <button class="btn-cms primary" data-click="createKey">Aanmaken</button>
+            <button class="btn-cms" data-click="closeCreateModal">Annuleren</button>
         </div>
     </div>
 </div>
@@ -252,7 +252,7 @@ function createKey(btn) {
     const scopes = Array.from(document.querySelectorAll('.scope-cb:checked')).map(cb => cb.value);
 
     if (!name) { showToast('Please enter a key name.', 'warning'); return; }
-    if (!scopes.length) { showToast('Select at least one scope.', 'warning'); return; }
+    if (!scopes.length) { showToast('Selecteer minimaal één bereik.', 'warning'); return; }
 
     apiFetch('{{ url_for("cms.api_create_api_key") }}', {
         method: 'POST',
@@ -288,7 +288,7 @@ function activateKey(btn, id) {
 }
 
 function deleteKey(btn, id) {
-    if (!confirm('Delete this API key? This cannot be undone.')) return;
+    if (!confirm('Deze API-sleutel verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
     apiFetch('{{ url_for("cms.api_delete_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}

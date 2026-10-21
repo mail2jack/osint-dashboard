@@ -93,19 +93,19 @@
 
 <div class="metric-grid" id="metricGrid">
     {% for key, label, icon, unit in [
-        ('users', 'Users', '👥', ''),
-        ('cases', 'Cases', '📁', ''),
+        ('users', 'Gebruikers', '👥', ''),
+        ('cases', 'Zaken', '📁', ''),
         ('subjects', 'Subjects', '👤', ''),
-        ('clients', 'Clients', '🏢', ''),
-        ('findings', 'Findings', '📄', ''),
-        ('documents', 'Documents', '📎', ''),
-        ('audit_log_entries', 'Audit Log', '📋', 'entries'),
-        ('research_actions_started', 'Research actions', '🔎', 'started'),
-        ('research_credit_units', 'Credit usage', '💳', 'units'),
-        ('findings_dashboard_views', 'Findings dashboard', '📊', 'views'),
-        ('portal_dashboard_views', 'Portal dashboard', '🧑‍💼', 'views'),
-        ('portal_requests_submitted', 'Portal requests', '📨', 'submitted'),
-        ('portal_requests_converted', 'Converted requests', '✅', 'converted'),
+        ('clients', 'Klanten', '🏢', ''),
+        ('findings', 'Bevindingen', '📄', ''),
+        ('documents', 'Documenten', '📎', ''),
+        ('audit_log_entries', 'Audit trail', '📋', 'vermeldingen'),
+        ('research_actions_started', 'Onderzoeksacties', '🔎', 'gestart'),
+        ('research_credit_units', 'Creditgebruik', '💳', 'eenheden'),
+        ('findings_dashboard_views', 'Bevindingendashboard', '📊', 'weergaven'),
+        ('portal_dashboard_views', 'Portaaldashboard', '🧑‍💼', 'weergaven'),
+        ('portal_requests_submitted', 'Portaalverzoeken', '📨', 'ingediend'),
+        ('portal_requests_converted', 'Omgezette verzoeken', '✅', 'omgezet'),
     ] %}
     {% set v = stats_7[key][0] %}
     {% set delta = stats_7[key][2] %}
@@ -139,11 +139,11 @@
 <div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;margin-bottom:2rem;">
     <h3 style="margin:0 0 0.5rem;">📈 {{ _('Usage over time') }}</h3>
     <div class="chart-tabs" id="chartTabs">
-        {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log'),('research_actions_started','Research actions'),('research_credit_units','Credit usage'),('findings_dashboard_views','Findings dashboard'),('portal_requests_submitted','Portal requests')] %}
+        {% for m, lbl in [('users','Gebruikers'),('cases','Zaken'),('subjects','Subjects'),('findings','Bevindingen'),('audit_log_entries','Audit trail'),('research_actions_started','Onderzoeksacties'),('research_credit_units','Creditgebruik'),('findings_dashboard_views','Bevindingendashboard'),('portal_requests_submitted','Portaalverzoeken')] %}
         <button class="chart-tab {{ 'active' if loop.first }}" data-metric="{{ m }}">{{ lbl }}</button>
         {% endfor %}
     </div>
-    {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log'),('research_actions_started','Research actions'),('research_credit_units','Credit usage'),('findings_dashboard_views','Findings dashboard'),('portal_requests_submitted','Portal requests')] %}
+    {% for m, lbl in [('users','Gebruikers'),('cases','Zaken'),('subjects','Subjects'),('findings','Bevindingen'),('audit_log_entries','Audit trail'),('research_actions_started','Onderzoeksacties'),('research_credit_units','Creditgebruik'),('findings_dashboard_views','Bevindingendashboard'),('portal_requests_submitted','Portaalverzoeken')] %}
     {% set vals = chart_data[m] %}
     {% set maxv = vals|max or 1 %}
     <div class="chart-container" data-metric="{{ m }}" style="{{ '' if loop.first else 'display:none;' }}">

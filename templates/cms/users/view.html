@@ -1,7 +1,7 @@
 {% extends "cms/base.html" %}
 {% block title %}{{ user.full_name }} — CMS{% endblock %}
 {% block content %}
-    <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
+    <div class="back"><a href="{{ url_for('users.list_users') }}">← Terug naar gebruikers</a></div>
         
         <div class="ui-page-header"><div><div class="ui-kicker">Beheer · gebruiker</div><h1>{{ user.full_name }}</h1><p class="ui-lead">Accountprofiel, rol, tenant en beveiligingsstatus.</p></div></div>
     
@@ -59,31 +59,31 @@
 
     {% if current_user.id == user.id %}
     <div class="card">
-        <h2 style="margin-top:0;font-size:1.1rem;">Change Password</h2>
+        <h2 style="margin-top:0;font-size:1.1rem;">Wachtwoord wijzigen</h2>
 <form method="POST" action="{{ url_for('users.change_password') }}" data-submit="validatePasswordForm" style="max-width:400px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="current_password">Current Password</label>
+        <label for="current_password">Huidig wachtwoord</label>
                 <div class="pw-wrapper">
                     <input type="password" id="current_password" name="current_password" required>
                     <button type="button" class="btn-icon" data-click="toggleField" data-arg0="current_password">👁️</button>
                 </div>
             </div>
             <div class="form-group">
-                <label for="new_password">New Password</label>
+                <label for="new_password">Nieuw wachtwoord</label>
                 <div class="pw-wrapper">
                     <input type="password" id="new_password" name="new_password" required minlength="8">
                     <button type="button" class="btn-icon" data-click="toggleField" data-arg0="new_password">👁️</button>
                 </div>
             </div>
             <div class="form-group">
-                <label for="confirm_password">Confirm New Password</label>
+                <label for="confirm_password">Nieuw wachtwoord bevestigen</label>
                 <div class="pw-wrapper">
                     <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
                     <button type="button" class="btn-icon" data-click="toggleField" data-arg0="confirm_password">👁️</button>
                 </div>
             </div>
-            <button type="submit" class="btn-cms primary">Change Password</button>
+            <button type="submit" class="btn-cms primary">Wachtwoord wijzigen</button>
             <span id="pwError" style="color:#dc2626;display:none;margin-left:0.5rem;"></span>
         </form>
     </div>
@@ -91,7 +91,7 @@
 
     <div class="actions">
         {% if current_user.is_admin and user.id != current_user.id %}
-        <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn-cms">Edit User</a>
+        <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn-cms">Gebruiker bewerken</a>
         {% endif %}
         {% if current_user.is_admin and user.id != current_user.id and user.is_active %}
 <form method="POST" action="{{ url_for('users.deactivate_user', user_id=user.id) }}" style="display: inline;" data-confirm="Are you sure you want to deactivate this user?">
@@ -128,7 +128,7 @@
                 return;
             }
             if (newPw.length < 8) {
-                error.textContent = 'Password must be at least 8 characters';
+                error.textContent = 'Het wachtwoord moet minimaal 8 tekens bevatten';
                 error.style.display = 'inline';
                 return;
             }
