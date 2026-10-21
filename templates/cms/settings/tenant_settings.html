@@ -3,13 +3,13 @@
 {% block content %}
 <style>
 .tenant-settings-form {
-    max-width: 700px;
-    margin: 1.5rem 0;
+    width: min(100%, 980px);
+    margin: 1rem 0;
 }
 .setting-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: var(--iveras-radius-card);
     padding: 1.25rem;
     margin-bottom: 1.5rem;
 }
@@ -45,9 +45,9 @@
 }
 .setting-item input, .setting-item select {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.65rem 0.75rem;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--iveras-radius-control);
     font-size: 0.85rem;
     background: var(--input-bg, #fff);
     color: var(--text);
@@ -80,14 +80,20 @@
 .empty-state p { font-size: 1rem; margin: 0.5rem 0; }
 </style>
 
-<div style="margin-bottom:1.5rem;">
-    <a href="{{ url_for('cms.settings') }}">← {{ _('Back to Settings') }}</a>
+<div class="ui-page">
+<div class="ui-breadcrumbs">
+    <a href="{{ url_for('cms.settings') }}">{{ _('Settings') }}</a>
+    <span aria-hidden="true">›</span>
+    <span>{{ _('Tenant settings') }}</span>
 </div>
-
-<h1 style="margin:0 0 0.25rem;">🏢 {{ _('Tenant Settings') }}</h1>
-<p style="color:var(--text-muted);font-size:0.9rem;margin:0 0 1.5rem;">
-    {{ _('Manage settings for your organization') }}: <strong>{{ current_user.tenant.name if current_user.tenant else '' }}</strong>
-</p>
+<div class="ui-page-header">
+    <div>
+        <div class="ui-kicker">Beheer · organisatie</div>
+        <h1>🏢 {{ _('Tenant Settings') }}</h1>
+        <p class="ui-lead">{{ _('Manage settings for your organization') }}: <strong>{{ current_user.tenant.name if current_user.tenant else '' }}</strong></p>
+    </div>
+    <div class="ui-actions"><a href="{{ url_for('cms.settings') }}" class="btn-cms">← {{ _('Back to Settings') }}</a></div>
+</div>
 
 {% if settings_list %}
 <form id="tenantSettingsForm" class="tenant-settings-form">
@@ -155,6 +161,7 @@
     <p style="font-size:0.85rem;">{{ _('Tenant settings will appear here as features are configured.') }}</p>
 </div>
 {% endif %}
+</div>
 
 <script nonce="{{ csp_nonce }}">
 function togglePassword(btn) {
