@@ -100,6 +100,29 @@
 
 /* Shared page grammar used by the work-area screens. */
 .ui-page { max-width: 1280px; margin-inline: auto; }
+.cms-screen-frame { width: min(100%, 1280px); margin-inline: auto; min-width: 0; }
+.cms-screen-frame > style { display: none; }
+.cms-screen-frame > :first-child { margin-top: 0; }
+.cms-screen-frame > h1:first-child { margin-top: .15rem; }
+.cms-screen-frame .page-header h1,
+.cms-screen-frame .back + h1 { letter-spacing: -.02em; }
+.cms-screen-frame .back a { color: var(--text-secondary); }
+.cms-screen-frame .back a:hover { color: var(--link-color); }
+.cms-screen-frame .card,
+.cms-screen-frame .setting-group,
+.cms-screen-frame .detail-card,
+.cms-screen-frame .bs-card,
+.cms-screen-frame .form-section,
+.cms-screen-frame .workflow-step,
+.cms-screen-frame .ui-panel { box-shadow: var(--iveras-shadow-card); }
+.cms-screen-frame .card,
+.cms-screen-frame .setting-group,
+.cms-screen-frame .detail-card,
+.cms-screen-frame .bs-card,
+.cms-screen-frame .form-section { border-radius: var(--iveras-radius-card); }
+.cms-screen-frame input:not([type=checkbox]):not([type=radio]),
+.cms-screen-frame select,
+.cms-screen-frame textarea { border-radius: var(--iveras-radius-control); }
 .ui-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin: .25rem 0 1.25rem; }
 .ui-page-header h1 { margin: .15rem 0 .25rem; }
 .ui-kicker { color:var(--accent-primary); font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
