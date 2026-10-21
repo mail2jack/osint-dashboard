@@ -107,8 +107,8 @@ class TestMainNav:
         html = resp.get_data(as_text=True)
 
         # Trigger is een echte <button> met ARIA-controller, geen lege <a href="#">.
-        assert 'class="nav-dropdown-trigger" aria-expanded="false" aria-controls="entity-nav-menu">' in html
-        assert 'id="entity-nav-menu"' in html
+        assert 'class="nav-dropdown-trigger" aria-expanded="false" aria-controls="work-nav-menu">' in html
+        assert 'id="work-nav-menu"' in html
         # Geen aria-haspopup: dit is bewust een gewone navigatie-disclosure zonder
         # menu-rollen (aria-expanded + aria-controls blijven).
         assert 'aria-haspopup="true"' not in html
