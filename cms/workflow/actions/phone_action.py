@@ -14,7 +14,14 @@ def _phone_check(action):
     subject = _action_subject(action)
     phone = action.data_value if action.data_value else None
     if not phone:
-        phone = subject.phone if subject else None
+        if subject:
+            # Workers load subjects outside the request/template decryption
+            # flow.  Reading ``subject.phone`` directly here can therefore
+            # hand an encrypted value to phonenumbers and make a valid number
+            # look rejected.  Decrypt only the subject fallback; explicit
+            # action data is already supplied as a plain user value.
+            subject.decrypt_identifiers()
+            phone = subject.phone
     if not phone:
         return []
     findings = []
