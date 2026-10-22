@@ -1,39 +1,66 @@
 {% extends "cms/base.html" %}
 {% block title %}{{ client.name }} — {{ _('CMS') }}{% endblock %}
 {% block content %}
-    <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a><span>›</span><span>{{ client.name }}</span></div>
-    <div class="back"><a href="{{ url_for('cms.clients') }}">← {{ _('Back to Clients') }}</a></div>
+<style nonce="{{ csp_nonce }}">
+    .client-detail { width:100%; }
+    .client-detail .client-panel { padding:1.15rem; }
+    .client-detail .client-hero { background:linear-gradient(135deg, color-mix(in srgb,var(--accent-primary) 10%,var(--bg-card)), var(--bg-card)); }
+    .client-detail .client-hero h1 { margin:0; font-size:clamp(1.45rem,2.3vw,2.05rem); }
+    .client-detail .client-hero p { margin:.35rem 0 0; color:var(--text-secondary); }
+    .client-detail .client-kicker { color:var(--accent-primary); font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .client-detail .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem 1.5rem; }
+    .client-detail .detail-item { padding:.65rem 0; border-bottom:1px solid var(--border-color); }
+    .client-detail .detail-label { display:block; color:var(--text-muted); font-size:.72rem; font-weight:750; text-transform:uppercase; letter-spacing:.04em; }
+    .client-detail .detail-value { display:block; margin-top:.2rem; color:var(--text-primary); font-weight:650; }
+    .client-detail .contact-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:.65rem; align-items:center; padding:.75rem .85rem; margin-top:.55rem; border:1px solid var(--border-color); border-radius:var(--iveras-radius-control); background:var(--bg-secondary); }
+    .client-detail .address-card { padding:.85rem; margin-top:.65rem; border:1px solid var(--border-color); background:var(--bg-secondary); }
+    .client-detail .address-header { gap:1rem; }
+    .client-detail .panel-description { margin:-.35rem 0 .9rem; color:var(--text-secondary); font-size:.82rem; }
+    .client-detail .action-row { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end; }
+    @media (max-width:760px) { .client-detail .detail-grid { grid-template-columns:1fr; } .client-detail .contact-row { grid-template-columns:auto minmax(0,1fr) auto; } .client-detail .contact-row .actions { grid-column:1/-1; } }
+</style>
+<div class="client-detail">
+    <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Overzicht</a><span>›</span><a href="{{ url_for('cms.clients') }}">Klanten</a><span>›</span><span>{{ client.name }}</span></div>
+    <div class="back"><a href="{{ url_for('cms.clients') }}">← Terug naar klanten</a></div>
     
-    <div class="card">
+    <div class="card ui-panel client-panel client-hero">
         <div class="card-header">
-            <h2>{{ client.name }}{% if client.is_company %} <span class="badge">{{ _('Company') }}</span>{% endif %}
-                {% if not client.is_active %}<span class="badge badge-archived">{{ _('ARCHIVED') }}</span>{% endif %}
-            </h2>
-            <div class="btn-group" style="margin:0;">
+            <div><div class="client-kicker">Klantkaart</div><h1>{{ client.name }}{% if client.is_company %} <span class="badge">Organisatie</span>{% endif %}
+                {% if not client.is_active %}<span class="badge badge-archived">Gearchiveerd</span>{% endif %}
+            </h1><p>Overzicht van de klantrelatie, contactgegevens, adressen en gekoppelde zaken.</p></div>
+            <div class="action-row">
                 {% if active_cases_count == 0 and client.is_active %}
-                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 {{ _('Archive') }}</button>
+                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 Archiveren</button>
                 {% elif not client.is_active %}
-                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ {{ _('Restore') }}</button>
+                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ Herstellen</button>
                 {% endif %}
-                <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ {{ _('Edit') }}</a>
-                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">{{ _('📄 Invoices') }}</a>
-                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ {{ _('Invoice') }}</a>{% endif %}
+                <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ Bewerken</a>
+                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">📄 Facturen</a>
+                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ Factuur</a>{% endif %}
             </div>
         </div>
+    </div>
     
-    <div class="card">
-        <div class="card-header"><h2>📞 {{ _('Contact Information') }}</h2></div>
+    <div class="ui-stat-grid">
+        <div class="ui-stat"><div class="ui-stat-label">Type klant</div><div class="ui-stat-value" style="font-size:1.05rem;">{{ 'Organisatie' if client.is_company else 'Particulier' }}</div><div class="ui-stat-hint">{{ 'Bedrijf of instelling' if client.is_company else 'Persoonlijke klantrelatie' }}</div></div>
+        <div class="ui-stat"><div class="ui-stat-label">Contactgegevens</div><div class="ui-stat-value">{{ client.contacts.count() if client.contacts else 0 }}</div><div class="ui-stat-hint">Geregistreerde contactpunten</div></div>
+        <div class="ui-stat"><div class="ui-stat-label">Adressen</div><div class="ui-stat-value">{{ client.addresses.count() if client.addresses else 0 }}</div><div class="ui-stat-hint">Inclusief primair adres</div></div>
+        <div class="ui-stat"><div class="ui-stat-label">Zaken</div><div class="ui-stat-value">{{ cases|length }}</div><div class="ui-stat-hint">Gekoppelde dossiers</div></div>
+    </div>
+
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading"><div><h2>📞 Contactgegevens</h2><p>De primaire contactgegevens worden duidelijk gemarkeerd.</p></div></div>
         <div class="info-grid">
             {% if client.is_company %}
             <div class="info-row">
-                <span class="info-label">{{ _('Contact Person') }}</span>
+                <span class="info-label">Contactpersoon</span>
                 <span class="info-value">{{ client.contact_person if client.contact_person else '-' }}</span>
             </div>
             {% endif %}
             {% if not client.is_company %}
             {% if client.achternaam %}
             <div class="info-row">
-                <span class="info-label">{{ _('Name') }}</span>
+                <span class="info-label">Naam</span>
                 <span class="info-value">
                     {% if client.voorletters %}{{ client.voorletters }} {% endif %}{% if client.voornamen %}{{ client.voornamen }} {% endif %}{% if client.tussenvoegsels %}{{ client.tussenvoegsels }} {% endif %}{{ client.achternaam }}
                 </span>
@@ -44,15 +71,15 @@
                 <span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(client.geslacht, '-') }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Nationality') }}</span>
+                <span class="info-label">Nationaliteit</span>
                 <span class="info-value">{{ client.nationality if client.nationality else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Date of Birth') }}</span>
+                <span class="info-label">Geboortedatum</span>
                 <span class="info-value">{{ client.date_of_birth if client.date_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Place of Birth') }}</span>
+                <span class="info-label">Geboorteplaats</span>
                 <span class="info-value">{{ client.place_of_birth if client.place_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
@@ -75,9 +102,9 @@
             <div class="contact-row">
                 <span class="icon">✉️</span>
                 <span class="value">{{ c.value }}</span>
-                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">Primair</span>{% else %}<span></span>{% endif %}
                 <span class="actions">
-                    <button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ {{ _('Check') }}</button>
+                    <button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ Controleren</button>
                 </span>
                 <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
             </div>
@@ -89,7 +116,7 @@
             <span class="value">{{ client.contact_email }}</span>
             <span></span>
             <span class="actions">
-                <button data-click="emailCheck" data-arg0="{{ client.contact_email }}" class="btn-cms purple small">✉️ {{ _('Check') }}</button>
+                <button data-click="emailCheck" data-arg0="{{ client.contact_email }}" class="btn-cms purple small">✉️ Controleren</button>
             </span>
             <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
         </div>
@@ -100,9 +127,9 @@
             <div class="contact-row">
                 <span class="icon">📞</span>
                 <span class="value">{{ c.value }}</span>
-                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">Primair</span>{% else %}<span></span>{% endif %}
                 <span class="actions">
-                    <button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 {{ _('Check') }}</button>
+                    <button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 Controleren</button>
                 </span>
                 <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
             </div>
@@ -114,7 +141,7 @@
             <span class="value">{{ client.contact_phone }}</span>
             <span></span>
             <span class="actions">
-                <button data-click="phoneLookup" data-arg0="{{ client.contact_phone }}" class="btn-cms purple small">📞 {{ _('Check') }}</button>
+                <button data-click="phoneLookup" data-arg0="{{ client.contact_phone }}" class="btn-cms purple small">📞 Controleren</button>
             </span>
             <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
         </div>
@@ -122,36 +149,36 @@
     </div>
 
     {% if client.portal_access_enabled and current_user.role in ('senior_investigator','admin','owner') %}
-    <div class="card">
-        <div class="card-header"><h2>🔐 Klantenportaal</h2><span class="badge badge-primary">Actief</span></div>
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading"><div><h2>🔐 Klantenportaal</h2><p>Beheer veilige toegang voor contactpersonen van deze klant.</p></div><span class="badge badge-primary">Actief</span></div>
         <p style="color:var(--text-secondary);">Geef een contactpersoon alleen toegang tot dit klantdossier. De uitnodiging gebruikt een eenmalige link; de klant kiest daarna zelf een wachtwoord en stelt 2FA in.</p>
         <form method="post" action="{{ url_for('cms.invite_client_portal_user', client_id=client.id) }}" style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label style="flex:1;min-width:260px;">E-mailadres<input type="email" name="email" required placeholder="klant@example.com"></label>
+            <label style="flex:1;min-width:260px;">E-mailadres<input type="email" name="email" required placeholder="naam@bedrijf.nl"></label>
             <button class="btn-cms bg-blue" type="submit">Uitnodiging verzenden</button>
         </form>
         {% if portal_access %}<ul>{% for access in portal_access %}<li>{{ access.email }} — {{ 'actief' if access.is_active else 'ingetrokken' }}{% if access.accepted_at %}, geaccepteerd{% else %}, wacht op acceptatie{% endif %}</li>{% endfor %}</ul>{% endif %}
     </div>
     {% endif %}
     
-    <div class="card">
-        <div class="card-header"><h2>📍 {{ _('Address(es)') }}</h2></div>
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading"><div><h2>📍 Adressen</h2><p>Alle geregistreerde adressen; het primaire adres staat bovenaan gemarkeerd.</p></div></div>
         {% if client.addresses.count() > 0 %}
             {% for addr in client.addresses %}
             <div class="address-card {% if addr.is_primary %}primary{% endif %}">
                 <div class="address-header">
                     <div>
                         <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                        {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
-                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
+                        {% if addr.is_primary %}<span class="badge badge-primary">Primair</span>{% endif %}
+                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ BAG gecontroleerd</span>{% endif %}
                         <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                             {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                             {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                         </div>
                     </div>
                     <div class="btn-group" style="margin:0;">
-                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">🏛 {{ _('Cadastre') }}</button>
-                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 {{ _('Police Station') }}</button>
+                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">🏛 BAG controleren</button>
+                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 Politiebureau zoeken</button>
                     </div>
                 </div>
                 <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -180,50 +207,49 @@
         {% endif %}
     </div>
     
-    <div class="card">
-        <div class="card-header"><h2>📄 {{ _('Contract Information') }}</h2></div>
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading"><div><h2>📄 Contractgegevens</h2><p>Administratieve gegevens van de klantrelatie.</p></div></div>
         <div class="info-grid">
             <div class="info-row">
-                <span class="info-label">{{ _('Contract Number') }}</span>
+                <span class="info-label">Contractnummer</span>
                 <span class="info-value">{{ client.contract_number if client.contract_number else '-' }}</span>
             </div>
         </div>
     </div>
     
-    <div class="card">
-        <div class="card-header"><h2>💰 {{ _('Financial Information') }}</h2></div>
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading"><div><h2>💰 Financiële gegevens</h2><p>Gevoelige financiële informatie is alleen zichtbaar voor bevoegde gebruikers.</p></div></div>
         <div class="info-grid">
             <div class="info-row">
-                <span class="info-label">{{ _('Social Security Number') }}</span>
+                <span class="info-label">BSN-nummer</span>
                 <span class="info-value">{{ client.social_security_number if client.social_security_number else '-' }}</span>
             </div>
             {% if client.is_company %}
             <div class="info-row">
-                <span class="info-label">{{ _('VAT Number') }}</span>
+                <span class="info-label">BTW-nummer</span>
                 <span class="info-value">{{ client.vat_number if client.vat_number else '-' }}</span>
             </div>
             {% endif %}
             <div class="info-row">
-                <span class="info-label">{{ _('Bank Account') }}</span>
+                <span class="info-label">Bankrekening / IBAN</span>
                 <span class="info-value">{{ client.bank_account if client.bank_account else '-' }}</span>
             </div>
             {% if client.financial_notes %}
             <div class="info-row" style="grid-column:1/-1;">
-                <span class="info-label">{{ _('Financial Notes') }}</span>
+                <span class="info-label">Financiële notities</span>
                 <span class="info-value">{{ client.financial_notes }}</span>
             </div>
             {% endif %}
         </div>
     </div>
     
-    <div class="card">
-        <div class="card-header">
-            <h2>📁 {{ _('Cases') }} ({{ cases|length }})</h2>
-            <span></span>
+    <div class="card ui-panel client-panel">
+        <div class="ui-section-heading">
+            <div><h2>📁 Zaken ({{ cases|length }})</h2><p>Alle dossiers die aan deze klant gekoppeld zijn.</p></div>
         </div>
         {% if cases %}
         <table class="data-table">
-            <thead><tr><th>{{ _('Case Number') }}</th><th>{{ _('Title') }}</th><th>{{ _('Lead Investigator') }}</th><th>{{ _('Status') }}</th></tr></thead>
+            <thead><tr><th>Zaaknummer</th><th>Titel</th><th>Behandelaar</th><th>Status</th></tr></thead>
             <tbody>
                 {% for case in cases %}
                 <tr>
@@ -238,9 +264,11 @@
         {% else %}
         <div class="empty-state">
             <div class="icon">📂</div>
-            <p>{{ _('No cases for this client.') }}</p>
+            <p>Er zijn nog geen zaken aan deze klant gekoppeld.</p>
         </div>
         {% endif %}
+    </div>
+
     </div>
     
     <script nonce="{{ csp_nonce }}">

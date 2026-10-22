@@ -631,6 +631,7 @@ class Client(db.Model):
                 "postal": self.address_postal,
                 "country": self.address_country,
             },
+            "addresses": [a.to_dict(decrypted=decrypted) for a in self.addresses],
             "contract_number": self.contract_number,
             "contract_info": self.contract_info,
             "contacts": [c.to_dict(decrypted=decrypted) for c in self.contacts],
