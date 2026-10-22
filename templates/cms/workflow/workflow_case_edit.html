@@ -106,19 +106,19 @@ input:-webkit-autofill:focus {
     <div class="form-grid">
       <div class="form-group">
         <label>Company name</label>
-        <input type="text" name="client_name" value="{{ client.name if client else '' }}">
+        <input type="text" name="client_name" value="{{ client_view.name if client_view else (client.name if client else '') }}">
       </div>
       <div class="form-group">
         <label>Contactpersoon</label>
-        <input type="text" name="client_contact" value="{{ client.contact_person or '' }}">
+        <input type="text" name="client_contact" value="{{ client_view.contact_person if client_view else (client.contact_person or '') }}">
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" name="client_email" value="{{ client.contact_email or '' }}">
+        <input type="email" name="client_email" value="{{ client_view.contact_email if client_view else (client.contact_email or '') }}">
       </div>
       <div class="form-group">
         <label>Telefoon</label>
-        <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}">
+        <input type="text" name="client_phone" value="{{ client_view.contact_phone if client_view else (client.contact_phone or '') }}">
       </div>
       <div class="form-group">
         <label>Referentie</label>
@@ -126,23 +126,23 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Street</label>
-        <input type="text" name="client_street" class="addr-street" value="{{ client.address_street or '' }}">
+        <input type="text" name="client_street" class="addr-street" value="{{ client_view.street if client_view else (client.address_street or '') }}">
       </div>
       <div class="form-group">
         <label>House number</label>
-        <input type="text" name="client_house_number" class="addr-number" value="{{ client.address_number or '' }}">
+        <input type="text" name="client_house_number" class="addr-number" value="{{ client_view.number if client_view else (client.address_number or '') }}">
       </div>
       <div class="form-group">
         <label>Postal code</label>
-        <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client.address_postal or '' }}">
+        <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client_view.postal if client_view else (client.address_postal or '') }}">
       </div>
       <div class="form-group">
         <label>City</label>
-        <input type="text" name="client_city" class="addr-town" value="{{ client.address_city or '' }}">
+        <input type="text" name="client_city" class="addr-town" value="{{ client_view.city if client_view else (client.address_city or '') }}">
       </div>
       <div class="form-group">
         <label>Country</label>
-        <input type="text" name="client_country" value="{{ client.address_country or 'Netherlands' }}">
+        <input type="text" name="client_country" value="{{ client_view.country if client_view else (client.address_country or 'Netherlands') }}">
       </div>
       <div class="form-group">
         <label>VAT number</label>

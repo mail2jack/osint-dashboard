@@ -3,17 +3,20 @@
 {% block content %}
 <style>
 .wf-card {
-  border: 1px solid var(--border-color); border-radius: 10px;
-  padding: 1rem; margin-bottom: 0.75rem;
+  border: 1px solid var(--border-color); border-radius: var(--iveras-radius-card);
+  padding: 1rem 1.15rem; margin-bottom: 0.75rem;
   display: flex; justify-content: space-between; align-items: center;
-  background: var(--bg-card); transition: box-shadow .15s;
+  gap:1rem; background: var(--bg-card); box-shadow:var(--iveras-shadow-card); transition: box-shadow .15s, transform .15s;
 }
-.wf-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.wf-card:hover { box-shadow: 0 8px 22px rgba(15,23,42,.1); transform:translateY(-1px); }
 .wf-card .info { flex: 1; min-width: 0; }
-.wf-card .title { font-weight: 600; font-size: 0.95rem; }
+.wf-card .title { font-weight: 750; font-size: 1rem; }
 .wf-card .meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
 .wf-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.case-meta { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-top:.45rem; }
+.case-meta-text { color:var(--text-muted); font-size:.78rem; }
+.case-counts { display:flex; gap:.75rem; margin-top:.35rem; color:var(--text-secondary); font-size:.78rem; }
+@media (max-width:760px) { .wf-card { align-items:flex-start; flex-direction:column; } .wf-actions { width:100%; } }
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -27,12 +30,12 @@ input:-webkit-autofill:focus {
 <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a><span>›</span><span>{{ _('Cases') }}</span></div>
 <div class="ui-page-header">
   <div>
-    <div class="ui-kicker">Werk · zaken</div><h1><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ _('Cases') }}</h1>
+    <div class="ui-kicker">Werk · zaken</div><h1>Zaken</h1>
     <p class="ui-lead">
-      <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('All findings register') }}</a>
+      Bekijk lopende onderzoeken en open direct een zaak om verder te werken.
     </p>
   </div>
-  <div class="ui-actions"><a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ {{ _('New case') }}</a></div>
+  <div class="ui-actions"><a href="{{ url_for('workflow.findings_index') }}" class="btn-cms">📋 Bevindingenregister</a><a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ Nieuwe zaak</a></div>
 </div>
 
 {% if cases %}
@@ -44,33 +47,36 @@ input:-webkit-autofill:focus {
           {{ case.case_number }} — {{ case.title or 'Unknown' }}
         </a>
       </div>
-      <div class="meta">
-        <span class="badge badge-status-{{ case.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.status }}</span>
-        <span class="badge badge-priority-{{ case.priority }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.priority }}</span>
+      <div class="case-meta">
+        <span class="badge badge-status-{{ case.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ {'open':'Open','in_progress':'In onderzoek','on_hold':'On hold','closed':'Gesloten','archived':'Gearchiveerd'}.get(case.status, case.status|replace('_',' ')|title) }}</span>
+        <span class="badge badge-priority-{{ case.priority }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Prioriteit: {{ {'low':'Laag','medium':'Gemiddeld','high':'Hoog','urgent':'Urgent'}.get(case.priority, case.priority|title) }}</span>
         {% set ac = action_counts.get(case.id, {}) %}
-        Actions: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} completed
-        {% if ac.get('running', 0) > 0 %}<span style="color:#3b82f6;"> · ⏳ {{ ac.get('running', 0) }} running</span>{% endif %}
-        · Created {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+        <span class="case-meta-text">Bijgewerkt {{ case.updated_at.strftime('%d-%m-%Y %H:%M') if case.updated_at else '—' }}</span>
+      </div>
+      <div class="case-counts">
+        {% set ac = action_counts.get(case.id, {}) %}
+        <span>Acties: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} afgerond</span>
+        {% if ac.get('running', 0) > 0 %}<span style="color:#2563eb;">⏳ {{ ac.get('running', 0) }} actief</span>{% endif %}
       </div>
     </div>
     <div class="wf-actions">
-      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">Open →</a>
+      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">Zaak openen →</a>
     </div>
   </div>
   {% endfor %}
 {% else %}
 <div class="ui-empty">
   <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>
-  <h2>{{ _('No cases yet') }}</h2>
-  <p>{{ _('Start a new case to test the workflow.') }}</p>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ {{ _('New case') }}</a>
+  <h2>Nog geen zaken</h2>
+  <p>Maak een nieuwe zaak aan om een onderzoek te starten.</p>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ Nieuwe zaak</a>
 </div>
 {% endif %}
 {% if cases_pages > 1 %}
 <div style="display:flex;justify-content:center;align-items:center;gap:.75rem;margin:1rem 0;">
-  {% if cases_page > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page-1) }}">← {{ _('Previous') }}</a>{% endif %}
-  <span style="font-size:.8rem;color:var(--text-muted);">{{ _('Page') }} {{ cases_page }} / {{ cases_pages }}</span>
-  {% if cases_page < cases_pages %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">{{ _('Next') }} →</a>{% endif %}
+  {% if cases_page > 1 %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page-1) }}">← Vorige</a>{% endif %}
+  <span style="font-size:.8rem;color:var(--text-muted);">Pagina {{ cases_page }} / {{ cases_pages }}</span>
+  {% if cases_page < cases_pages %}<a class="btn-cms small" href="{{ url_for('workflow.dashboard', page=cases_page+1) }}">Volgende →</a>{% endif %}
 </div>
 {% endif %}
 </div>

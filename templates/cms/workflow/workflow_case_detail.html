@@ -288,36 +288,36 @@ input:-webkit-autofill:focus {
         <span class="subject-card-type">client</span>
       </div>
       <div class="subject-info-grid">
-        {% if client.contact_person %}
+        {% if client_view.contact_person %}
         <div class="subject-info-item">
           <div class="lbl">Contactpersoon</div>
-          <div class="val">{{ client.contact_person }}</div>
+          <div class="val">{{ client_view.contact_person }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">
           <div class="lbl">📧 Email</div>
-          <div class="val">{{ client.contact_email or '—' }}</div>
+          <div class="val">{{ client_view.contact_email or '—' }}</div>
         </div>
         <div class="subject-info-item">
           <div class="lbl">📞 Telefoon</div>
-          <div class="val">{{ client.contact_phone or '—' }}</div>
+          <div class="val">{{ client_view.contact_phone or '—' }}</div>
         </div>
-        {% if client.address_street or client.address_city %}
+        {% if client_view.street or client_view.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">🏠 Adres</div>
-          <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
+          <div class="val">{{ client_view.street or '' }} {{ client_view.number or '' }}{% if client_view.postal or client_view.city %}<br>{% endif %}{{ client_view.postal or '' }} {{ client_view.city or '' }}{% if client_view.country %}<br>{{ client_view.country }}{% endif %}</div>
         </div>
         {% endif %}
-        {% if client.reference %}
+        {% if client_view.reference %}
         <div class="subject-info-item">
           <div class="lbl">Referentie</div>
-          <div class="val">{{ client.reference }}</div>
+          <div class="val">{{ client_view.reference }}</div>
         </div>
         {% endif %}
-        {% if client.financial_notes %}
+        {% if client_view.financial_notes %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">Notities</div>
-          <div class="val">{{ client.financial_notes }}</div>
+          <div class="val">{{ client_view.financial_notes }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">

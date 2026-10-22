@@ -107,6 +107,56 @@ from .research import (
 
 logger = logging.getLogger(__name__)
 
+
+def _client_workflow_values(client):
+    """Return one complete, decrypted client snapshot for workflow screens.
+
+    Client data exists in legacy flat columns as well as the newer normalized
+    contacts/addresses tables. Workflow cases prefer the primary normalized
+    values and retain the legacy columns as a backwards-compatible fallback.
+    """
+    if not client:
+        return {}
+
+    with db.session.no_autoflush:
+        client.decrypt_naw()
+        primary_email = None
+        primary_phone = None
+        for contact in client.contacts.all():
+            contact.decrypt_fields()
+            if not contact.value:
+                continue
+            if contact.contact_type == "email" and primary_email is None:
+                primary_email = contact.value
+            elif contact.contact_type == "phone" and primary_phone is None:
+                primary_phone = contact.value
+
+        primary_address = None
+        for address in client.addresses.all():
+            address.decrypt_fields()
+            if primary_address is None:
+                primary_address = address
+                if address.is_primary:
+                    break
+
+        return {
+            "name": client.name or "",
+            "contact_person": client.contact_person or "",
+            "contact_email": primary_email or client.contact_email or "",
+            "contact_phone": primary_phone or client.contact_phone or "",
+            "reference": client.reference or "",
+            "street": (primary_address.street if primary_address else None) or client.address_street or "",
+            "number": (primary_address.number if primary_address else None) or client.address_number or "",
+            "postal": (primary_address.zipcode if primary_address else None) or client.address_postal or "",
+            "city": (primary_address.town if primary_address else None) or client.address_city or "",
+            "country": (primary_address.country if primary_address else None) or client.address_country or "Nederland",
+            "vat_number": client.vat_number or "",
+            "bank_account": client.bank_account or "",
+            "contract_number": client.contract_number or "",
+            "contract_info": client.contract_info or "",
+            "financial_notes": client.financial_notes or "",
+        }
+
 _INVESTIGATOR_ROLES = (
     UserRole.INVESTIGATOR.value,
     UserRole.SENIOR_INVESTIGATOR.value,
@@ -1123,26 +1173,32 @@ def client_lookup():
         # would autoflush and re-encrypt the freshly decrypted client, turning
         # the bank_account/financial_notes reads below into ciphertext.
         with db.session.no_autoflush:
-            client.decrypt_naw()
-            raw = client.to_dict(decrypted=True)
+            values = _client_workflow_values(client)
             # Also search by contact person
-            contact = raw.get("contact_person", "") or ""
+            contact = values.get("contact_person", "") or ""
             contact_score = 0
             if contact and q.lower() in contact.lower():
                 contact_score = 90
             results.append(
                 {
                     "id": client.id,
-                    "name": client.name,
+                    "name": values["name"],
                     "contact_person": contact,
-                    "contact_email": raw.get("contact_email", ""),
-                    "contact_phone": raw.get("contact_phone", ""),
-                    "address": raw.get("address", {}),
-                    "contract_number": raw.get("contract_number", ""),
-                    "contract_info": raw.get("contract_info", ""),
-                    "vat_number": client.vat_number or "",
-                    "bank_account": client.bank_account or "",
-                    "financial_notes": client.financial_notes or "",
+                    "contact_email": values["contact_email"],
+                    "contact_phone": values["contact_phone"],
+                    "address": {
+                        "street": values["street"],
+                        "number": values["number"],
+                        "postal": values["postal"],
+                        "city": values["city"],
+                        "country": values["country"],
+                    },
+                    "reference": values["reference"],
+                    "contract_number": values["contract_number"],
+                    "contract_info": values["contract_info"],
+                    "vat_number": values["vat_number"],
+                    "bank_account": values["bank_account"],
+                    "financial_notes": values["financial_notes"],
                     "score": max(
                         next(
                             (s["similarity"] for s in similar if s["id"] == client.id),
@@ -1174,24 +1230,24 @@ def case_new():
             if src and src.tenant_id != current_user.tenant_id:
                 src = None
             if src:
-                src.decrypt_naw()
+                values = _client_workflow_values(src)
                 client = WorkflowClient(
                     id=client_id,
-                    name=src.name,
-                    contact_person=src.contact_person or "",
-                    contact_email=src.contact_email or "",
-                    contact_phone=src.contact_phone or "",
-                    reference=request.form.get("reference", ""),
-                    address_street=src.address_street or "",
-                    address_number=src.address_number or "",
-                    address_city=src.address_city or "",
-                    address_postal=src.address_postal or "",
-                    address_country=src.address_country or "Nederland",
-                    vat_number=src.vat_number or "",
-                    bank_account=src.bank_account or "",
-                    contract_number=src.contract_number or "",
-                    contract_info=src.contract_info or "",
-                    financial_notes=src.financial_notes or "",
+                    name=values["name"],
+                    contact_person=values["contact_person"],
+                    contact_email=values["contact_email"],
+                    contact_phone=values["contact_phone"],
+                    reference=values["reference"],
+                    address_street=values["street"],
+                    address_number=values["number"],
+                    address_city=values["city"],
+                    address_postal=values["postal"],
+                    address_country=values["country"],
+                    vat_number=values["vat_number"],
+                    bank_account=values["bank_account"],
+                    contract_number=values["contract_number"],
+                    contract_info=values["contract_info"],
+                    financial_notes=values["financial_notes"],
                     created_by=current_user.id,
                     tenant_id=current_user.tenant_id,
                 )
@@ -1474,6 +1530,7 @@ def case_detail(case_id):
     with db.session.no_autoflush:
         if client:
             client.decrypt_naw()
+        client_view = _client_workflow_values(client) if client else {}
         subjects = list(case.subjects)
         subjects.sort(key=lambda s: (s.name or "").lower())
         for s in subjects:
@@ -1548,6 +1605,7 @@ def case_detail(case_id):
             "cms/workflow/workflow_case_detail.html",
             case=case,
             client=client,
+            client_view=client_view,
             subjects=subjects,
             subjects_data=subjects_data,
             actions=actions,
@@ -2482,6 +2540,7 @@ def case_edit(case_id):
         with db.session.no_autoflush:
             if client:
                 client.decrypt_naw()
+            client_view = _client_workflow_values(client) if client else {}
             for s in subjects:
                 s.decrypt_identifiers()
                 for c in s.contacts.all():
@@ -2490,6 +2549,7 @@ def case_edit(case_id):
                 "cms/workflow/workflow_case_edit.html",
                 case=case,
                 client=client,
+                client_view=client_view,
                 subjects=subjects,
             )
 
