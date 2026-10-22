@@ -688,7 +688,8 @@ function wfToggleContactPlatform(el) {
   var value = entry.querySelector('.contact-value');
   if (value) {
     value.type = el.value === 'email' ? 'email' : 'text';
-    value.pattern = el.value === 'email' ? '[^\\s@]+@[^\\s@]+\\.[^\\s@]+' : '';
+    // Do not leave an email pattern behind when the row is changed to phone.
+    value.removeAttribute('pattern');
     value.title = el.value === 'email' ? 'Gebruik de vorm naam@domein.extensie' : '';
   }
 }
@@ -697,6 +698,7 @@ document.querySelectorAll('.contact-type').forEach(wfToggleContactPlatform);
 
 function wfSerializeAllContacts() {
   var invalidPlatform = null;
+  var invalidEmail = null;
   document.querySelectorAll('.contacts-container').forEach(function(container) {
     var idx = container.getAttribute('data-sid') || container.getAttribute('data-newidx');
     if (!idx) return;
@@ -711,6 +713,15 @@ function wfSerializeAllContacts() {
       if (!val) return;
       var platformEl = entry.querySelector('.contact-platform');
       var platform = type === 'social' ? ((platformEl && platformEl.value.trim()) || '') : null;
+      if (type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        invalidEmail = invalidEmail || entry.querySelector('.contact-value');
+        var emailError = document.createElement('div');
+        emailError.className = 'wf-contact-error';
+        emailError.style.cssText = 'color:#b91c1c;font-size:0.85rem;margin-top:0.4rem;font-weight:600;';
+        emailError.textContent = {{ _('Gebruik de vorm naam@domein.extensie.')|tojson }};
+        entry.appendChild(emailError);
+        return;
+      }
       if (type === 'social' && !platform) {
         invalidPlatform = platformEl || entry;
         var error = document.createElement('div');
@@ -731,8 +742,8 @@ function wfSerializeAllContacts() {
     if (phoneInput) phoneInput.value = phoneVal;
     if (contactsInput) contactsInput.value = JSON.stringify(contactsArr);
   });
-  if (invalidPlatform) {
-    invalidPlatform.focus();
+  if (invalidEmail || invalidPlatform) {
+    (invalidEmail || invalidPlatform).focus();
     return false;
   }
   return true;
