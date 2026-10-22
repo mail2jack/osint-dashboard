@@ -1048,7 +1048,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  document.querySelector('.form-section').addEventListener('click', function(e) {
+  // Bind to the client section itself.  The first `.form-section` on this
+  // page is the case details section, so a generic first-match selector
+  // leaves the Client header without a click handler.
+  var clientToggle = document.querySelector('[data-action="toggle-client"]');
+  if (clientToggle) clientToggle.addEventListener('click', function(e) {
     var hdr = e.target.closest('[data-action="toggle-client"]');
     if (!hdr) return;
     var body = document.querySelector('.client-section-body');
