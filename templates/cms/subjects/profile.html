@@ -830,12 +830,16 @@
   <script nonce="{{ csp_nonce }}">
   (function() {
     const SUBJECT_TYPE = {{ subject.subject_type|tojson }};
+    // Use the decrypted profile read-model for quick actions.  The ORM
+    // subject object still contains ciphertext in encrypted fields, even
+    // though the profile view has already prepared safe plaintext values.
+    const PROFILE_SUBJECT = {{ profile.subject|tojson }};
     const DATA = {
-      email: {{ (subject.email or '')|tojson }},
-      phone: {{ (subject.phone or '')|tojson }},
-      address: {{ [subject.street, subject.house_number, subject.house_number_addition, subject.postal_code, subject.city]|select|join(', ')|tojson }},
-      license_plate: {{ (subject.license_plate or '')|tojson }},
-      name: {{ (subject.name or '')|tojson }},
+      email: {{ (profile.subject.email or '')|tojson }},
+      phone: {{ (profile.subject.phone or '')|tojson }},
+      address: {{ [profile.subject.street, profile.subject.house_number, profile.subject.house_number_addition, profile.subject.postal_code, profile.subject.city]|select|join(', ')|tojson }},
+      license_plate: {{ (profile.subject.license_plate or '')|tojson }},
+      name: {{ (profile.subject.name or '')|tojson }},
     };
     const ACTION_DEFAULTS = {
       email: 'email', phone: 'phone', address: 'address',
