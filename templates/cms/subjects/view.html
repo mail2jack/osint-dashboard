@@ -11,6 +11,12 @@
     <span style="color:var(--text-primary);">{{ subject.name }}</span>
 </nav>
 <style>
+    /* Subject detail uses the same visual hierarchy as the new workspace pages. */
+    .subject-detail-panel { padding: 1.15rem; }
+    .subject-detail-panel .card-header { border-bottom: 1px solid var(--border-color); }
+    .subject-detail-panel .collapsible-header { background: var(--bg-card); }
+    .subject-detail-panel .collapsible-header:hover { background: var(--bg-secondary); }
+    .subject-detail-panel .info-row { border-bottom-color: var(--border-color); }
     .comment-item {
         padding: 0.75rem;
         border: 1px solid var(--border-color, #e2e5ed);
@@ -95,7 +101,7 @@
         .subject-photo-container > div:last-child { width: 100%; }
     }
 </style>
-<div class="back"><a href="{{ url_for('cms.subjects') }}">← {{ _('Back to Subjects') }}</a></div>
+<div class="back"><a href="{{ url_for('cms.subjects') }}">← Terug naar subjecten</a></div>
 
 <div class="subject-photo-container">
     <div class="subject-photo-column">
@@ -209,10 +215,10 @@
 <!-- Vessel check results container -->
 <div id="vesselResults" class="card hidden"></div>
 
-{# ── Start Action from Subject (legacy view) ── #}
+{# ── Onderzoeksactie starten ── #}
 {% if linked_cases %}
-<div class="card" style="margin-bottom:1rem;">
-    <div class="card-header"><h2>{{ _('Start Research Action') }}</h2></div>
+<div class="card ui-panel subject-detail-panel" style="margin-bottom:1rem;">
+    <div class="card-header"><h2>Onderzoeksactie starten</h2></div>
     <div style="padding:1rem;">
         <div style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:0.75rem;align-items:end;">
             <div>
@@ -224,7 +230,7 @@
                 </select>
             </div>
             <div>
-                <label style="font-size:0.75rem;font-weight:600;">{{ _('Action') }}</label>
+                <label style="font-size:0.75rem;font-weight:600;">Actie</label>
                 <select id="legacy-action-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     {% for key in action_presets %}
                     <option value="{{ key }}">{{ action_labels.get(key, key) }}</option>
@@ -232,10 +238,10 @@
                 </select>
             </div>
             <div>
-                <label style="font-size:0.75rem;font-weight:600;">{{ _('Data Value') }}</label>
+                <label style="font-size:0.75rem;font-weight:600;">Invoer</label>
                 <input type="text" id="legacy-action-data" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;" placeholder="{{ _('e.g. email, phone, URL') }}">
             </div>
-            <button class="btn-cms primary small" type="button" id="btn-legacy-run-action" style="white-space:nowrap;">{{ _('Run') }}</button>
+            <button class="btn-cms primary small" type="button" id="btn-legacy-run-action" style="white-space:nowrap;">Starten</button>
         </div>
         <div id="legacy-action-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
     </div>
@@ -281,16 +287,16 @@
 {% endif %}
 
 {% if current_user.is_admin %}
-<div class="card" style="margin-bottom:1rem;">
-    <div class="card-header"><h2>{{ _('Merge Duplicate Subject') }}</h2></div>
+<div class="card ui-panel subject-detail-panel" style="margin-bottom:1rem;">
+    <div class="card-header"><h2>Dubbel subject samenvoegen</h2></div>
     <div style="padding:1rem;">
         <div style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;align-items:end;">
             <div>
-                <label style="font-size:0.75rem;font-weight:600;">{{ _('Source subject to merge INTO this one') }}</label>
+                <label style="font-size:0.75rem;font-weight:600;">Subject om samen te voegen</label>
                 <input type="text" id="merge-search" placeholder="{{ _('Search subject name...') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;" autocomplete="off">
                 <div id="merge-results" style="border:1px solid #ddd;border-radius:6px;display:none;max-height:200px;overflow-y:auto;background:#fff;"></div>
             </div>
-            <button class="btn-cms danger small" id="btn-merge" disabled>{{ _('Merge Into This Subject') }}</button>
+            <button class="btn-cms danger small" id="btn-merge" disabled>Samenvoegen</button>
         </div>
         <input type="hidden" id="merge-source-id" value="">
         <div id="merge-source-info" style="margin-top:0.25rem;font-size:0.82rem;color:#666;"></div>
@@ -353,10 +359,10 @@
 </script>
 {% endif %}
 
-<div class="card">
+<div class="card ui-panel subject-detail-panel">
     <div class="card-header">
         <h2>
-            {% if subject.subject_type == 'vehicle' %}{{ _('🚗 Vehicle Details') }}{% elif subject.subject_type == 'vessel' %}{{ _('🚢 Vessel Details') }}{% else %}{{ _('Subject Details') }}{% endif %}
+            {% if subject.subject_type == 'vehicle' %}Voertuiggegevens{% elif subject.subject_type == 'vessel' %}Vaartuiggegevens{% else %}Subjectgegevens{% endif %}
         </h2>
         <button data-click="openNetworkModal" class="btn-cms small bg-purple">{{ _('🔗 View Relationships') }}</button>
     </div>
@@ -365,7 +371,7 @@
             {# ── Basic Info ── #}
             {% set has_basic = subject.subject_type or (subject.subject_type != 'vehicle' and subject.risk_score) %}
             <div class="collapsible-section open">
-                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="true" aria-controls="section-basic-info"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Basic Info</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="true" aria-controls="section-basic-info"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Basisgegevens</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('Type') }}</span>
@@ -394,7 +400,7 @@
             {% if subject.subject_type == 'person' %}
             {% set has_personal = subject.geslacht or subject.nationality or subject.date_of_birth or subject.place_of_birth or subject.bsn_number or subject.reisdocument_type or subject.identification_number %}
             <div class="collapsible-section{% if has_personal %} open{% endif %}">
-                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_personal %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Personal Details</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_personal %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Persoonsgegevens</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('Geslacht') }}</span>
@@ -438,7 +444,7 @@
             {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
             {% set has_contacts = emails.count() > 0 or phones.count() > 0 or subject.email or subject.phone %}
             <div class="collapsible-section{% if has_contacts %} open{% endif %}">
-                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_contacts %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Contacts</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_contacts %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Contactgegevens</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row" style="flex-direction:column;align-items:stretch;">
                         <span class="info-label">{{ _('Email(s)') }}</span>
@@ -448,7 +454,7 @@
                                 <div class="contact-row">
                                     <span class="icon">✉️</span>
                                     <span class="value">{{ c.value|redact_for_viewer }}</span>
-                                    {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                                    {% if c.is_primary %}<span class="badge badge-primary">Primair</span>{% else %}<span></span>{% endif %}
                                     <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
                                     <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                                 </div>
@@ -474,7 +480,7 @@
                                 <div class="contact-row">
                                     <span class="icon">📞</span>
                                     <span class="value">{{ c.value|redact_for_viewer }}</span>
-                                    {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                                    {% if c.is_primary %}<span class="badge badge-primary">Primair</span>{% else %}<span></span>{% endif %}
                                     <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
                                     <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                                 </div>
@@ -499,7 +505,7 @@
             {# ── Addresses ── #}
             {% set has_addresses = subject.addresses.count() > 0 or subject.address %}
             <div class="collapsible-section{% if has_addresses %} open{% endif %}">
-                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_addresses %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Addresses</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_addresses %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Adressen</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row" style="flex-direction:column;align-items:stretch;">
                         <div class="info-value">
@@ -509,7 +515,7 @@
                                     <div class="address-header">
                                         <div>
                                             <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                                            {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
+                                            {% if addr.is_primary %}<span class="badge badge-primary">Primair</span>{% endif %}
                                             {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
                                             <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                                                 {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
@@ -712,7 +718,7 @@
             {% if subject.subject_type != 'vehicle' %}
             {% set has_financial = subject.bank_account %}
             <div class="collapsible-section{% if has_financial %} open{% endif %}">
-                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_financial %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Financial</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_financial %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Financiële gegevens</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
@@ -737,9 +743,9 @@
 </div>
 
 <!-- Comments section for subject notes (with timestamps & authors) -->
-<div class="card subject-comments-section">
+<div class="card ui-panel subject-detail-panel subject-comments-section">
     <div class="card-header">
-        <h2>{{ _('📝 Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
+        <h2>📝 Opmerkingen <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
         <div class="flex-gap">
             <button data-click="addSubjectComment" class="btn-cms small bg-green">{{ _('Add Note') }}</button>
             <button data-click="loadSubjectComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
@@ -766,12 +772,12 @@
 </div>
 
 <!-- Combined Social Accounts Card -->
-<div class="card">
+<div class="card ui-panel subject-detail-panel">
     <div class="card-header">
-        <h2>{{ _('🌐 Social Accounts') }}</h2>
+        <h2>🌐 Sociale accounts</h2>
         <div class="btn-group">
             <button data-click="bulkExtractSocialIds" class="btn-cms small bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
-            <button data-click="openAddSocialAccountModal" class="btn-cms small purple">{{ _('+ Add Account') }}</button>
+            <button data-click="openAddSocialAccountModal" class="btn-cms small purple">+ Account toevoegen</button>
         </div>
     </div>
 
