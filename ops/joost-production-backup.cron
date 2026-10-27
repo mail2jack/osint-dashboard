@@ -1,0 +1,2 @@
+# Encrypted production backup for joost.iveras.com.
+30 0 * * * root cd /home/development/joost-production && BACKUP_RETENTION_DAILY=14 BACKUP_RETENTION_WEEKLY=8 BACKUP_RETENTION_MONTHLY=12 /bin/bash scripts/backup.sh /home/development/joost-production/backups >> /home/development/joost-production/backups/production-backup.log 2>&1
