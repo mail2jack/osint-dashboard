@@ -1751,7 +1751,7 @@ class TestWorkspaceFindingActions:
 
         body = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert 'data-report-flag="false"' in body
-        assert "Include in report" in body
+        assert "Opnemen in rapport" in body
         assert "Exclude from official reports" not in body
 
     def test_report_flag_labels_describe_the_next_action(self, auth_client):
@@ -1762,14 +1762,14 @@ class TestWorkspaceFindingActions:
 
         included = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert 'data-report-flag="true"' in included
-        assert "Exclude from report" in included
-        assert "Include in report" not in included
+        assert "Uitsluiten van rapport" in included
+        assert "Opnemen in rapport" not in included
 
         assert auth_client.post(url, json={"include_in_report": False}).status_code == 200
         excluded = auth_client.get(_detail_url(case.id, inv.id)).get_data(as_text=True)
         assert 'data-report-flag="false"' in excluded
-        assert "Include in report" in excluded
-        assert "Exclude from report" not in excluded
+        assert "Opnemen in rapport" in excluded
+        assert "Uitsluiten van rapport" not in excluded
 
     def test_report_flag_action_labels_are_consistent_in_all_ui_variants(self):
         """Static and live-updated controls must never describe the old state."""

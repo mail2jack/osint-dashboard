@@ -224,7 +224,7 @@ class TestCaseDetailScopeUi:
         assert 'id="scopeFilter"' in html
         assert f'value="{open_inv.id}"' in html
         assert f'value="{archived_inv.id}"' in html
-        assert "(Archived)" in html
+        assert "(Gearchiveerd)" in html
 
         # JS config exposes all investigations.
         assert f'"id": "{open_inv.id}"' in html
@@ -246,9 +246,9 @@ class TestCaseDetailScopeUi:
         resp = auth_client.get(f"/cms/workflow/case/{case.id}")
         html = resp.get_data(as_text=True)
 
-        # Badged with the investigation's human number; case-wide stays Case-wide.
+        # Badged with the investigation's human number; case-wide stays localized.
         assert f">🔗 {inv.human_number}<" in html
-        assert "🌐 Case-wide" in html
+        assert "🌐 Zaakbreed" in html
         # Writers get both the per-group link/unlink selector and the JS const.
         assert 'class="scope-link"' in html
         assert "const CAN_WRITE = true" in html
@@ -317,7 +317,7 @@ class TestCaseDetailScopeUi:
         # the current (archived-flagged) option.
         assert f">🔗 {inv.human_number}<" in html
         assert f'value="{inv.id}" selected' in html
-        assert "(Archived)" in html
+        assert "(Gearchiveerd)" in html
 
 
 class TestSubjectProfileScopePickerXss:
@@ -394,7 +394,7 @@ class TestSubjectProfileScopeUi:
         html = resp.get_data(as_text=True)
 
         assert f">🔗 {inv.human_number}<" in html
-        assert "🌐 Case-wide" in html
+        assert "🌐 Zaakbreed" in html
 
     def test_run_action_scopes_to_investigation(
         self, auth_client, admin_tenant_id

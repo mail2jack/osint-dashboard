@@ -59,6 +59,15 @@ def app():
     _app.config["TESTING"] = True
     _app.config["WTF_CSRF_ENABLED"] = False
     _app.config["SERVER_NAME"] = "localhost"
+    # Public-form protection is tested explicitly in test_turnstile_registration.
+    # Keep the rest of the suite independent from developer/CI environment keys.
+    _app.config.update(
+        TURNSTILE_SITE_KEY="",
+        TURNSTILE_SECRET_KEY="",
+        TURNSTILE_REQUIRED=False,
+        TURNSTILE_ALLOWED_HOSTNAMES="",
+        TURNSTILE_ACTION="customer-registration",
+    )
 
     with _app.app_context():
         from alembic import command
