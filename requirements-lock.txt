@@ -199,7 +199,6 @@ rq==2.10.0
 ruamel.yaml==0.19.1
 ruff==0.16.2
 safety-schemas==0.0.16
-safety==3.8.1
 secure==0.3.0
 selenium==4.26.1
 sentry-sdk==2.28.0
