@@ -45,6 +45,13 @@ class Config:
     # CMS API Key (for programmatic access)
     CMS_API_KEY = os.environ.get("CMS_API_KEY")
 
+    # Public registration protection. The widget activates once both keys exist.
+    TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+    TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+    TURNSTILE_REQUIRED = os.environ.get("TURNSTILE_REQUIRED", "false")
+    TURNSTILE_ALLOWED_HOSTNAMES = os.environ.get("TURNSTILE_ALLOWED_HOSTNAMES", "")
+    TURNSTILE_ACTION = os.environ.get("TURNSTILE_ACTION", "customer-registration")
+
     # File Upload
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/var/uploads/cms")
