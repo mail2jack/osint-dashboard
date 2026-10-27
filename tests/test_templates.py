@@ -64,4 +64,4 @@ def test_generate_report_post_without_template_rerenders_form(auth_client, app):
     )
 
     assert resp.status_code == 200
-    assert b"Choose a template" in resp.data
+    assert b"Kies een sjabloon..." in resp.data

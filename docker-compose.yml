@@ -81,6 +81,11 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-staging@iveras.local}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Iveras Local Staging}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      TURNSTILE_ALLOWED_HOSTNAMES: ${TURNSTILE_ALLOWED_HOSTNAMES:-}
+      TURNSTILE_ACTION: ${TURNSTILE_ACTION:-customer-registration}
+      TURNSTILE_REQUIRED: ${TURNSTILE_REQUIRED:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

@@ -49,7 +49,7 @@ def test_dashboard_paginates_cases_deterministically(auth_client):
     assert "Dashboard case 25" in first_body
     assert "Dashboard case 00" not in first_body
     assert "page=2" in first_body
-    assert "Page 1 / 2" in first_body
+    assert "Pagina 1 / 2" in first_body
 
     second = auth_client.get("/cms/workflow/?page=2")
     second_body = second.get_data(as_text=True)

@@ -198,8 +198,8 @@ class TestListInvestigations:
         _, case_id = _make_client_and_case()
         resp = auth_client.get(f"/cms/workflow/case/{case_id}/investigations")
         assert resp.status_code == 200
-        assert b"No investigations yet. Make the first investigation." in resp.data
-        assert b">Make the first investigation</button>" in resp.data
+        assert b"Nog geen onderzoeken. Maak het eerste onderzoek aan." in resp.data
+        assert b">Maak het eerste onderzoek aan</button>" in resp.data
 
     def test_add_form_toggle_is_csp_safe(self, app, auth_client):
         """PR2-P1: de aanmaak-toggle op de standalone route is CSP-safe —

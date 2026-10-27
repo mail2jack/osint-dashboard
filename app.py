@@ -762,12 +762,12 @@ def add_security_headers(response):
     # 'unsafe-eval' required by TensorFlow.js (face-api) for WebGL backend
     csp = (
         f"default-src 'self'; "
-        f"script-src 'self' 'unsafe-eval' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+        f"script-src 'self' 'unsafe-eval' 'nonce-{nonce}' https://cdn.jsdelivr.net https://challenges.cloudflare.com; "
         f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         f"font-src 'self' https://fonts.gstatic.com; "
         f"img-src 'self' data: https:; "
         f"connect-src 'self' https:; "
-        f"frame-src 'none'; "
+        f"frame-src https://challenges.cloudflare.com; "
         f"object-src 'none'; "
         f"report-uri /csp-report"
     )

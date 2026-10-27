@@ -149,8 +149,36 @@ def register_system_routes(app: Flask) -> None:
     def portal_customer_registration() -> str:
         """Public registration request; it never creates access directly."""
         from cms.models import CustomerRegistrationRequest, db
+        from cms.services.turnstile import is_enabled, verify
 
         if request.method == "POST":
+            if (request.form.get("website") or "").strip():
+                return render_template(
+                    "public/portal_register.html",
+                    error="De aanvraag kon niet worden verwerkt.",
+                    form=request.form,
+                    turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+                    turnstile_enabled=is_enabled(),
+                ), 400
+            if is_enabled():
+                verified, reason = verify(
+                    request.form.get("cf-turnstile-response")
+                    or request.form.get("cf-turnstile"),
+                    request.remote_addr,
+                )
+                if not verified:
+                    message = (
+                        "Bevestig eerst dat u geen geautomatiseerd formulier gebruikt."
+                        if reason in {"missing_token", "rejected"}
+                        else "De beveiligingscontrole kon niet worden afgerond. Probeer het opnieuw."
+                    )
+                    return render_template(
+                        "public/portal_register.html",
+                        error=message,
+                        form=request.form,
+                        turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+                        turnstile_enabled=is_enabled(),
+                    ), 400
             organization_name = (request.form.get("organization_name") or "").strip()
             contact_name = (request.form.get("contact_name") or "").strip()
             email = (request.form.get("email") or "").strip().lower()
@@ -165,12 +193,16 @@ def register_system_routes(app: Flask) -> None:
                     "public/portal_register.html",
                     error="Vul de organisatienaam, contactpersoon en een geldig e-mailadres in." if organization_required else "Vul contactpersoon en een geldig e-mailadres in.",
                     form=request.form,
+                    turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+                    turnstile_enabled=is_enabled(),
                 ), 400
             if registration_type in {"one_off", "other"} and not message:
                 return render_template(
                     "public/portal_register.html",
                     error="Beschrijf kort uw onderzoeksvraag of andere vraag.",
                     form=request.form,
+                    turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+                    turnstile_enabled=is_enabled(),
                 ), 400
             existing = CustomerRegistrationRequest.query.filter(
                 CustomerRegistrationRequest.email == email,
@@ -181,6 +213,8 @@ def register_system_routes(app: Flask) -> None:
                     "public/portal_register.html",
                     error="Voor dit e-mailadres staat al een aanvraag open.",
                     form=request.form,
+                    turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+                    turnstile_enabled=is_enabled(),
                 ), 409
             db.session.add(
                 CustomerRegistrationRequest(
@@ -201,7 +235,14 @@ def register_system_routes(app: Flask) -> None:
             if registration:
                 notify_registration_received(registration)
             return render_template("public/portal_register.html", submitted=True)
-        return render_template("public/portal_register.html", form={})
+        from cms.services.turnstile import is_enabled
+
+        return render_template(
+            "public/portal_register.html",
+            form={},
+            turnstile_site_key=current_app.config.get("TURNSTILE_SITE_KEY", ""),
+            turnstile_enabled=is_enabled(),
+        )
 
     @app.route("/portal/dashboard")
     @login_required

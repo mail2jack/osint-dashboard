@@ -426,7 +426,7 @@ class TestDetailPageCsp:
         resp = auth_client.get(_detail_url(case_id, inv.id))
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert 'data-confirm-archive="Archive this investigation?"' in html
+        assert 'data-confirm-archive="Dit onderzoek archiveren?"' in html
         assert "getAttribute('data-confirm-archive')" in html
         assert 'nonce="' in html
         assert "window.confirm" in html
