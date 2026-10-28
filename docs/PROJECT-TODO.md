@@ -1,6 +1,6 @@
 # Joost / Iveras — centrale projecttodo
 
-Laatste bijgewerkt: 10 oktober 2026
+Laatste bijgewerkt: 28 oktober 2026
 Werkafspraak: per beurt werken we aan één actieve werkstroom. Andere punten blijven geparkeerd totdat ze expliciet worden hervat.
 
 ## Actieve focus
@@ -180,11 +180,13 @@ Deze werkstroom is functioneel belangrijk, maar staat nu niet bovenaan zolang he
 
 - ✅ Lokale Docker-ontwikkelomgeving beschikbaar.
 - ✅ Nieuwe VPS voorbereid als productieomgeving.
-- ✅ Oude VPS aangewezen voor backup- en licentietaken.
+- ✅ `backup.iveras.com` aangewezen voor off-site backup- en licentietaken.
 - ✅ TLS en domeinstructuur voorbereid.
 - ✅ Fail2ban actief op de server.
 - ✅ SpiderFoot en Tor gecontroleerd op staging.
-- ✅ Back-upscript en geplande back-ups aanwezig.
+- ✅ Productiebackups draaien tweemaal per dag om 01:00 en 17:00 Nederlandse tijd.
+- ✅ Geslaagde versleutelde backups worden automatisch off-site opgeslagen met
+  retentie van maximaal 28 archieven.
 - ✅ Back-updecryptie en tijdelijke databasehersteltest uitgevoerd.
 - ✅ Nieuwe productieomgeving nog één keer gecontroleerd vóór ingebruikname; health en containers zijn gezond.
 - ✅ Productie bijgewerkt via de gevalideerde master-merge; publieke health-check en kritieke smoke tests zijn geslaagd.

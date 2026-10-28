@@ -36,3 +36,9 @@ The session expires after 8 hours of inactivity. Attached files are limited to 1
 ## Rate Limiting
 
 To prevent abuse, there is a global limit of 300 requests per 60 seconds per IP. For create/edit actions, a stricter limit of 30 requests per 60 seconds applies.
+
+## Continuïteit
+
+De productieomgeving wordt tweemaal per dag versleuteld geback-upt en een
+geslaagde backup wordt off-site bewaard. Voor gebruikers verandert dit niets;
+herstelacties worden alleen door bevoegde beheerders uitgevoerd.

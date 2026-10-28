@@ -197,12 +197,18 @@ This runs `git pull`, updates Python packages, rebuilds frontend assets, applies
 
 ## 6. Backups
 
-A cron job is installed at `/etc/cron.d/osint-dashboard-backup` that runs backups 4x daily. Backups are stored in `/opt/osint-dashboard/backups/`.
+Backups are deployment-specific. For the current production installation the
+active schedule is two times per day, at 01:00 and 17:00 Europe/Amsterdam,
+through `/etc/cron.d/joost-production-backup`. Each successful encrypted
+archive is copied to `backup.iveras.com`.
 
-To run a manual backup:
+The current production paths and retention policy are documented in
+[`docs/PRODUCTION-BACKUP-RUNBOOK.md`](docs/PRODUCTION-BACKUP-RUNBOOK.md).
+
+To run a production backup manually:
 
 ```bash
-sudo /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/backups
+sudo /usr/local/sbin/joost-production-backup-run
 ```
 
 ---

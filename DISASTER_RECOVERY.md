@@ -57,8 +57,9 @@ The report checks:
 
 ## RPO/RTO Targets
 
-- **RPO: 6 hours maximum.** Backups run four times daily; a disaster may lose
-  at most the interval since the last successful backup.
+- **RPO: 16 hours maximum.** Production backups run at 01:00 and 17:00
+  Europe/Amsterdam; a disaster may lose at most the interval since the last
+  successful backup. A successful run is also copied off-site.
 - **RTO: 4 hours maximum.** The target is to provision the database, restore the
   verified archive, restore uploads, run migrations, and return the application
   to a healthy state within four hours.
@@ -84,7 +85,7 @@ row counts and operator names), directory `2026-08-15/`:
   (Perry Couprie) confirmed `status: pass` on all six checks; production
   counts, schema, and uploads were unchanged after the drill.
 
-RPO/RTO remain 6 h / 4 h operational targets. The drill proves the tested
+RPO/RTO are 16 h / 4 h operational targets. The drill proves the tested
 archive is recoverable and that an isolated restore does not touch production;
 it does not prove end-to-end RTO under a real incident.
 
@@ -95,5 +96,6 @@ it does not prove end-to-end RTO under a real incident.
 - **Recurrence:** run the drill monthly, or after any change to backup, restore,
   schema, or DR configuration. After every run, copy the three JSON reports from
   the VPS into a new date-stamped directory in the private evidence repository.
-- **Alerting:** the scheduled verifier (`osint-backup-verify.timer`, four times
-  daily) catches regressions between drills.
+- **Alerting:** each scheduled backup verifies its own encrypted archive and
+  reports failures. The monthly isolated restore drill catches regressions
+  between scheduled runs.

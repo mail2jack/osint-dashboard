@@ -101,9 +101,10 @@ Zonder deze SET返回 `SELECT count(*) FROM cases` → 0 terwijl er 100 cases zi
 ---
 
 ## Always Use Full Paths
-- Production commands MUST use `/opt/osint-dashboard`:
+- Legacy/native production commands use `/opt/osint-dashboard`. The current
+  Docker Compose production stack uses `/home/development/joost-production`:
   ```bash
-  cd /opt/osint-dashboard && git pull origin master && sudo systemctl restart osint-dashboard
+  cd /home/development/joost-production
   ```
 
 ---
@@ -119,8 +120,13 @@ Zonder deze SET返回 `SELECT count(*) FROM cases` → 0 terwijl er 100 cases zi
 - **Gunicorn logging**: `--access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log`.
 - **Nginx tuning**: `proxy_buffer_size 8k`, `proxy_buffers 8 8k`, `proxy_read_timeout 120s`.
 - **SpiderFoot service**: `ProtectHome=off` (blocks access to `/home/osint/.spiderfoot`).
-- **Backup cron**: 4x daily (00:00, 06:00, 12:00, 18:00) via `/etc/cron.d/osint-dashboard-backup`.
-- **Backup recovery verification**: 4x daily via `osint-backup-verify.timer`; failures trigger the system journal and optional email alert. See `DISASTER_RECOVERY.md`.
+- **Production backup cron**: twice daily at 01:00 and 17:00 Europe/Amsterdam
+  via `/etc/cron.d/joost-production-backup`.
+- **Off-site copy**: every successful production archive is uploaded to
+  `backup.iveras.com` through the restricted `backup-receiver` account; a
+  maximum of 28 off-site archives is retained.
+- **Backup verification**: every run decrypts and checks the archive before
+  upload. See `docs/PRODUCTION-BACKUP-RUNBOOK.md` and `DISASTER_RECOVERY.md`.
 - **Sudoers**: `git`, `chown`, `systemctl` allowed for passwordless update from GUI.
 
 ---

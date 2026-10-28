@@ -1,5 +1,13 @@
 # Changelog
 
+# 2026-10-28
+
+- Production backups are now scheduled at 01:00 and 17:00 Europe/Amsterdam.
+- Successful encrypted archives are copied to `backup.iveras.com`; off-site
+  retention is capped at 28 archives.
+- Active installation and recovery documentation now points to the current
+  Docker Compose production paths.
+
 ## [Unreleased]
 
 Planned changes for the next release.
