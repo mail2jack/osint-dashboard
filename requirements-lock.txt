@@ -1,4 +1,4 @@
-Authlib==1.7.2
+Authlib==1.9.1
 CherryPy==18.10.0
 ExifRead==2.3.2
 Flask-Compress==1.24
@@ -70,7 +70,7 @@ curl_cffi==0.16.0
 cyclonedx-python-lib==11.11.1
 decorator==5.2.1
 defusedxml==0.7.1
-dnspython==2.8.0
+dnspython==2.9.0
 dparse==0.6.4
 email-validator==2.3.0
 et_xmlfile==2.0.0
