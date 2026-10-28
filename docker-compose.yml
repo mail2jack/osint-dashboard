@@ -88,6 +88,9 @@ services:
       TURNSTILE_REQUIRED: ${TURNSTILE_REQUIRED:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      # The production SMTP relay runs on this VPS and uses the public hostname
+      # for TLS identity; keep that hostname resolvable inside the app network.
+      - "joost.iveras.com:host-gateway"
     volumes:
       - uploads:/app/static/uploads
       - ${BACKUP_DIR_HOST:-./backups}:/app/backups:ro
