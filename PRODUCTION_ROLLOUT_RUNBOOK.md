@@ -9,14 +9,15 @@ Het voert geen automatische productie-restore of rollback uit.
 2. Controleer dat een recente backup bestaat.
 3. Zorg dat iemand bereikbaar is voor rollbackbeslissingen.
 4. Log in op de VPS als gebruiker met sudo-rechten.
-5. Controleer dat de repository op `master` staat.
+5. Controleer dat de gemergde releasecode in `/home/development/joost-production` staat.
 
 ## Dry Run
 
 Plak dit commando letterlijk:
 
 ```bash
-sudo /opt/osint-dashboard/scripts/production_rollout.sh --dry-run
+sudo APP_DIR=/home/development/joost-production \
+  /home/development/joost-production/scripts/production_compose_rollout.sh --dry-run
 ```
 
 Bij `DRY RUN PASSED` verandert er niets. Bij een fout stopt het script.
@@ -26,16 +27,19 @@ Bij `DRY RUN PASSED` verandert er niets. Bij een fout stopt het script.
 Start alleen na een groene dry-run:
 
 ```bash
-sudo /opt/osint-dashboard/scripts/production_rollout.sh --confirm DEPLOY-MASTER
+sudo APP_DIR=/home/development/joost-production \
+  RELEASE_SHA=<gemergde-commit> \
+  /home/development/joost-production/scripts/production_compose_rollout.sh \
+  --confirm DEPLOY-MASTER
 ```
 
-Het script gebruikt de bestaande deployflow voor backup, pull, dependencies,
-frontend-build, migrations, restart en health. Daarna deployt het de license-server,
-controleert beide services en health endpoints, controleert privacy-defaults,
-controleert de actieve purge-timer en draait eenmaal `privacy:purge`.
+Het script maakt eerst een versleutelde productieback-up, valideert de Compose-configuratie,
+b​​ouwt de applicatie-images, herstart alleen de applicatieservices en wacht op een gezonde
+app-container. PostgreSQL, Redis, uploads, mail en WhatsApp-auth blijven behouden. De
+licentieserver staat op een afzonderlijke omgeving en wordt hier niet aangeraakt.
 
-De uitrol stopt bij fouten. Er is geen automatische rollback. Het JSON-rapport
-staat in `/opt/osint-dashboard/reports/rollout/` en bevat geen secrets.
+De uitrol stopt bij fouten. Er is geen automatische rollback. Back-ups en logs
+blijven onder `/home/development/joost-production/backups/` beschikbaar.
 Na afloop verstuurt het script een korte mail vanaf `server@iveras.com` naar
 `ROLLOUT_ALERT_EMAIL` (standaard `server@iveras.com`). Alleen status, commit SHA
 en rapportpad worden gemaild. Zet `ROLLOUT_REQUIRE_EMAIL=true` wanneer een
