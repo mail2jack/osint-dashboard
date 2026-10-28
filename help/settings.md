@@ -58,6 +58,17 @@ Store API keys for external services. These are stored in the database (not in `
 - When an update is available, a blue banner appears at the top of the page
 - Click **Update Now** to perform the update (requires sudo privileges for git/chown/systemctl)
 
+## Backups en herstel
+
+Productie maakt automatisch backups om 01:00 en 17:00 Nederlandse tijd. Een
+backup wordt versleuteld, gecontroleerd en daarna naar de aparte backup-VPS
+`backup.iveras.com` gekopieerd. Lokale en off-site retentie worden automatisch
+toegepast.
+
+Een restore is een beheertaak en wordt nooit vanuit de gewone instellingen
+gestart. Zie de [Production Backup Runbook](../docs/PRODUCTION-BACKUP-RUNBOOK.md)
+voor opslag, controle en herstel.
+
 ## Encryption
 
 Sensitive fields (ID numbers, license plates, IMO/MMSI/ENI) are stored encrypted with **Fernet** encryption.

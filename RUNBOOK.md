@@ -1,5 +1,12 @@
 # Iveras OSINT Dashboard — Production Runbook
 
+> **Actuele productieafwijking:** productie draait als Docker Compose-stack in
+> `/home/development/joost-production`. Gebruik voor productie-uitrol en
+> backups de actuele [Production Rollout Runbook](PRODUCTION_ROLLOUT_RUNBOOK.md)
+> en [Production Backup Runbook](docs/PRODUCTION-BACKUP-RUNBOOK.md). De
+> `/opt/osint-dashboard`-paden hieronder zijn legacy/native-installatie-
+> instructies en gelden niet voor de huidige productiehost.
+
 Operationele handleiding voor de productie-installatie op `/opt/osint-dashboard`
 (systemd: `osint-dashboard`, user: `osint`, localhost:5000). De license-server
 heeft een eigen runbook in `license-server/README.md`.
@@ -140,8 +147,8 @@ hardening dus niet uitwissen. Controleer na een deploy:
 ## 6. Backup & restore
 
 ```bash
-# Backups: 4x per dag via /etc/cron.d/osint-dashboard-backup → /opt/osint-dashboard/backups
-sudo -u osint bash /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/backups
+# Backups: 01:00 en 17:00 Europe/Amsterdam; lokale en off-site opslag.
+sudo /usr/local/sbin/joost-production-backup-run
 
 # Verificatie (isolated PostgreSQL restore, counts, encryption, uploads, license DB/key):
 # Bronst van de DR-verbindingsomgeving uit /etc/default/osint-dr (dr_setup.sh);
@@ -160,8 +167,8 @@ sudo -u osint bash /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/b
 
 **Kritiek**: `backups/backup-key.gpg` is de decryptiesleutel. Zonder die key
 is restore onmogelijk. Bewaar een kopie op een andere plek dan de server.
-Neem ook `/opt/license-server/keys/private.pem` en `data/license.db` op in een
-secundaire back-up (zie `license-server/README.md`).
+Zie voor productie-opslag, off-site retentie en herstel de
+[Production Backup Runbook](docs/PRODUCTION-BACKUP-RUNBOOK.md).
 
 ---
 

@@ -6,7 +6,8 @@ Het voert geen automatische productie-restore of rollback uit.
 ## Voorbereiding
 
 1. Open een onderhoudsvenster.
-2. Controleer dat een recente backup bestaat.
+2. Controleer dat een recente lokale én off-site backup bestaat. Zie
+   `docs/PRODUCTION-BACKUP-RUNBOOK.md`.
 3. Zorg dat iemand bereikbaar is voor rollbackbeslissingen.
 4. Log in op de VPS als gebruiker met sudo-rechten.
 5. Controleer dat de gemergde releasecode in `/home/development/joost-production` staat.
@@ -39,7 +40,9 @@ app-container. PostgreSQL, Redis, uploads, mail en WhatsApp-auth blijven behoude
 licentieserver staat op een afzonderlijke omgeving en wordt hier niet aangeraakt.
 
 De uitrol stopt bij fouten. Er is geen automatische rollback. Back-ups en logs
-blijven onder `/home/development/joost-production/backups/` beschikbaar.
+blijven onder `/home/development/joost-production/backups/` beschikbaar. Een
+geslaagde rollout-backup wordt ook via de productie-off-site synchronisatie
+naar `backup.iveras.com` gekopieerd.
 Na afloop verstuurt het script een korte mail vanaf `server@iveras.com` naar
 `ROLLOUT_ALERT_EMAIL` (standaard `server@iveras.com`). Alleen status, commit SHA
 en rapportpad worden gemaild. Zet `ROLLOUT_REQUIRE_EMAIL=true` wanneer een
