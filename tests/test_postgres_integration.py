@@ -67,7 +67,7 @@ class TestPostgreSQLIntegration:
         # fl0e1f2a3b46 adds soft-delete timestamps for spam registrations.
         # fm1f2a3b4c5d tracks the last subject editor.
         # fn2a3b4c5d6e adds the screenshot rejection audit fields.
-        assert revision == "fn2a3b4c5d6e"
+        assert revision == "fp1a2b3c4d5e"
 
         protected = db.session.execute(
             text(
@@ -1231,7 +1231,7 @@ class TestInvoiceRLSAndNumbering:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "fn2a3b4c5d6e"
+        assert revision == "fp1a2b3c4d5e"
         counter_table = db.session.execute(
             text(
                 "SELECT count(*) FROM pg_class "
