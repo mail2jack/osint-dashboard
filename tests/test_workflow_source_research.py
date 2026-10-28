@@ -67,6 +67,10 @@ def _enable_flag(flag_name):
 
 def _enable_workflow_source_research():
     _enable_flag("workflow_spiderfoot")
+    # The application intentionally keeps the entitlement gate independent
+    # from the rollout flag.  Enable both in tests so the fixture represents
+    # a tenant that is actually allowed to run SpiderFoot research.
+    _enable_flag("spiderfoot")
 
 
 def _request_url(case_id, investigation_id):
@@ -616,7 +620,10 @@ def test_completed_source_research_action_links_directly_to_materialized_finding
         f"/cms/workflow/case/{case.id}/investigations/{investigation.id}"
     ).get_data(as_text=True)
     assert 'href="#investigation-findings"' in html
-    assert any(label in html for label in ("View findings", "Bekijk bevindingen"))
+    assert any(
+        label in html
+        for label in ("View findings", "Bekijk bevindingen", "Bevindingen bekijken")
+    )
     assert f'data-source-action-id="{action.id}"' not in html
 
 

@@ -107,6 +107,8 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
         {{ f.title }}
         {% if f.detail %}<br><span style="font-size:10pt;color:#555;white-space:pre-wrap;">{{ f.detail }}</span>{% endif %}
         {% if f.content and (not f.detail or f.content|trim != f.detail|trim) %}<br><span style="font-size:10pt;color:#555;white-space:pre-wrap;">{{ f.content }}</span>{% endif %}
+        {% if f.observation %}<br><span style="font-size:9.5pt;color:#444;white-space:pre-wrap;"><strong>{{ _('Observation') }}:</strong> {{ f.observation }}</span>{% endif %}
+        {% if f.interpretation %}<br><span style="font-size:9.5pt;color:#444;white-space:pre-wrap;"><strong>{{ _('Interpretation') }}:</strong> {{ f.interpretation }}</span>{% endif %}
         {% if f.comment %}<br><span style="font-size:10pt;color:#555;white-space:pre-wrap;"><strong>{{ _('Comment') }}:</strong> {{ f.comment }}</span>{% endif %}
         {% if screenshot_evidence.get(f.id) %}
         <br>
@@ -129,7 +131,10 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
         {% endfor %}
         {% endif %}
       </td>
-      <td>{{ f.source_type or '—' }}</td>
+      <td>
+        {{ f.source_type or '—' }}
+        {% if f.source_url %}<br><span style="font-size:9pt;color:#555;overflow-wrap:anywhere;">{{ f.source_url }}</span>{% endif %}
+      </td>
       <td>{{ f.created_at.strftime('%d-%m-%Y') if f.created_at else '—' }}</td>
     </tr>
     {% endfor %}

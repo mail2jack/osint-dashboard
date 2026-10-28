@@ -72,6 +72,7 @@ from .breach import BreachRecord
 from .portal_request import PortalRequest
 from .portal_request_message import PortalRequestMessage
 from .customer_registration import CustomerRegistrationRequest
+from .customer_registration_mail_analysis import CustomerRegistrationMailAnalysis
 from .client_portal_access import ClientPortalAccess
 from .case_message import CaseMessage
 
@@ -90,6 +91,7 @@ __all__ = [
     "Invitation",
     "UsageRecord",
     "CustomerRegistrationRequest",
+    "CustomerRegistrationMailAnalysis",
     "NotificationPreference",
     "NOTIFICATION_CATEGORIES",
     "Announcement",
@@ -1739,6 +1741,21 @@ class Finding(db.Model):
     source_url = db.Column(db.String(500))
     source_type = db.Column(db.String(50))  # osint, interview, document, etc.
 
+    # Optional provenance and analytic separation fields.  These are additive
+    # so historical findings remain readable and report-compatible.
+    observation = db.Column(db.Text, nullable=True)
+    interpretation = db.Column(db.Text, nullable=True)
+    source_origin_type = db.Column(db.String(30), nullable=True)
+    source_published_at = db.Column(db.DateTime, nullable=True)
+    source_observed_at = db.Column(db.DateTime, nullable=True)
+    corroboration_status = db.Column(
+        db.String(30), nullable=False, default="unassessed", server_default="unassessed"
+    )
+    corroboration_count = db.Column(
+        db.Integer, nullable=False, default=0, server_default="0"
+    )
+    confidence_reasons = db.Column(SafeJSON, nullable=True)
+
     # Integrity stamp — SHA-256 hash computed at creation for chain-of-custody
     content_hash = db.Column(db.String(64), nullable=True, index=False)
 
@@ -1885,6 +1902,18 @@ class Finding(db.Model):
             "content": self.content,
             "source_url": self.source_url,
             "source_type": self.source_type,
+            "observation": self.observation,
+            "interpretation": self.interpretation,
+            "source_origin_type": self.source_origin_type,
+            "source_published_at": self.source_published_at.isoformat()
+            if self.source_published_at
+            else None,
+            "source_observed_at": self.source_observed_at.isoformat()
+            if self.source_observed_at
+            else None,
+            "corroboration_status": self.corroboration_status,
+            "corroboration_count": self.corroboration_count,
+            "confidence_reasons": self.confidence_reasons,
             "reliability_score": self.reliability_score,
             "confidence_level": self.confidence_level,
             "finding_type": self.finding_type,
@@ -2059,6 +2088,12 @@ class ResearchAction(db.Model):
     completed_at = db.Column(db.DateTime)
     error = db.Column(db.Text)
     result_summary = db.Column(db.Text)
+    # Optional action provenance.  Existing action types may leave these NULL.
+    source_url = db.Column(db.String(2000), nullable=True)
+    method = db.Column(db.String(100), nullable=True)
+    source_origin_type = db.Column(db.String(30), nullable=True)
+    observed_at = db.Column(db.DateTime, nullable=True)
+    operator_notes = db.Column(db.Text, nullable=True)
     cancel_requested = db.Column(db.Boolean, default=False)
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -2126,6 +2161,11 @@ class ResearchAction(db.Model):
             "status": self.status,
             "error": self.error,
             "result_summary": self.result_summary,
+            "source_url": self.source_url,
+            "method": self.method,
+            "source_origin_type": self.source_origin_type,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "operator_notes": self.operator_notes,
             "archived_at": self.archived_at.isoformat() if self.archived_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,

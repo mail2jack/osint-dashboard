@@ -106,6 +106,11 @@ class ActionDTO:
     completed_at: datetime | None
     archived: bool
     finding_count: int  # unieke findings gekoppeld aan deze action
+    source_url: str | None = None
+    method: str | None = None
+    source_origin_type: str | None = None
+    observed_at: datetime | None = None
+    operator_notes: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -147,6 +152,13 @@ class FindingDTO:
     action_ids: list[str]
     action_labels: list[str]
     candidate_quality: dict | None = None
+    observation: str | None = None
+    interpretation: str | None = None
+    source_origin_type: str | None = None
+    source_published_at: datetime | None = None
+    source_observed_at: datetime | None = None
+    corroboration_status: str | None = None
+    corroboration_count: int = 0
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -456,6 +468,13 @@ def load_inv_findings(
                 if a_id in label_icon
             ],
             candidate_quality=assess_finding(f),
+            observation=f.observation,
+            interpretation=f.interpretation,
+            source_origin_type=f.source_origin_type,
+            source_published_at=f.source_published_at,
+            source_observed_at=f.source_observed_at,
+            corroboration_status=f.corroboration_status,
+            corroboration_count=f.corroboration_count,
         )
         for f in findings
     ]
@@ -791,6 +810,11 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
             completed_at=a.completed_at,
             archived=a.archived_at is not None,
             finding_count=sum(1 for fs in finding_actions_map.values() if a.id in fs),
+            source_url=a.source_url,
+            method=a.method,
+            source_origin_type=a.source_origin_type,
+            observed_at=a.observed_at,
+            operator_notes=a.operator_notes,
         )
         for a in actions_orm
     ]
@@ -811,6 +835,13 @@ def build_inv_workspace(investigation: Investigation, case) -> WorkspaceDTO:
             action_ids=sorted(finding_actions_map.get(f.id, [])),
             action_labels=finding_action_labels.get(f.id, []),
             candidate_quality=assess_finding(f),
+            observation=f.observation,
+            interpretation=f.interpretation,
+            source_origin_type=f.source_origin_type,
+            source_published_at=f.source_published_at,
+            source_observed_at=f.source_observed_at,
+            corroboration_status=f.corroboration_status,
+            corroboration_count=f.corroboration_count,
         )
         for f in findings_orm
     ]

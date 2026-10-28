@@ -1,6 +1,8 @@
 import re
 import secrets
 import unicodedata
+import base64
+import binascii
 from datetime import datetime, timezone
 from markupsafe import escape
 
@@ -14,6 +16,7 @@ from ..models import (
     Client,
     ClientPortalAccess,
     CustomerRegistrationRequest,
+    CustomerRegistrationMailAnalysis,
     Invitation,
     PortalRequest,
     Tenant,
@@ -21,6 +24,7 @@ from ..models import (
 )
 from ..encryption_utils import encryptor
 from ..email_utils import is_smtp_configured, send_email
+from ..services.customer_registration_mail import analyze_raw_email
 
 
 def _slugify(value: str) -> str:
@@ -477,4 +481,70 @@ def customer_registrations() -> str:
         tenants=tenants,
         is_platform_admin=is_platform_admin,
         show_archived=show_archived,
+    )
+
+
+def _registration_for_user(registration_id: str):
+    registration = db.session.get(CustomerRegistrationRequest, registration_id)
+    if not registration:
+        abort(404)
+    if not current_user.is_super_admin and registration.tenant_id != current_user.tenant_id:
+        abort(403)
+    return registration
+
+
+@cms_bp.route("/portal/registrations/<registration_id>/mail-analysis", methods=["POST"])
+@login_required
+@roles_required("admin", "owner")
+def analyze_customer_registration_mail(registration_id: str):
+    registration = _registration_for_user(registration_id)
+    upload = request.files.get("email_file")
+    raw_text = (request.form.get("raw_email") or "").strip()
+    raw_message = upload.read() if upload and upload.filename else raw_text.encode("utf-8")
+    if not raw_message:
+        flash("Voeg een origineel .eml-bestand of de volledige mailheaders toe.", "error")
+        return redirect(url_for("cms.customer_registrations"))
+    if len(raw_message) > 5 * 1024 * 1024:
+        flash("Het e-mailbericht is groter dan 5 MB.", "error")
+        return redirect(url_for("cms.customer_registrations"))
+    try:
+        report = analyze_raw_email(raw_message)
+    except (ValueError, UnicodeError, binascii.Error) as exc:
+        flash(f"Het bericht kon niet als e-mail worden gelezen: {exc}", "error")
+        return redirect(url_for("cms.customer_registrations"))
+    analysis = CustomerRegistrationMailAnalysis(
+        registration_id=registration.id,
+        tenant_id=registration.tenant_id or current_user.tenant_id,
+        created_by_id=current_user.id,
+        verdict=report["verdict"],
+        score=report["score"],
+        report=report,
+        raw_message_encrypted=encryptor.encrypt(base64.b64encode(raw_message).decode("ascii")),
+        message_sha256=report["message_sha256"],
+    )
+    db.session.add(analysis)
+    AuditLog.log(
+        tenant_id=registration.tenant_id or current_user.tenant_id,
+        user_id=current_user.id,
+        action="customer_registration.mail_analyzed",
+        entity_type="customer_registration",
+        entity_id=registration.id,
+        description="Incoming customer-registration email analyzed",
+        new_values={"analysis_id": analysis.id, "verdict": analysis.verdict, "score": analysis.score},
+    )
+    db.session.commit()
+    flash("E-mail gecontroleerd. Het analyse-rapport is aan de registratie gekoppeld.", "success")
+    return redirect(url_for("cms.customer_registration_mail_report", registration_id=registration.id, analysis_id=analysis.id))
+
+
+@cms_bp.route("/portal/registrations/<registration_id>/mail-analysis/<analysis_id>")
+@login_required
+@roles_required("admin", "owner")
+def customer_registration_mail_report(registration_id: str, analysis_id: str):
+    registration = _registration_for_user(registration_id)
+    analysis = CustomerRegistrationMailAnalysis.query.filter_by(
+        id=analysis_id, registration_id=registration.id
+    ).first_or_404()
+    return render_template(
+        "cms/customer_registration_mail_report.html", registration=registration, analysis=analysis
     )

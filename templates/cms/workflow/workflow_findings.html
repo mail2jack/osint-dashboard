@@ -385,6 +385,18 @@ function findingHtml(f) {
     });
     ssHtml += '</div>';
   }
+  var evidenceHtml = '';
+  if (f.observation || f.interpretation || (f.corroboration_status && f.corroboration_status !== 'unassessed')) {
+    evidenceHtml = '<div style="margin-top:0.45rem;padding:0.45rem 0.6rem;border-left:3px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);font-size:0.78rem;color:var(--text-secondary);">' +
+      '<strong>Bewijsbasis</strong>' +
+      (f.observation ? '<div style="margin-top:0.2rem;"><b>Observatie:</b> ' + esc(f.observation) + '</div>' : '') +
+      (f.interpretation ? '<div style="margin-top:0.2rem;"><b>Interpretatie:</b> ' + esc(f.interpretation) + '</div>' : '') +
+      (f.corroboration_status && f.corroboration_status !== 'unassessed' ? '<div style="margin-top:0.2rem;"><b>Corroboratie:</b> ' + esc(f.corroboration_status) + (f.corroboration_count ? ' (' + esc(String(f.corroboration_count)) + ')' : '') + '</div>' : '') +
+      '</div>';
+  }
+  var reviewHtml = (!f.verified && f.candidate_quality && f.candidate_quality.review_requirements && f.candidate_quality.review_requirements.length)
+    ? '<div style="margin-top:0.35rem;padding:0.35rem 0.5rem;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);font-size:0.75rem;color:var(--text-secondary);"><strong>Beoordelingspunten:</strong> ' + esc(f.candidate_quality.review_requirements.join(', ')) + '</div>'
+    : '';
 
   var reportBtn = (f.include_in_report === false
     ? '<button type="button" data-action="report-flag" data-finding-id="' + esc(f.id) + '" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _("Include in official reports") }}">\uD83D\uDCC4 {{ _("Include in report") }}</button>'
@@ -405,6 +417,8 @@ function findingHtml(f) {
       '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + verifiedInfo + '</span>' +
     '</div>' +
     (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
+    evidenceHtml +
+    reviewHtml +
     (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
     (f.raw_data && f.source_type === 'rdw' ? rdwCardHtml(f.raw_data) : '') +
     ssHtml +

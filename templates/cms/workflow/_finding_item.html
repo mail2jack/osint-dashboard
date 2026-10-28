@@ -33,7 +33,20 @@
   </div>
 
   {% if f.detail %}<div class="finding-content">{{ f.detail | urlize_target | safe }}</div>{% endif %}
+  {% if f.observation or f.interpretation or f.corroboration_status != 'unassessed' %}
+  <div style="margin-top:0.45rem;padding:0.45rem 0.6rem;border-left:3px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);font-size:0.78rem;color:var(--text-secondary);">
+    <strong>{{ _('Evidence basis') }}</strong>
+    {% if f.observation %}<div style="margin-top:0.2rem;"><b>{{ _('Observation') }}:</b> {{ f.observation }}</div>{% endif %}
+    {% if f.interpretation %}<div style="margin-top:0.2rem;"><b>{{ _('Interpretation') }}:</b> {{ f.interpretation }}</div>{% endif %}
+    {% if f.corroboration_status and f.corroboration_status != 'unassessed' %}<div style="margin-top:0.2rem;"><b>{{ _('Corroboration') }}:</b> {{ f.corroboration_status }}{% if f.corroboration_count %} ({{ f.corroboration_count }}){% endif %}</div>{% endif %}
+  </div>
+  {% endif %}
   {% if f.source_url %}<div style="margin-top:0.25rem;"><a href="{{ f.source_url }}" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ f.source_url }}</a></div>{% endif %}
+  {% if not f.verified and f.candidate_quality and f.candidate_quality.get('review_requirements') %}
+  <div style="margin-top:0.35rem;padding:0.35rem 0.5rem;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);font-size:0.75rem;color:var(--text-secondary);">
+    <strong>{{ _('Review points') }}:</strong> {{ f.candidate_quality.get('review_requirements')|join(', ') }}
+  </div>
+  {% endif %}
 
   {% if f.source_type == 'rdw' and f.raw_data %}
   {% set d = f.raw_data %}

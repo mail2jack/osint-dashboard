@@ -67,6 +67,7 @@ from cms.services.candidate_quality import (
     enrich_finding_quality,
     finding_sort_key,
 )
+from cms.services.entity_resolution import suggest_entity_matches
 from cms.services.investigation_workspace import (
     build_inv_workspace,
     source_research_display_title,
@@ -824,6 +825,13 @@ def _finding_json_with_context(f, case=None, subject=None):
         "integrity_verified": f.verify_integrity() if f.content_hash else None,
         "confidence_level": f.confidence_level,
         "candidate_quality": candidate_quality,
+        "observation": f.observation,
+        "interpretation": f.interpretation,
+        "source_origin_type": f.source_origin_type,
+        "source_published_at": f.source_published_at.isoformat() if f.source_published_at else None,
+        "source_observed_at": f.source_observed_at.isoformat() if f.source_observed_at else None,
+        "corroboration_status": f.corroboration_status,
+        "corroboration_count": f.corroboration_count,
         "archived_at": f.archived_at.isoformat() if f.archived_at else None,
         "comment": f.comment,
         "include_in_report": f.include_in_report,
@@ -1211,6 +1219,59 @@ def client_lookup():
 
     results.sort(key=lambda r: r["score"], reverse=True)
     return jsonify({"results": results[:10]})
+
+
+@workflow_bp.route("/api/subject-resolution/suggest", methods=["POST"])
+@login_required
+@_investigator_required
+def subject_resolution_suggest():
+    """Suggest possible subjects; never link or mutate a subject."""
+    body = request.get_json(silent=True) or {}
+    observed = body.get("observed") if isinstance(body.get("observed"), dict) else body
+    observed = {
+        key: str(observed.get(key) or "").strip()
+        for key in ("name", "email", "phone", "username")
+    }
+    if not any(observed.values()):
+        return jsonify({"error": "At least one identity signal is required"}), 400
+
+    candidates = []
+    subjects = Subject.query.filter(
+        Subject.is_deleted.is_(False),
+        Subject.tenant_id == current_user.tenant_id,
+    ).limit(500).all()
+    for subject in subjects:
+        subject.decrypt_identifiers()
+        emails = [subject.email] if subject.email else []
+        phones = [subject.phone] if subject.phone else []
+        usernames = []
+        for contact in subject.contacts.all():
+            contact.decrypt_fields()
+            if contact.contact_type == "email":
+                emails.append(contact.value)
+            elif contact.contact_type == "phone":
+                phones.append(contact.value)
+            elif contact.contact_type == "social":
+                usernames.append(contact.value)
+        for account in subject.social_accounts.all():
+            usernames.append(account.username)
+        candidates.append({
+            "id": subject.id,
+            "name": subject.name,
+            "subject_type": subject.subject_type,
+            "emails": emails,
+            "phones": phones,
+            "usernames": usernames,
+        })
+
+    return jsonify({
+        "suggestions": suggest_entity_matches(observed, candidates),
+        "policy": {
+            "automatic_link": False,
+            "requires_human_confirmation": True,
+            "mutations_performed": False,
+        },
+    })
 
 
 @workflow_bp.route("/case/new", methods=["GET", "POST"])
@@ -2306,6 +2367,9 @@ def import_passive_source_research(case_id, action_id, investigation_id=None):
                 detail=data,
                 source_url=source_url,
                 source_type="spiderfoot",
+                observation=data,
+                source_origin_type="automated",
+                source_observed_at=datetime.now(UTC),
                 icon="🕷️",
                 verified=False,
                 status="candidate",
