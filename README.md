@@ -44,6 +44,7 @@ Runs the app with PostgreSQL + Redis in containers. See [INSTALL.md](INSTALL.md#
 | [INSTALL.md](INSTALL.md) | Fresh Ubuntu server installation guide |
 | [MANUAL.md](MANUAL.md) | Full user manual (features, settings, troubleshooting) |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [docs/PRODUCTION-BACKUP-RUNBOOK.md](docs/PRODUCTION-BACKUP-RUNBOOK.md) | Current production backup, off-site storage and restore procedure |
 
 ## Tech Stack
 
