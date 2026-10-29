@@ -19,6 +19,12 @@ Planned changes for the next release.
 - Regressietests voor publieke routes en het uitsluiten van CMS- en portalroutes
   uit zoekmachine-indexering.
 
+## [4.0.0] — 2026-10-29
+
+Major release met de gevalideerde onderzoeksworkflow, explainable
+subject-koppelsuggesties, brongebonden AI-rapportage, audit/provenance,
+productie-backups en operationele hardening.
+
 ## [3.8.0] — 2026-10-10
 
 This release consolidates the validated portal, workflow, AI/findings and

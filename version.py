@@ -18,11 +18,16 @@ Git integration (optional):
 
 from datetime import datetime
 
-VERSION = (3, 8, 0)
+VERSION = (4, 0, 0)
 VERSION_STRING = ".".join(map(str, VERSION))
 VERSION_NAME = "Iveras OSINT"
 
 CHANGELOG = {
+    (
+        4,
+        0,
+        0,
+    ): "Major release: validated research quality, explainable subject matching, safer AI workflow, and production operations",
     (
         1,
         0,
