@@ -17,6 +17,14 @@
   </div>
 
   {% if fd.detail %}<div class="finding-content">{{ fd.detail | urlize_target | safe }}</div>{% endif %}
+  {% if fd.observation or fd.interpretation or fd.corroboration_status != 'unassessed' %}
+  <div style="margin-top:0.45rem;padding:0.45rem 0.6rem;border-left:3px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);font-size:0.78rem;color:var(--text-secondary);">
+    <strong>{{ _('Evidence basis') }}</strong>
+    {% if fd.observation %}<div style="margin-top:0.2rem;"><b>{{ _('Observation') }}:</b> {{ fd.observation }}</div>{% endif %}
+    {% if fd.interpretation %}<div style="margin-top:0.2rem;"><b>{{ _('Interpretation') }}:</b> {{ fd.interpretation }}</div>{% endif %}
+    {% if fd.corroboration_status and fd.corroboration_status != 'unassessed' %}<div style="margin-top:0.2rem;"><b>{{ _('Corroboration') }}:</b> {{ fd.corroboration_status }}{% if fd.corroboration_count %} ({{ fd.corroboration_count }}){% endif %}</div>{% endif %}
+  </div>
+  {% endif %}
   {% if fd.source_url %}
   <div style="margin-top:0.25rem;">
     {% if fd.source_url_is_linkable %}
@@ -24,6 +32,11 @@
     {% else %}
     <span style="font-size:0.8rem;color:var(--text-secondary);">{{ fd.source_url }}</span>
     {% endif %}
+  </div>
+  {% endif %}
+  {% if not fd.verified and fd.candidate_quality and fd.candidate_quality.get('review_requirements') %}
+  <div style="margin-top:0.35rem;padding:0.35rem 0.5rem;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);font-size:0.75rem;color:var(--text-secondary);">
+    <strong>{{ _('Review points') }}:</strong> {{ fd.candidate_quality.get('review_requirements')|join(', ') }}
   </div>
   {% endif %}
 

@@ -224,6 +224,15 @@
         {% if a.data_value %}
         <div style="margin-top:0.3rem;font-size:0.78rem;color:var(--text-secondary);overflow-wrap:anywhere;">{{ a.data_value }}</div>
         {% endif %}
+        {% if a.method or a.source_origin_type or a.observed_at or a.operator_notes %}
+        <div style="margin-top:0.35rem;padding:0.35rem 0.5rem;border-left:3px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);font-size:0.75rem;color:var(--text-secondary);">
+          <strong>{{ _('Method and source') }}</strong>
+          {% if a.method %} · {{ a.method }}{% endif %}
+          {% if a.source_origin_type %} · {{ a.source_origin_type }}{% endif %}
+          {% if a.observed_at %} · {{ _('Observed') }}: {{ a.observed_at.strftime('%d-%m-%Y %H:%M') }}{% endif %}
+          {% if a.operator_notes %}<div style="margin-top:0.2rem;white-space:pre-wrap;">{{ a.operator_notes }}</div>{% endif %}
+        </div>
+        {% endif %}
         {% if a.finding_count %}
         <div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-muted);">{{ _('Linked findings') }}: {{ a.finding_count }}</div>
         {% endif %}

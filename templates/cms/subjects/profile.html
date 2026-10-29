@@ -1051,6 +1051,14 @@
     <div class="card-header"><h2>{{ _('Facts') }} <span class="badge badge-status-active">{{ profile.facts|length }}</span></h2>
       {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="fact-form">{{ _('Add') }}</button>{% endif %}
     </div>
+    {% if profile.fact_conflicts %}
+    <div style="margin:0.75rem;padding:0.6rem 0.75rem;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);font-size:0.82rem;color:var(--text-secondary);">
+      <strong>{{ _('Conflicting facts require review') }}</strong>
+      {% for conflict in profile.fact_conflicts %}
+      <div style="margin-top:0.25rem;">{{ conflict.fact_key }}: {{ conflict.value_count }} verschillende waarden</div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% if profile.facts %}
     <table class="fact-table">
       <thead><tr><th>Fact</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Verified</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>

@@ -1,0 +1,15 @@
+{% extends "cms/base.html" %}
+{% block title %}E-mailanalyse{% endblock %}
+{% block content %}
+<div class="ui-page">
+  <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><a href="{{ url_for('cms.customer_registrations') }}">Registratieaanvragen</a><span>›</span><span>E-mailanalyse</span></div>
+  <div class="ui-page-header"><div><div class="ui-kicker">Registratie · mailanalyse</div><h1>Controle-rapport e-mail</h1><p class="ui-lead">{{ registration.organization_name }} · {{ registration.email }}</p></div><a class="btn-cms small" href="{{ url_for('cms.customer_registrations') }}">← Terug naar registraties</a></div>
+  <section class="ui-panel"><div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;"><strong>Beoordeling</strong><span class="status-pill">{{ analysis.verdict|title }}</span><span>Score: <strong>{{ analysis.score }}/100</strong></span><span style="color:var(--text-muted);">{{ analysis.created_at.strftime('%d-%m-%Y %H:%M') }} UTC</span></div><p style="color:var(--text-muted);margin-bottom:0;">Dit rapport is een technisch signaalrapport en vervangt geen menselijke beoordeling.</p></section>
+  <div class="ui-grid-2">
+    <section class="ui-panel"><h2>Afzender en herkomst</h2><p><strong>From</strong><br>{{ analysis.report.sender.raw or 'Ontbreekt' }}</p><p><strong>Reply-To</strong><br>{{ analysis.report.reply_to.raw or 'Ontbreekt' }}</p><p><strong>Return-Path</strong><br>{{ analysis.report.return_path.raw or 'Ontbreekt' }}</p><p><strong>Publieke IP-adressen</strong><br>{{ analysis.report.public_ips|join(', ') or 'Niet aangetroffen' }}</p>{% if analysis.report.reverse_dns %}<p><strong>Reverse DNS</strong><br>{% for ip, host in analysis.report.reverse_dns.items() %}{{ ip }} → {{ host or 'geen record' }}{% if not loop.last %}<br>{% endif %}{% endfor %}</p>{% endif %}</section>
+    <section class="ui-panel"><h2>Authenticatie</h2>{% for key, value in analysis.report.authentication.items() if key != 'raw' %}<p style="display:flex;justify-content:space-between;gap:1rem;"><strong>{{ key|upper }}</strong><span>{{ value }}</span></p>{% endfor %}<p><strong>DNS-blocklists</strong><br>{% set hits = analysis.report.dns_blocklists.values()|sum(start=[]) %}{{ hits|join(', ') if hits else 'Geen hit op de gecontroleerde lijsten' }}</p></section>
+  </div>
+  <section class="ui-panel"><h2>Volledigheid</h2><div class="ui-grid-2">{% for key, value in analysis.report.completeness.items() %}<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding:.45rem 0;"><span>{{ key|replace('_',' ')|title }}</span><strong>{{ 'Aanwezig' if value else 'Ontbreekt' }}</strong></div>{% endfor %}</div></section>
+  <section class="ui-panel"><h2>Signalen en waarschuwingen</h2>{% if analysis.report.warnings %}<ul>{% for warning in analysis.report.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>{% else %}<p>Geen directe waarschuwingen gevonden.</p>{% endif %}<p style="color:var(--text-muted);margin-bottom:0;">SHA-256: <code>{{ analysis.message_sha256 }}</code></p></section>
+</div>
+{% endblock %}

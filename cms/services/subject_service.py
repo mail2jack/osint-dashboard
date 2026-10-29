@@ -34,6 +34,7 @@ from cms.models import (
     subject_relations,
 )
 from cms.routes.utils import normalize_phone
+from cms.services.fact_conflicts import detect_fact_conflicts
 
 logger = logging.getLogger(__name__)
 
@@ -876,6 +877,7 @@ class SubjectService:
         social_accounts = [sa.to_dict() for sa in subject.social_accounts]
         identifiers = [i.to_dict() for i in subject.identifiers]
         facts = [f.to_dict() for f in subject.facts]
+        fact_conflicts = detect_fact_conflicts(subject.facts)
 
         # Relations: single canonical row per pair, resolve both directions.
         relation_rows = db.session.execute(
@@ -1103,6 +1105,7 @@ class SubjectService:
             "social_accounts": social_accounts,
             "identifiers": identifiers,
             "facts": facts,
+            "fact_conflicts": fact_conflicts,
             "relations": {"outgoing": outgoing, "incoming": incoming},
             "cases": cases,
             "actions": action_rows,

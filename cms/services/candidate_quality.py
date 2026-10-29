@@ -152,18 +152,46 @@ def platform_for_url(value: str | None) -> str | None:
     return None
 
 
+def assess_corroboration(finding) -> dict:
+    """Assess independent source support without treating repetition as proof.
+
+    A second URL on the same host is not independent corroboration.  The
+    result is deliberately descriptive only; it never changes a finding's
+    verification status.
+    """
+    source_hosts = set()
+    urls = [getattr(finding, "source_url", None)]
+    urls.extend(
+        getattr(action, "source_url", None)
+        for action in (getattr(finding, "research_actions", None) or [])
+    )
+    for url in urls:
+        canonical = canonicalize_url(url)
+        host = (urlsplit(canonical).hostname or "").lower()
+        if host:
+            source_hosts.add(host.removeprefix("www."))
+    count = len(source_hosts)
+    status = (
+        "corroborated" if count >= 2 else "single_source" if count == 1 else "unassessed"
+    )
+    return {"status": status, "count": count, "source_hosts": sorted(source_hosts)}
+
+
 def assess_finding(finding) -> dict:
     """Calculate conservative, explainable source-quality signals."""
     title = str(getattr(finding, "title", "") or "")
     content = str(getattr(finding, "content", "") or "")
     detail = str(getattr(finding, "detail", "") or "")
     source_url = str(getattr(finding, "source_url", "") or "").strip()
-    haystack = f"{title}\n{content}\n{detail}".casefold()
+    observation = str(getattr(finding, "observation", "") or "")
+    interpretation = str(getattr(finding, "interpretation", "") or "")
+    haystack = f"{title}\n{content}\n{detail}\n{observation}\n{interpretation}".casefold()
     canonical_url = canonicalize_url(source_url)
     platform = platform_for_url(source_url)
     score = 0
     reasons = []
     warnings = []
+    false_positive_signals = []
     if canonical_url:
         score += 10
         reasons.append("bron bevat een concrete URL")
@@ -185,7 +213,17 @@ def assess_finding(finding) -> dict:
         reasons.append("bron meldt expliciet een bevestigd of actief account")
     if re.search(r"\b(responded with 200|no confirmation|likely false positive|generic page)\b", haystack):
         score -= 35
-        warnings.append("bron bevat een bekend false-positive signaal")
+        signal = "bron bevat een bekend false-positive signaal"
+        warnings.append(signal)
+        false_positive_signals.append(signal)
+    if re.search(
+        r"\b(404|not found|does not exist|no such user|profile not found|account unavailable|page unavailable|user not found)\b",
+        haystack,
+    ):
+        score -= 40
+        signal = "bron meldt dat profiel of account niet beschikbaar is"
+        warnings.append(signal)
+        false_positive_signals.append(signal)
     if re.search(r"\b(search result|google search|browser search|dork)\b", haystack):
         score -= 10
         warnings.append("resultaat komt uit een zoeklaag en niet rechtstreeks uit een profiel")
@@ -196,12 +234,23 @@ def assess_finding(finding) -> dict:
     warnings.extend(identity_warnings)
     score = max(0, min(100, score))
     confidence = "high" if score >= 60 else "medium" if score >= 45 else "low"
+    review_requirements = []
+    if not canonical_url:
+        review_requirements.append("bron-URL ontbreekt")
+    if not observation:
+        review_requirements.append("feitelijke observatie ontbreekt")
+    if not interpretation:
+        review_requirements.append("interpretatie ontbreekt")
+    if getattr(finding, "corroboration_status", None) != "corroborated":
+        review_requirements.append("onafhankelijke tweede bron ontbreekt")
     return {
         "score": score, "confidence": confidence, "platform": platform,
         "canonical_url": canonical_url or None, "reasons": reasons,
         "warnings": warnings, "requires_human_validation": True,
         "identity_score": identity_score,
         "identity_matches": identity_matches,
+        "false_positive_signals": false_positive_signals,
+        "review_requirements": review_requirements,
     }
 
 
@@ -211,8 +260,15 @@ def enrich_finding_quality(finding) -> dict:
     if not isinstance(raw, dict):
         raw = {}
     quality = assess_finding(finding)
+    corroboration = assess_corroboration(finding)
+    quality["corroboration"] = corroboration
     raw["candidate_quality"] = quality
     finding.raw_data = raw
+    # Keep the explanation in a dedicated field as well as raw_data so future
+    # consumers do not have to understand the complete legacy payload shape.
+    finding.confidence_reasons = quality
+    finding.corroboration_status = corroboration["status"]
+    finding.corroboration_count = corroboration["count"]
     if not getattr(finding, "confidence_level", None):
         finding.confidence_level = quality["confidence"]
     return quality

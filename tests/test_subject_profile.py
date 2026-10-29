@@ -107,11 +107,14 @@ class TestFlagGate:
             "Financial",
             "Online",
             "Relations",
-            "Research actions",
+            ("Research actions", "Onderzoeksacties"),
             "Facts",
             "Findings",
         ):
-            assert tab in html
+            if isinstance(tab, tuple):
+                assert any(label in html for label in tab)
+            else:
+                assert tab in html
         assert case.case_number in html
         assert "Open case" in html
 

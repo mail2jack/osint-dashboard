@@ -313,6 +313,18 @@ function findingHtml(f) {
   }
 
   var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  var evidenceHtml = '';
+  if (f.observation || f.interpretation || (f.corroboration_status && f.corroboration_status !== 'unassessed')) {
+    evidenceHtml = '<div style="margin-top:0.45rem;padding:0.45rem 0.6rem;border-left:3px solid var(--accent-primary);background:var(--bg-muted,#f7f7f7);font-size:0.78rem;color:var(--text-secondary);">' +
+      '<strong>Bewijsbasis</strong>' +
+      (f.observation ? '<div style="margin-top:0.2rem;"><b>Observatie:</b> ' + esc(f.observation) + '</div>' : '') +
+      (f.interpretation ? '<div style="margin-top:0.2rem;"><b>Interpretatie:</b> ' + esc(f.interpretation) + '</div>' : '') +
+      (f.corroboration_status && f.corroboration_status !== 'unassessed' ? '<div style="margin-top:0.2rem;"><b>Corroboratie:</b> ' + esc(f.corroboration_status) + (f.corroboration_count ? ' (' + esc(String(f.corroboration_count)) + ')' : '') + '</div>' : '') +
+      '</div>';
+  }
+  var reviewHtml = (!f.verified && f.candidate_quality && f.candidate_quality.review_requirements && f.candidate_quality.review_requirements.length)
+    ? '<div style="margin-top:0.35rem;padding:0.35rem 0.5rem;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);font-size:0.75rem;color:var(--text-secondary);"><strong>Beoordelingspunten:</strong> ' + esc(f.candidate_quality.review_requirements.join(', ')) + '</div>'
+    : '';
   var confClass = f.confidence_level === 'high' || f.confidence_level === 'verified' ? 'badge-status-success' : f.confidence_level === 'medium' ? 'badge-status-warning' : 'badge-status-default';
   var statusLabel = f.status || (f.verified ? 'verified' : 'candidate');
   var statusClass = statusLabel === 'verified' ? 'badge-status-success' : statusLabel === 'rejected' ? 'badge-status-danger' : statusLabel === 'superseded' ? 'badge-status-warning' : 'badge-status-default';
@@ -334,6 +346,8 @@ function findingHtml(f) {
       '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + verifiedInfo + '</span>' +
     '</div>' +
     (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
+    evidenceHtml +
+    reviewHtml +
     (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
     (f.source_type === 'rdw' && f.raw_data ? rdwCardHtml(f.raw_data) : '') +
     ssHtml +

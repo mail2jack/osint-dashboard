@@ -85,3 +85,21 @@ De huidige AI-integratie blijft voorlopig optioneel en beperkt tot expliciete
 acties. De toekomstige AI-onderzoeksassistent is een afzonderlijke roadmap-
 ontwikkeling en wordt niet geactiveerd zonder een apart ontwerp, privacybeleid
 en expliciete productbeslissing.
+
+## Stand van zaken: fasen 8 en 9 (lokaal)
+
+De veilige basis voor de volgende fase is lokaal toegevoegd:
+
+- Subject-koppelsuggesties gebruiken uitlegbare signalen zoals exacte
+  e-mailadressen, telefoonnummers, gebruikersnamen en naamovereenkomst.
+- Een suggestie bevat altijd de score, redenen en waarschuwingen. Ook bij een
+  sterke overeenkomst blijft menselijke bevestiging verplicht; automatisch
+  koppelen, samenvoegen of feiten wijzigen gebeurt niet.
+- De suggestie-API is tenant-afgeschermd en voert geen mutatie uit.
+- De AI-onderzoeksplanner blijft werken volgens voorstel → goedkeuring →
+  expliciet starten. Betaalde acties worden niet automatisch voorgesteld.
+- AI-narratives blijven brongebonden samenvattingen. Ze kunnen geen finding
+  verifiëren en vormen geen zelfstandig bewijs.
+
+Deze wijzigingen zijn lokaal getest en nog niet naar GitHub of productie
+uitgerold.

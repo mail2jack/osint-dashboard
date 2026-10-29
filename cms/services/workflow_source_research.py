@@ -238,6 +238,8 @@ def queue_passive_source_research(
         label="Verdiept brononderzoek",
         status="pending",
         result_summary="Queued for deep source research",
+        method="SpiderFoot passive source research",
+        source_origin_type="automated",
         created_by=actor.id,
     )
     db.session.add(action)
