@@ -314,6 +314,9 @@ class TestHelp:
     def test_help_index(self, auth_client):
         resp = auth_client.get("/cms/help")
         assert resp.status_code == 200
+        assert b"help-topic-search" in resp.data
+        assert b"data-topic-card" in resp.data
+        assert b"Snelle acties" not in resp.data
 
     def test_help_topic(self, auth_client):
         resp = auth_client.get("/cms/help/cases")
