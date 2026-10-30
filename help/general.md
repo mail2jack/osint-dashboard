@@ -3,9 +3,10 @@
 ## Navigatie
 
 Gebruik het linkermenu om te wisselen tussen **Overzicht**, **Mijn werk**,
-**Meldingen**, **Zaken**, **Bevindingen**, **Rapporten & vrijgave**, **Cliënten**,
-**Subjects**, **Portal-aanvragen**, **Herinneringen**, **Instellingen** en
-**Audit trail**. De beschikbare onderdelen hangen af van je rol.
+**Meldingen**, **Zaken**, **Bevindingen**, **Rapporten & vrijgave**, **Klanten**,
+**Subjecten**, **Portal-aanvragen**, **Berichten**, **Herinneringen**,
+**Instellingen** en **Audit trail**. **Registratieaanvragen** is beschikbaar
+voor beheerders. De beschikbare onderdelen hangen af van je rol.
 
 ## Contextuele help
 
