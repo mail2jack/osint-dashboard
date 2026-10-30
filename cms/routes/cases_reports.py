@@ -13,7 +13,6 @@ from ..models import (
     Document,
     FinancialRecord,
     Finding,
-    Reminder,
     Subject,
     db,
     report_visible_finding_filter,
