@@ -322,6 +322,13 @@ def save_settings_api() -> flask.Response:
                 setting.value = new_value
                 setting.updated_at = datetime.now(timezone.utc)
 
+                if setting.key == "identity_isolation_enabled":
+                    from cms.services.identity_isolation import (
+                        reset_identity_isolation_config,
+                    )
+
+                    reset_identity_isolation_config()
+
                 # The general organization-name setting is the user-facing
                 # tenant label. Keep the tenant record in sync so the name in
                 # the CMS footer, portal, invitations and tenant selectors
