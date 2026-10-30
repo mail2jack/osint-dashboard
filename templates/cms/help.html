@@ -4,14 +4,20 @@
 
 {% block head %}
 <style>
-    .help-container { max-width: 800px; margin: 2rem auto; padding: 1.5rem; }
+    .help-container { max-width: 1080px; margin: 2rem auto; padding: 1.5rem; }
     .help-container h1 { margin-bottom: 1rem; }
     .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
-    .help-container .topic-card { background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 8px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow 0.2s; }
-    .help-container .topic-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .help-container .topic-card { background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow 0.2s, transform 0.2s; }
+    .help-container .topic-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.1); transform: translateY(-1px); }
     .help-container .topic-card h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
     .help-container .topic-card p { margin: 0; font-size: 0.85rem; color: var(--text-secondary, #666); }
-    .help-content { line-height: 1.8; }
+    .help-container .help-intro { max-width: 720px; color: var(--text-secondary, #666); }
+    .help-content { line-height: 1.8; max-width: 900px; }
+    .help-content h1 { margin-top: 1.5rem; }
+    .help-content h2 { margin-top: 2rem; }
+    .help-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .help-content th, .help-content td { border: 1px solid var(--border, #e5e7eb); padding: 0.6rem 0.75rem; text-align: left; }
+    .help-content blockquote { border-left: 4px solid var(--accent, #2563eb); margin: 1rem 0; padding: 0.5rem 1rem; background: var(--bg-muted, #f8fafc); }
 </style>
 {% endblock %}
 
@@ -19,7 +25,7 @@
 <div class="help-container">
     {% if topics %}
     <h1>Help en documentatie</h1>
-    <p style="color:var(--text-secondary);">Selecteer hieronder een onderwerp of druk op <kbd>?</kbd> op een pagina voor contextgevoelige help.</p>
+    <p class="help-intro">Raadpleeg hieronder de gebruikersdocumentatie. De Help-knop en <kbd>?</kbd> tonen op veel pagina’s direct uitleg over het huidige onderdeel.</p>
     <div class="topic-grid">
         {% for t in topics %}
         <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card">
