@@ -4,15 +4,34 @@
 
 {% block head %}
 <style>
-    .help-container { max-width: 1180px; margin: 2rem auto; padding: 1.5rem; }
-    .help-container h1 { margin: 0 0 .5rem; letter-spacing: -.02em; }
-    .help-container .help-intro { max-width: 760px; color: var(--text-secondary, #666); line-height: 1.65; margin: 0 0 1.5rem; }
-    .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
-    .help-container .topic-card { display: flex; flex-direction: column; min-height: 120px; background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 14px; padding: 1.1rem 1.2rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow .2s, transform .2s, border-color .2s; }
-    .help-container .topic-card:hover, .help-container .topic-card:focus-visible { box-shadow: 0 8px 24px rgba(15,23,42,.12); border-color: var(--accent, #2563eb); transform: translateY(-1px); outline: none; }
-    .help-container .topic-card h3 { margin: 0 0 .45rem; font-size: 1.05rem; }
-    .help-container .topic-card p { margin: 0; font-size: .9rem; color: var(--text-secondary, #666); line-height: 1.5; }
-    .help-container .topic-card .topic-id { margin-top: auto; padding-top: .75rem; font-size: .72rem; color: var(--text-muted, #8a8f98); text-transform: uppercase; letter-spacing: .08em; }
+    .help-container { max-width: 1240px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .help-hero { position: relative; overflow: hidden; padding: clamp(1.6rem, 4vw, 3rem); border: 1px solid var(--border-color, #e5e7eb); border-radius: 20px; background: linear-gradient(135deg, var(--bg-card, #fff) 0%, var(--info-bg, #f5f8ff) 100%); box-shadow: 0 10px 35px rgba(15,23,42,.06); }
+    .help-hero::after { content: ""; position: absolute; width: 230px; height: 230px; right: -75px; top: -100px; border-radius: 50%; background: rgba(37,99,235,.08); pointer-events: none; }
+    .help-eyebrow { position: relative; z-index: 1; color: var(--accent-primary, #2563eb); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .help-container h1 { position: relative; z-index: 1; margin: .45rem 0 .65rem; letter-spacing: -.035em; font-size: clamp(2rem, 4vw, 3.1rem); }
+    .help-container .help-intro { position: relative; z-index: 1; max-width: 760px; color: var(--text-secondary, #666); line-height: 1.7; margin: 0 0 1.5rem; font-size: 1.03rem; }
+    .help-search { position: relative; z-index: 1; display: flex; align-items: center; gap: .7rem; max-width: 760px; padding: .55rem .7rem .55rem .95rem; border: 1px solid var(--border-color, #dfe5ef); border-radius: 12px; background: var(--bg-card, #fff); box-shadow: 0 4px 14px rgba(15,23,42,.08); }
+    .help-search:focus-within { border-color: var(--accent-primary, #2563eb); box-shadow: 0 0 0 3px rgba(37,99,235,.14); }
+    .help-search-icon { color: var(--text-muted, #778197); font-size: 1.2rem; line-height: 1; }
+    .help-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-primary, #111827); font: inherit; padding: .55rem 0; }
+    .help-search input::placeholder { color: var(--text-muted, #8a93a3); }
+    .help-search kbd { flex: 0 0 auto; padding: .25rem .45rem; border: 1px solid var(--border-color, #dfe5ef); border-radius: 6px; color: var(--text-muted, #778197); background: var(--bg-muted, #f8fafc); font-size: .72rem; }
+    .help-hero-meta { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: .8rem 1.3rem; margin-top: 1rem; color: var(--text-muted, #778197); font-size: .82rem; }
+    .help-library { margin-top: 2.5rem; }
+    .help-library-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .help-library-head h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.02em; }
+    .help-library-head p { margin: 0; color: var(--text-muted, #778197); font-size: .85rem; }
+    .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .help-container .topic-card { display: flex; flex-direction: column; min-height: 150px; background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow .2s, transform .2s, border-color .2s; }
+    .help-container .topic-card:hover, .help-container .topic-card:focus-visible { box-shadow: 0 10px 26px rgba(15,23,42,.11); border-color: var(--accent-primary, #2563eb); transform: translateY(-2px); outline: none; }
+    .help-container .topic-card h3 { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 0 .55rem; font-size: 1.05rem; }
+    .help-container .topic-card h3::after { content: "→"; color: var(--accent-primary, #2563eb); font-size: 1.1rem; transition: transform .2s; }
+    .help-container .topic-card:hover h3::after, .help-container .topic-card:focus-visible h3::after { transform: translateX(3px); }
+    .help-container .topic-card p { margin: 0; font-size: .9rem; color: var(--text-secondary, #666); line-height: 1.55; }
+    .help-container .topic-card .topic-id { margin-top: auto; padding-top: 1rem; font-size: .7rem; color: var(--text-muted, #8a8f98); text-transform: uppercase; letter-spacing: .08em; }
+    .help-empty { display: none; padding: 2rem; border: 1px dashed var(--border-color, #d5dbe5); border-radius: 14px; color: var(--text-secondary, #667085); text-align: center; background: var(--bg-muted, #f8fafc); }
+    .help-empty.is-visible { display: block; }
+    @media (max-width: 620px) { .help-container { padding: 1rem .85rem 3rem; } .help-library-head { align-items: start; flex-direction: column; } .help-search kbd { display: none; } }
     .help-content { line-height: 1.75; max-width: 920px; background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 14px; padding: 1.5rem 1.75rem; }
     .help-content h1 { margin-top: 1rem; letter-spacing: -.02em; }
     .help-content h2 { margin-top: 2rem; padding-top: .5rem; border-top: 1px solid var(--border, #e5e7eb); }
@@ -25,17 +44,56 @@
 {% block content %}
 <div class="help-container">
     {% if topics %}
-    <h1>Help en documentatie</h1>
-    <p class="help-intro">Raadpleeg hieronder de gebruikersdocumentatie. De Help-knop en <kbd>?</kbd> tonen per scherm de uitleg die bij de huidige taak hoort.</p>
-    <div class="topic-grid">
+    <section class="help-hero" aria-labelledby="help-title">
+        <div class="help-eyebrow">Iveras CMS · kenniscentrum</div>
+        <h1 id="help-title">Help en documentatie</h1>
+        <p class="help-intro">Vind snel uitleg over werken met zaken, subjects, klanten, onderzoeksacties en rapportage. De Help-knop en <kbd>?</kbd> tonen ook per scherm de uitleg die bij de huidige taak hoort.</p>
+        <label class="help-search" for="help-topic-search">
+            <span class="help-search-icon" aria-hidden="true">⌕</span>
+            <input id="help-topic-search" type="search" autocomplete="off" placeholder="Zoek in documentatie…" aria-label="Zoek in documentatie">
+            <kbd>⌘ K</kbd>
+        </label>
+        <div class="help-hero-meta"><span><strong>{{ topics|length }}</strong> onderwerpen</span><span>Actuele uitleg voor de huidige applicatie</span></div>
+    </section>
+    <section class="help-library" aria-labelledby="help-topics-title">
+        <div class="help-library-head"><h2 id="help-topics-title">Alle onderwerpen</h2><p id="help-results" aria-live="polite">{{ topics|length }} onderwerpen beschikbaar</p></div>
+    <div class="topic-grid" id="help-topic-grid">
         {% for t in topics %}
-        <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card">
+        <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card" data-topic-card data-search="{{ (t.title ~ ' ' ~ t.description ~ ' ' ~ t.id)|lower }}">
             <h3>{{ t.title }}</h3>
             <p>{{ t.description }}</p>
             <span class="topic-id">Documentatie</span>
         </a>
         {% endfor %}
     </div>
+    <p class="help-empty" id="help-empty">Geen onderwerpen gevonden. Probeer een andere zoekterm.</p>
+    </section>
+    <script>
+      (() => {
+        const input = document.getElementById('help-topic-search');
+        const cards = [...document.querySelectorAll('[data-topic-card]')];
+        const results = document.getElementById('help-results');
+        const empty = document.getElementById('help-empty');
+        if (!input) return;
+        const filter = () => {
+          const query = input.value.trim().toLowerCase();
+          let visible = 0;
+          cards.forEach((card) => {
+            const match = !query || card.dataset.search.includes(query);
+            card.hidden = !match;
+            if (match) visible += 1;
+          });
+          results.textContent = `${visible} ${visible === 1 ? 'onderwerp' : 'onderwerpen'} gevonden`;
+          empty.classList.toggle('is-visible', visible === 0);
+        };
+        input.addEventListener('input', filter);
+        document.addEventListener('keydown', (event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+            event.preventDefault(); input.focus(); input.select();
+          }
+        });
+      })();
+    </script>
     {% elif topic_html %}
     <a href="{{ url_for('cms.help_index') }}" style="color:var(--text-secondary);text-decoration:none;font-size:0.9rem;">&larr; Alle onderwerpen</a>
     <div class="help-content">{{ topic_html|safe }}</div>
