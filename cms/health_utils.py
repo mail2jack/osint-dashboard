@@ -10,7 +10,35 @@ from cms.models import db, Setting
 logger = logging.getLogger(__name__)
 
 _TOR_CHECK_TIMEOUT = 10
-_TORCHECK_URL = "https://check.torproject.org"
+_TORCHECK_URL = "https://check.torproject.org/api/ip"
+
+
+def _check_tor_exit() -> str:
+    """Verify Tor through the configured request pipeline.
+
+    The API endpoint is more reliable than scraping the Tor check page and
+    explicitly tells us whether the request exited through Tor. A short
+    retry absorbs transient TLS/relay failures without reporting Tor down.
+    """
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            response = jittered_get(
+                _TORCHECK_URL,
+                timeout=_TOR_CHECK_TIMEOUT,
+                headers={"Accept": "application/json"},
+            )
+            if response.status_code != 200:
+                return f"unexpected: {response.status_code}"
+            payload = response.json()
+            if payload.get("IsTor") is True:
+                return "ok"
+            return "not_using_tor"
+        except Exception as exc:  # noqa: BLE001 — expose bounded health status
+            last_error = exc
+            if attempt == 0:
+                time.sleep(0.25)
+    return f"unavailable: {last_error}"
 
 
 def check_migrations() -> str:
@@ -135,22 +163,10 @@ def check_external_services(quick: bool = False, timings: dict | None = None) ->
 
         # Tor — active connection test via check.torproject.org
         if is_tor_enabled():
-            try:
-                r = measure(
-                    "tor",
-                    lambda: jittered_get(
-                        _TORCHECK_URL,
-                        timeout=_TOR_CHECK_TIMEOUT,
-                    ),
-                )
-                if "Congratulations" in r.text:
-                    result["tor"] = "ok"
-                elif r.status_code == 200:
-                    result["tor"] = "not_using_tor"
-                else:
-                    result["tor"] = f"unexpected: {r.status_code}"
-            except Exception as e:
-                result["tor"] = f"unavailable: {e}"
+            started = time.monotonic()
+            result["tor"] = _check_tor_exit()
+            if timings is not None:
+                timings["tor"] = round((time.monotonic() - started) * 1000, 3)
         else:
             result["tor"] = "disabled"
 

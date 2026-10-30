@@ -55,9 +55,7 @@
 .notifications-main .notif-page-header{display:flex;align-items:flex-start;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1rem;margin-bottom:.75rem}.notifications-main .notif-page-header h1{font-size:1.35rem}.notifications-main .notif-filters{justify-content:flex-end}.notifications-main .notif-filters select{min-width:155px;padding:.55rem .7rem;border-radius:8px}.notifications-main .sub-header{padding:.75rem 1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;margin-bottom:.75rem}.notifications-main .notif-list{display:grid;gap:.7rem}.notifications-main .notif-item-page{display:flex;align-items:flex-start;gap:.85rem;padding:1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}.notifications-main .notif-item-page:hover{background:var(--bg-card);border-color:var(--accent-primary);box-shadow:0 3px 10px rgba(15,23,42,.07)}.notifications-main .notif-item-page.unread{background:var(--info-bg,#eff6ff);border-left:4px solid var(--accent-primary)}.notifications-main .notif-item-page .notif-actions button{border:1px solid var(--border-color);background:var(--bg-card);padding:.35rem .5rem;border-radius:7px}.notifications-main .notif-item-page .notif-actions button:hover{border-color:var(--accent-primary);background:var(--info-bg,#eff6ff)}.notifications-main .empty-state{padding:2rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px}@media(max-width:760px){.notifications-main .notif-page-header{display:block}.notifications-main .notif-filters{justify-content:flex-start;margin-top:.75rem}}
 </style>
 
-<div class="notifications-workspace"><div class="notifications-layout">
-<aside class="notifications-nav" aria-label="Werkruimtemenu"><div class="notifications-nav-title">Iveras CMS <span style="float:right;color:var(--text-muted);font-weight:400;">werkruimte</span></div><div class="notifications-nav-section"><h2>Start</h2><a href="{{ url_for('cms.dashboard') }}">📊 Overzicht</a><a class="active" href="{{ url_for('cms.notification_history') }}">🔔 Meldingen</a></div><div class="notifications-nav-section"><h2>Werk</h2><a href="{{ url_for('workflow.dashboard') }}">📁 Zaken</a><a href="{{ url_for('workflow.findings_dashboard') }}">🧩 Bevindingen</a><a href="{{ url_for('workflow.findings_index', report='in') }}">📄 Rapporten & vrijgave</a></div><div class="notifications-nav-section"><h2>Relaties</h2><a href="{{ url_for('cms.clients') }}">🏢 Klanten</a><a href="{{ url_for('cms.subjects') }}">👤 Subjecten</a><a href="{{ url_for('cms.portal_requests') }}">📨 Portal-aanvragen</a>{% if current_user.has_role('admin', 'owner') %}<a href="{{ url_for('cms.customer_registrations') }}">🧾 Registratieaanvragen</a>{% endif %}</div><div class="notifications-nav-section"><h2>Communicatie</h2><a href="{{ url_for('cms.reminders') }}">⏰ Herinneringen</a></div>{% if current_user.is_admin %}<div class="notifications-nav-section"><h2>Beheer</h2><a href="{{ url_for('cms.settings') }}">⚙️ Instellingen</a><a href="{{ url_for('cms.audit_log') }}">🛡️ Audit trail</a></div>{% endif %}</aside>
-<main class="notifications-main">
+<div class="notifications-main">
 <div class="notif-page-header">
     <h1>🔔 {{ _('Notifications') }}</h1>
     <div class="notif-filters">
@@ -91,7 +89,7 @@
 </div>
 
 <div class="pagination" id="pagination"></div>
-</main></div></div>
+</div>
 
 <script nonce="{{ csp_nonce }}">
 var currentPage = 0;

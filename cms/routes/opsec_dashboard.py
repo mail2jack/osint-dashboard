@@ -100,9 +100,13 @@ def opsec_status_api():
     )
 
     settings = {}
+    setting_ids = {}
     for key in _OPSEC_KEYS:
         default = _OPSEC_DEFAULTS.get(key)
-        settings[key] = Setting.get(key, default)
+        setting = Setting.query.filter_by(key=key, is_active=True).first()
+        settings[key] = setting.value if setting else default
+        if setting:
+            setting_ids[key] = setting.id
 
     return jsonify(
         {
@@ -121,6 +125,7 @@ def opsec_status_api():
                 "enabled": is_identity_isolation_enabled(),
             },
             "settings": settings,
+            "setting_ids": setting_ids,
         }
     )
 

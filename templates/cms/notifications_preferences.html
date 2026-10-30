@@ -15,9 +15,7 @@
 .prefs-workspace{max-width:1400px;margin:0 auto}.prefs-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:1rem;align-items:start}.prefs-nav{padding:.7rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;position:sticky;top:1rem}.prefs-nav-title{padding:.55rem .65rem .8rem;font-weight:800;border-bottom:1px solid var(--border-color);margin-bottom:.45rem}.prefs-nav-section{margin:.25rem 0 .55rem}.prefs-nav-section h2{margin:.5rem .65rem .25rem;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}.prefs-nav a{display:flex;align-items:center;border-radius:7px;padding:.55rem .65rem;color:var(--text-secondary);text-decoration:none;font-size:.82rem}.prefs-nav a:hover,.prefs-nav a.active{background:var(--info-bg,#eff6ff);color:var(--accent-primary)}.prefs-main{min-width:0}.prefs-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;padding:1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;margin-bottom:.75rem}.prefs-header h1{margin:0;font-size:1.35rem}.prefs-lead{color:var(--text-secondary);margin:.4rem 0 0}.prefs-main .pref-card{background:var(--bg-card);border-radius:12px;padding:1rem;margin-bottom:.7rem}.prefs-main .pref-card h3{font-size:.95rem}.prefs-main .toggle-row{gap:1.5rem;flex-wrap:wrap}.prefs-actions{display:flex;align-items:center;gap:.75rem;margin-top:1rem}@media(max-width:900px){.prefs-layout{grid-template-columns:1fr}.prefs-nav{position:static}}
 </style>
 
-<div class="prefs-workspace"><div class="prefs-layout">
-<aside class="prefs-nav" aria-label="Werkruimtemenu"><div class="prefs-nav-title">Iveras CMS <span style="float:right;color:var(--text-muted);font-weight:400;">werkruimte</span></div><div class="prefs-nav-section"><h2>Start</h2><a href="{{ url_for('cms.dashboard') }}">📊 Overzicht</a><a class="active" href="{{ url_for('cms.notification_history') }}">🔔 Meldingen</a></div><div class="prefs-nav-section"><h2>Werk</h2><a href="{{ url_for('workflow.dashboard') }}">📁 Zaken</a><a href="{{ url_for('workflow.findings_dashboard') }}">🧩 Bevindingen</a><a href="{{ url_for('workflow.findings_index', report='in') }}">📄 Rapporten & vrijgave</a></div><div class="prefs-nav-section"><h2>Relaties</h2><a href="{{ url_for('cms.clients') }}">🏢 Klanten</a><a href="{{ url_for('cms.subjects') }}">👤 Subjecten</a><a href="{{ url_for('cms.portal_requests') }}">📨 Portal-aanvragen</a>{% if current_user.has_role('admin', 'owner') %}<a href="{{ url_for('cms.customer_registrations') }}">🧾 Registratieaanvragen</a>{% endif %}</div><div class="prefs-nav-section"><h2>Communicatie</h2><a href="{{ url_for('cms.reminders') }}">⏰ Herinneringen</a></div>{% if current_user.is_admin %}<div class="prefs-nav-section"><h2>Beheer</h2><a href="{{ url_for('cms.settings') }}">⚙️ Instellingen</a><a href="{{ url_for('cms.audit_log') }}">🛡️ Audit trail</a></div>{% endif %}</aside>
-<main class="prefs-main">
+<div class="prefs-main">
 <div class="prefs-header"><div><h1>⚙️ {{ _('Notification Preferences') }}</h1><p class="prefs-lead">{{ _('Choose which notification types you receive and how.') }}</p></div><a href="{{ url_for('cms.notification_history') }}" class="btn-cms">← {{ _('Back to Notifications') }}</a></div>
 
 <div id="prefList"></div>
@@ -26,7 +24,7 @@
     <button class="btn-cms" id="savePrefs">{{ _('Save Preferences') }}</button>
     <span id="saveStatus" style="margin-left:0.5rem;font-size:0.8rem;color:var(--text-muted);"></span>
 </div>
-</main></div></div>
+</div>
 
 <script nonce="{{ csp_nonce }}">
 function loadPrefs() {
