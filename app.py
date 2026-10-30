@@ -705,6 +705,27 @@ def inject_globals():
                     else:
                         mapped_topic = "general"
                 ctx["help_topic"] = mapped_topic
+            elif ep.startswith("workflow."):
+                # Workflow routes live in their own blueprint, so they do not
+                # pass through the cms.* endpoint mapping above. Keep their
+                # context help aligned with the page the user is viewing.
+                workflow_topic_map = {
+                    "dashboard": "cases",
+                    "case_new": "cases",
+                    "case_detail": "cases",
+                    "case_edit": "cases",
+                    "case_report_hub": "reports",
+                    "investigations_index": "workflow",
+                    "investigation_detail": "workflow",
+                    "investigation_edit": "workflow",
+                    "findings_index": "workflow",
+                    "findings_dashboard": "workflow",
+                    "pv_view": "reports",
+                    "pv_edit": "reports",
+                }
+                ctx["help_topic"] = workflow_topic_map.get(
+                    ep.split(".", 1)[1], "workflow"
+                )
             else:
                 ctx["help_topic"] = "general"
         else:
