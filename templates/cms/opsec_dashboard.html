@@ -18,6 +18,11 @@
   .opsec-badge-xs { display:inline-block; padding:0.1rem 0.4rem; border-radius:3px; font-size:0.65rem; font-weight:600; margin:0.15rem; }
   .opsec-badge-xs.pass { background:#f0fdf4; color:#16a34a; }
   .opsec-badge-xs.fail { background:#fef2f2; color:#dc2626; }
+  .opsec-toggle { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--border-color); }
+  .opsec-toggle label { display:flex; align-items:center; gap:.5rem; font-size:.8rem; color:var(--text-secondary); cursor:pointer; }
+  .opsec-toggle input { width:1.1rem; height:1.1rem; accent-color:var(--accent-primary); }
+  .opsec-toggle input:disabled { cursor:not-allowed; opacity:.55; }
+  .opsec-status { font-size:.75rem; color:var(--text-muted); margin-top:.5rem; }
 </style>
 
 <div class="ui-breadcrumbs"><a href="{{ url_for('cms.dashboard') }}">Dashboard</a><span>›</span><span>Beheer</span><span>›</span><span>OPSEC</span></div>
@@ -90,6 +95,8 @@ function renderOpsec(d) {
   html += '<div class="opsec-card">';
   html += '<div class="opsec-card-title">🆔 Identity Isolation</div>';
   html += '<div class="opsec-row"><span class="opsec-label">Enabled</span><span class="opsec-value">' + (d.identity_isolation.enabled ? '✅ Yes' : '⏹️ No') + '</span></div>';
+  html += '<div class="opsec-toggle"><label><input type="checkbox" id="identityIsolationToggle"' + (d.identity_isolation.enabled ? ' checked' : '') + (d.tor.enabled ? '' : ' disabled') + '> Inschakelen per onderzoek</label><button class="btn-cms small" data-click="saveIdentityIsolation"' + (d.tor.enabled ? '' : ' disabled') + '>Opslaan</button></div>';
+  html += '<div class="opsec-status">' + (d.tor.enabled ? 'Vereist een Tor-configuratie met IsolateSOCKSAuth.' : 'Schakel Tor eerst in voordat identity isolation kan worden gebruikt.') + '</div>';
   html += '</div>';
 
   /* Settings card */
@@ -129,6 +136,27 @@ window.verifyChain = function() {
     .catch(function() {
       if (el) el.innerHTML = '<span style="color:var(--danger-text);">❌ Controle mislukt</span>';
     });
+};
+
+window.saveIdentityIsolation = function() {
+  var toggle = document.getElementById('identityIsolationToggle');
+  if (!toggle || !window.opsecData || !window.opsecData.setting_ids.identity_isolation_enabled) return;
+  if (toggle.checked && !window.opsecData.tor.enabled) {
+    alert('Schakel Tor eerst in.');
+    toggle.checked = false;
+    return;
+  }
+  apiFetch('/cms/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({settings: [{id: window.opsecData.setting_ids.identity_isolation_enabled, value: toggle.checked ? 'true' : 'false'}]})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.errors && data.errors.length) throw new Error(data.errors.join(', '));
+    refreshOpsec();
+  }).catch(function(err) {
+    alert('Opslaan mislukt: ' + err.message);
+    refreshOpsec();
+  });
 };
 
 document.addEventListener('DOMContentLoaded', refreshOpsec);
