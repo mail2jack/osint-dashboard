@@ -2,8 +2,8 @@
 
 {% block title %}Help{% endblock %}
 
-{% block head %}
-<style>
+{% block extra_head %}
+<style nonce="{{ csp_nonce }}">
     .help-container { max-width: 1240px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
     .help-hero { position: relative; overflow: hidden; padding: clamp(1.6rem, 4vw, 3rem); border: 1px solid var(--border-color, #e5e7eb); border-radius: 20px; background: linear-gradient(135deg, var(--bg-card, #fff) 0%, var(--info-bg, #f5f8ff) 100%); box-shadow: 0 10px 35px rgba(15,23,42,.06); }
     .help-hero::after { content: ""; position: absolute; width: 230px; height: 230px; right: -75px; top: -100px; border-radius: 50%; background: rgba(37,99,235,.08); pointer-events: none; }
@@ -68,7 +68,7 @@
     </div>
     <p class="help-empty" id="help-empty">Geen onderwerpen gevonden. Probeer een andere zoekterm.</p>
     </section>
-    <script>
+    <script nonce="{{ csp_nonce }}">
       (() => {
         const input = document.getElementById('help-topic-search');
         const cards = [...document.querySelectorAll('[data-topic-card]')];
