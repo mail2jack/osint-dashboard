@@ -23,6 +23,7 @@
     .help-library-head p { margin: 0; color: var(--text-muted, #778197); font-size: .85rem; }
     .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
     .help-container .topic-card { display: flex; flex-direction: column; min-height: 150px; background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow .2s, transform .2s, border-color .2s; }
+    .help-container .topic-card[hidden] { display: none; }
     .help-container .topic-card:hover, .help-container .topic-card:focus-visible { box-shadow: 0 10px 26px rgba(15,23,42,.11); border-color: var(--accent-primary, #2563eb); transform: translateY(-2px); outline: none; }
     .help-container .topic-card h3 { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 0 .55rem; font-size: 1.05rem; }
     .help-container .topic-card h3::after { content: "→"; color: var(--accent-primary, #2563eb); font-size: 1.1rem; transition: transform .2s; }
