@@ -110,7 +110,7 @@ jaraco.functools==4.4.0
 jaraco.text==4.2.0
 jedi==0.19.2
 joblib==1.5.3
-joserfc==1.7.4
+joserfc==1.7.6
 jsonpickle==4.1.1
 langdetect==1.0.9
 librt==0.15.0
