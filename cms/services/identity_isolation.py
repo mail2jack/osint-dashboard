@@ -70,6 +70,12 @@ def is_identity_isolation_enabled() -> bool:
     return _IDENTITY_ENABLED
 
 
+def reset_identity_isolation_config() -> None:
+    """Force the next status read to reload the persisted setting."""
+    global _IDENTITY_LAST_CHECK
+    _IDENTITY_LAST_CHECK = 0
+
+
 def identity_for_proxy(proxy_url: str, identity: str) -> str:
     """Insert identity as SOCKS5 username for Tor auth isolation.
 
