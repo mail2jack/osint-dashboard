@@ -4,19 +4,20 @@
 
 {% block head %}
 <style>
-    .help-container { max-width: 1080px; margin: 2rem auto; padding: 1.5rem; }
-    .help-container h1 { margin-bottom: 1rem; }
-    .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
-    .help-container .topic-card { background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow 0.2s, transform 0.2s; }
-    .help-container .topic-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.1); transform: translateY(-1px); }
-    .help-container .topic-card h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
-    .help-container .topic-card p { margin: 0; font-size: 0.85rem; color: var(--text-secondary, #666); }
-    .help-container .help-intro { max-width: 720px; color: var(--text-secondary, #666); }
-    .help-content { line-height: 1.8; max-width: 900px; }
-    .help-content h1 { margin-top: 1.5rem; }
-    .help-content h2 { margin-top: 2rem; }
+    .help-container { max-width: 1180px; margin: 2rem auto; padding: 1.5rem; }
+    .help-container h1 { margin: 0 0 .5rem; letter-spacing: -.02em; }
+    .help-container .help-intro { max-width: 760px; color: var(--text-secondary, #666); line-height: 1.65; margin: 0 0 1.5rem; }
+    .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .help-container .topic-card { display: flex; flex-direction: column; min-height: 120px; background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 14px; padding: 1.1rem 1.2rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow .2s, transform .2s, border-color .2s; }
+    .help-container .topic-card:hover, .help-container .topic-card:focus-visible { box-shadow: 0 8px 24px rgba(15,23,42,.12); border-color: var(--accent, #2563eb); transform: translateY(-1px); outline: none; }
+    .help-container .topic-card h3 { margin: 0 0 .45rem; font-size: 1.05rem; }
+    .help-container .topic-card p { margin: 0; font-size: .9rem; color: var(--text-secondary, #666); line-height: 1.5; }
+    .help-container .topic-card .topic-id { margin-top: auto; padding-top: .75rem; font-size: .72rem; color: var(--text-muted, #8a8f98); text-transform: uppercase; letter-spacing: .08em; }
+    .help-content { line-height: 1.75; max-width: 920px; background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .help-content h1 { margin-top: 1rem; letter-spacing: -.02em; }
+    .help-content h2 { margin-top: 2rem; padding-top: .5rem; border-top: 1px solid var(--border, #e5e7eb); }
     .help-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-    .help-content th, .help-content td { border: 1px solid var(--border, #e5e7eb); padding: 0.6rem 0.75rem; text-align: left; }
+    .help-content th, .help-content td { border: 1px solid var(--border, #e5e7eb); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
     .help-content blockquote { border-left: 4px solid var(--accent, #2563eb); margin: 1rem 0; padding: 0.5rem 1rem; background: var(--bg-muted, #f8fafc); }
 </style>
 {% endblock %}
@@ -25,12 +26,13 @@
 <div class="help-container">
     {% if topics %}
     <h1>Help en documentatie</h1>
-    <p class="help-intro">Raadpleeg hieronder de gebruikersdocumentatie. De Help-knop en <kbd>?</kbd> tonen op veel pagina’s direct uitleg over het huidige onderdeel.</p>
+    <p class="help-intro">Raadpleeg hieronder de gebruikersdocumentatie. De Help-knop en <kbd>?</kbd> tonen per scherm de uitleg die bij de huidige taak hoort.</p>
     <div class="topic-grid">
         {% for t in topics %}
         <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card">
             <h3>{{ t.title }}</h3>
-            <p>{{ t.id }}</p>
+            <p>{{ t.description }}</p>
+            <span class="topic-id">Documentatie</span>
         </a>
         {% endfor %}
     </div>

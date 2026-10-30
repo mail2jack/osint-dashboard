@@ -1,41 +1,22 @@
-# Comments
+# Opmerkingen
 
-The **Comments** system provides internal team notes within cases and subjects. Comments are only visible to logged-in users.
+Gebruik opmerkingen voor interne samenwerking en context bij een zaak,
+subject, cliënt of bevinding.
 
-## Posting a Comment
+## Een opmerking plaatsen
 
-Comments can be added from:
+Schrijf de tekst in het opmerkingenveld en kies **Toevoegen**. Vermeld geen
+gevoelige gegevens die niet nodig zijn voor het onderzoek.
 
-- **Case detail page** — general case comments
-- **Subject detail page** — subject-specific comments
-- **Finding detail** — finding-specific notes
+## Opmerking wijzigen
 
-Click **Add Comment** or type in the text field and click **Save**.
+Je kunt je eigen opmerkingen wijzigen wanneer dat is toegestaan. De wijziging
+en bewerkingsgeschiedenis blijven zichtbaar in de audit trail.
 
-## Comment Types
+## Opmerking, actie of bevinding?
 
-| Type | Scope |
-|------|-------|
-| **General** | General note |
-| **Note** (subject) | Subject note (migrated from the old `notes` field) |
-| **Internal** | Internal team comment |
+- **Opmerking**: interne afstemming of korte context.
+- **Onderzoeksactie**: wat is uitgevoerd, met welke bron en welk resultaat.
+- **Bevinding**: een inhoudelijke conclusie met bron, status en onderbouwing.
 
-## Editing a Comment
-
-Comments can be edited:
-
-1. Click the ✏️ icon next to the comment
-2. Modify the text
-3. Click **Save**
-
-### Edit History
-
-Every edit is saved in the **Comment Edit History**. You can view the original and previous versions via the 📋 button on the comment.
-
-## Deleting a Comment
-
-Only the author or an admin can delete a comment. Click the 🗑️ icon to delete.
-
-## Notes vs Comments
-
-The old `notes` field on Subjects has been migrated to the Comments model. Only subjects without existing comments with the same content get a comment created during migration (idempotent).
+Gebruik altijd het meest specifieke type zodat rapportage en controle kloppen.

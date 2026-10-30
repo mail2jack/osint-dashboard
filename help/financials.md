@@ -1,47 +1,22 @@
-# Financial Data
+# Financiële gegevens
 
-The **Financials** system tracks financial transactions and data within a case. This includes bank transactions, invoices, payments, and other money flows.
+Financiële gegevens horen bij een zaak en zijn alleen zichtbaar voor rollen
+die daarvoor toestemming hebben.
 
-## Financial Records
+## Vastleggen
 
-Each financial record has the following fields:
+Leg type, bedrag, valuta, datum, tegenpartij en toelichting vast. Gebruik
+**Credit** voor inkomsten en **Debit** voor uitgaven. Controleer bedragen en
+rekeninggegevens vóór je opslaat.
 
-| Field | Description |
-|-------|-------------|
-| **Type** | Credit (income) or Debit (expense) |
-| **Amount** | Amount in euros |
-| **Date** | Date of the transaction |
-| **Description** | Description of the transaction |
-| **Counterparty** | Name of the counterparty |
-| **Category** | Category (Salary, Invoice, Transfer, etc.) |
-| **Source** | Source of the data (bank statement, invoice, etc.) |
-| **Reference** | Reference number / transaction ID |
+## Controleren en rapporteren
 
-## Adding Financial Data
+Markeer een record als geverifieerd wanneer de bron is gecontroleerd. Neem
+financiële gegevens alleen op in een rapport wanneer ze noodzakelijk zijn en
+door de vrijgavecontrole komen.
 
-1. Open the case detail page
-2. Scroll to the **Financials** section
-3. Click **Add Financial Record**
-4. Fill in the details
-5. Click **Save**
+## Facturen en creditnota’s
 
-## Overview
-
-The financials section shows:
-
-- All records in a table sorted by date
-- Total amount (sum of all credit/debit records)
-- Pagination (20 records per page)
-
-## Categories
-
-Available categories can be extended in the admin settings.
-
-## Usage
-
-Financials are typically used for:
-
-- Recording suspicious transactions
-- Documenting payment flows
-- Tracking investigation costs
-- Generating financial overviews for reports
+Facturen en creditnota’s worden vanuit **Financieel** beheerd. Een geannuleerde
+of betaalde factuur blijft traceerbaar; verwijder geen financiële gegevens om
+een correctie te verbergen.
