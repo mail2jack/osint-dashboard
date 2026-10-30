@@ -119,3 +119,25 @@ def test_legacy_dashboard_case_number_uses_workflow_detail_route(auth_client):
     assert response.status_code == 200
     assert f'href="/cms/workflow/case/{case.id}"' in body
     assert f'href="/cms/cases/{case.id}"' not in body
+
+
+def test_legacy_case_detail_redirects_to_workflow(auth_client):
+    """Direct links to the legacy case detail use the current layout."""
+    admin = _admin()
+    token = uuid.uuid4().hex[:8]
+    now = datetime.now(UTC)
+    client = Client(
+        tenant_id=admin.tenant_id,
+        name=f"Legacy redirect client {token}",
+        is_active=True,
+        created_by=admin.id,
+    )
+    db.session.add(client)
+    db.session.flush()
+    case = _make_case(admin, client, token, 1, now)
+    db.session.commit()
+
+    response = auth_client.get(f"/cms/cases/{case.id}", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/cms/workflow/case/{case.id}")

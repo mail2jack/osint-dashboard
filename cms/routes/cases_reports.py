@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 
 import flask
-from flask import abort, jsonify, render_template, request
+from flask import abort, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from ..auth import apply_tenant_filter, audit_read, can_export, case_access_required
@@ -13,7 +13,6 @@ from ..models import (
     Document,
     FinancialRecord,
     Finding,
-    Reminder,
     Subject,
     db,
     report_visible_finding_filter,
@@ -78,74 +77,9 @@ def export_case_json(case_id: str) -> flask.Response:
 @case_access_required
 @audit_read("case")
 def view_case(case_id: str) -> str:
-    """View case details with subjects, findings, and financials."""
+    """Redirect legacy case detail URLs to the current workflow screen."""
     case = db.session.get(Case, case_id) or abort(404)
-    subjects = case.subjects.filter(Subject.is_deleted == False).all()
-    child_cases = case.child_cases.filter_by(is_deleted=False).all()
-
-    findings_page = request.args.get("findings_page", 1, type=int)
-    findings_per_page = 20
-    findings_pagination = (
-        case.findings.filter(Finding.is_deleted == False, Finding.archived_at.is_(None))
-        .order_by(Finding.created_at.desc())
-        .paginate(page=findings_page, per_page=findings_per_page, error_out=False)
-    )
-
-    financials_page = request.args.get("financials_page", 1, type=int)
-    financials_per_page = 20
-    financials_pagination = (
-        case.financial_records.filter_by(is_deleted=False)
-        .order_by(FinancialRecord.transaction_date.desc())
-        .paginate(page=financials_page, per_page=financials_per_page, error_out=False)
-    )
-
-    documents_page = request.args.get("documents_page", 1, type=int)
-    documents_per_page = 20
-    documents_pagination = (
-        Document.query.filter_by(case_id=case_id, is_deleted=False)
-        .order_by(Document.created_at.desc())
-        .paginate(page=documents_page, per_page=documents_per_page, error_out=False)
-    )
-
-    case_reminders = (
-        Reminder.query.filter_by(case_id=case_id, is_deleted=False)
-        .order_by(Reminder.reminder_date.asc())
-        .all()
-    )
-
-    linked_ids = [s.id for s in subjects]
-    all_subjects = (
-        apply_tenant_filter(
-            Subject.query.filter(
-                Subject.is_deleted == False, ~Subject.id.in_(linked_ids)
-            ),
-            Subject,
-        )
-        .limit(500)
-        .all()
-    )
-
-    with db.session.no_autoflush:
-        for s in subjects:
-            s.decrypt_identifiers()
-        for s in all_subjects:
-            s.decrypt_identifiers()
-
-        return render_template(
-            "cms/cases/view.html",
-            case=case,
-            subjects=subjects,
-            findings=findings_pagination.items,
-            findings_pagination=findings_pagination,
-            financials=financials_pagination.items,
-            financials_pagination=financials_pagination,
-            documents=documents_pagination.items,
-            documents_pagination=documents_pagination,
-            all_subjects=all_subjects,
-            case_reminders=case_reminders,
-            child_cases=child_cases,
-        )
-
+    return redirect(url_for("workflow.case_detail", case_id=case.id))
 
 @cms_bp.route("/cases/<case_id>/timeline")
 @login_required

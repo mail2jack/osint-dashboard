@@ -214,8 +214,8 @@ class TestExportsAndViewsSoftDelete:
         db.session.commit()
 
         resp = auth_client.get(f"/cms/cases/{case.id}")
-        assert resp.status_code == 200
-        assert "View Gone Subject" not in resp.get_data(as_text=True)
+        assert resp.status_code == 302
+        assert resp.headers["Location"].endswith(f"/cms/workflow/case/{case.id}")
 
     def test_workflow_dashboard_excludes_deleted_case(self, auth_client):
         case = _make_case(owner=None)
