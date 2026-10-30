@@ -725,6 +725,16 @@ def dashboard():
     else:
         cases_query = cases_query.filter(sa.false())
 
+    query_text = (request.args.get("q") or "").strip()
+    if query_text:
+        pattern = f"%{query_text}%"
+        cases_query = cases_query.filter(
+            sa.or_(
+                WorkflowCase.case_number.ilike(pattern),
+                WorkflowCase.title.ilike(pattern),
+            )
+        )
+
     cases_query = cases_query.order_by(
         WorkflowCase.created_at.desc(), WorkflowCase.id.desc()
     )
