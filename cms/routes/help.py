@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 HELP_DIR = Path(__file__).resolve().parent.parent.parent / "help"
 ALLOWED_TOPICS = {
     "general",
+    "investigations",
     "dashboard",
     "cases",
     "clients",
