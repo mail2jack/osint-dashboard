@@ -412,6 +412,7 @@
     <div id="helpPanel" class="help-panel">
         <div class="help-panel-header">
             <span>📖 {{ _('Help') }}</span>
+            <a href="{{ url_for('cms.help_index') }}" style="color:inherit;font-size:0.8rem;text-decoration:underline;margin-left:auto;margin-right:0.75rem;">{{ _('Alle documentatie') }}</a>
             <button class="help-close" data-click="closeHelp">✕</button>
         </div>
         <div class="help-panel-content" id="helpPanelContent">
