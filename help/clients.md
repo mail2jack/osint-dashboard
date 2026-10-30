@@ -1,50 +1,33 @@
-# Clients
+# Cliënten
 
-**Clients** represent the organizations or persons that request investigations. Each case is linked to exactly one client.
+Een cliënt is de organisatie of particuliere opdrachtgever voor één of meer
+zaken. De nieuwe cliëntkaart toont alleen velden die voor het gekozen type
+nodig zijn.
 
-## Client Fields
+## Cliënt aanmaken
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Name of the organization or person (required) |
-| **Contact Person** | Name of the contact person |
-| **Email** | Email address |
-| **Phone** | Phone number |
-| **Address** | Street + number + postal code + city |
+1. Open **Cliënten** en kies **Nieuwe cliënt**.
+2. Kies particulier of organisatie/bedrijf.
+3. Vul de relevante naam, contactpersoon, e-mail, telefoon en adresgegevens
+   in.
+4. Controleer primaire contactgegevens en het primaire adres.
+5. Sla de cliënt op.
 
-## Creating a Client
+Bij een particuliere cliënt wordt geen organisatie-/klantnaam gevraagd. Bij een
+organisatie of bedrijf verschijnt dat veld wel.
 
-1. Click **Clients** → **New Client**
-2. Fill in the details
-3. Click **Save**
+## Adres en contact
 
-You are redirected to the client detail page where you can see all linked cases.
+Nederlandse postcode en huisnummer worden samen gecontroleerd. Bij een geldig
+resultaat worden straat en plaats automatisch ingevuld. Bij meerdere adressen
+markeer je precies één adres als **Primair**.
 
-## Client Detail Page
+E-mailadressen worden gecontroleerd op de vorm `naam@domein.extensie` zodra je
+het veld verlaat. Telefoonnummers worden genormaliseerd naar een herkenbare
+internationale notatie.
 
-Shows client data and a list of all associated cases. Click on a case to navigate directly.
+## Cliëntdetails en archiveren
 
-## Archiving
-
-Clients can be archived instead of deleted. Archived clients are hidden from the main list but remain accessible via the **Show Archived** toggle.
-
-## Address Features
-
-Each address card has action buttons:
-
-- **🔍 Postcode Check** — calls the Dutch BAG (PDOK) API to auto-fill street + city based on postal code + house number
-- **🚔 Police Station** — finds the nearest police station for that address via the Politie NL API
-
-## Phone Number Check
-
-If a phone number is stored, a 📞 button appears. It enriches the number with:
-
-- Carrier (provider)
-- Line type (mobile, voip, landline)
-- Region and timezone
-- WhatsApp presence
-- Telegram presence
-
-## Duplicate Detection
-
-When creating a client, the system automatically checks for similar existing clients to prevent duplicate registrations.
+De detailpagina toont cliëntgegevens, gekoppelde zaken, contactpersonen en de
+auditgeschiedenis. Archiveer een cliënt wanneer deze niet meer actief is; de
+gegevens blijven beschikbaar voor bestaande dossiers.

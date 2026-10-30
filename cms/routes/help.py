@@ -32,7 +32,11 @@ ALLOWED_TOPICS = {
     "search",
     "settings",
     "reminders",
+    "notifications",
     "exports",
+    "reports",
+    "portal",
+    "workflow",
     "financials",
     "comments",
     "audit",
@@ -101,6 +105,28 @@ def _load_help(topic: str) -> tuple[str | None, str | None]:
 @login_required
 def help_index() -> str:
     """Full help overview page."""
+    descriptions = {
+        "audit": "Wie heeft wat gedaan en wanneer.",
+        "cases": "Zaken, statussen, relaties, bevindingen en rapportage.",
+        "clients": "Cliënten, contactgegevens, adressen en controles.",
+        "dashboard": "De werkruimte, zoeken en openstaande acties.",
+        "exports": "CSV-, JSON- en rapportexports.",
+        "financials": "Financiële gegevens, facturen en creditnota’s.",
+        "general": "Navigatie, sneltoetsen, sessies en continuïteit.",
+        "investigations": "Stappenplan van nieuwe zaak tot archivering.",
+        "lookups": "Adres-, telefoon-, voertuig- en vaartuigcontroles.",
+        "notifications": "Meldingen, voorkeuren en opvolging.",
+        "portal": "Klantregistraties en portal-aanvragen.",
+        "reminders": "Herinneringen, deadlines en opvolging.",
+        "reports": "Rapportopbouw, vrijgave en klantversies.",
+        "search": "Zoeken in dossiers en OSINT-zoekopdrachten.",
+        "settings": "Instellingen, gebruikers, services en back-ups.",
+        "social": "Sociale profielen en bronvastlegging.",
+        "spiderfoot": "Scans starten, volgen, stoppen en importeren.",
+        "subjects": "Personen, organisaties, vaartuigen en relaties.",
+        "users": "Gebruikers, rollen, 2FA en accountbeheer.",
+        "workflow": "Onderzoeksacties, bevindingen en kwaliteitscontrole.",
+    }
     topics = []
     for fname in sorted(HELP_DIR.glob("*.md")):
         topic = fname.stem
@@ -112,7 +138,7 @@ def help_index() -> str:
                 if line.startswith("# "):
                     title = line.lstrip("# ")
                     break
-            topics.append({"id": topic, "title": title})
+            topics.append({"id": topic, "title": title, "description": descriptions.get(topic, "Uitleg over dit onderdeel.")})
     return render_template("cms/help.html", topics=topics)
 
 

@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+import pytest
+
 
 # ─── Financial Records ─────────────────────────────────────────────────────
 
@@ -317,6 +319,11 @@ class TestHelp:
         resp = auth_client.get("/cms/help/cases")
         assert resp.status_code == 200
 
+    @pytest.mark.parametrize("topic", ["investigations", "notifications", "portal", "reports", "workflow"])
+    def test_new_help_topics(self, auth_client, topic):
+        resp = auth_client.get(f"/cms/help/{topic}")
+        assert resp.status_code == 200
+
     def test_help_topic_invalid(self, auth_client):
         resp = auth_client.get("/cms/help/doesnotexist")
         assert resp.status_code == 404
@@ -326,6 +333,11 @@ class TestHelp:
         assert resp.status_code == 200
         data = resp.get_json()
         assert "html" in data
+
+    def test_context_help_topic_for_notifications(self, auth_client):
+        resp = auth_client.get("/cms/notifications")
+        assert resp.status_code == 200
+        assert b"Meldingen" in resp.data
 
     def test_help_api_topic_invalid(self, auth_client):
         resp = auth_client.get("/cms/api/help/doesnotexist")

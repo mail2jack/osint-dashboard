@@ -1,44 +1,31 @@
-# General
+# Algemene help
 
-The OSINT Dashboard is a web application for managing investigations (cases), recording findings, and performing OSINT searches.
+## Navigatie
 
-## Navigation
+Gebruik het linkermenu om te wisselen tussen **Overzicht**, **Mijn werk**,
+**Meldingen**, **Zaken**, **Bevindingen**, **Rapporten & vrijgave**, **Cliënten**,
+**Subjects**, **Portal-aanvragen**, **Herinneringen**, **Instellingen** en
+**Audit trail**. De beschikbare onderdelen hangen af van je rol.
 
-The main navigation bar contains:
+## Contextuele help
 
-- **Dashboard** — central hub with statistics and recent activity
-- **Cases** — overview of all investigations
-- **Clients** — clients linked to cases
-- **Subjects** — persons, companies, or vessels of interest
-- **Search** — full-text search across the entire database
-- **Reminders** — reminders and notifications
-- **SpiderFoot** — OSINT scan automation (senior/admin only)
-- **Settings** — application configuration (admin only)
+Klik op het vraagteken of druk op `?` om uitleg over het huidige scherm te
+openen. Kies **Alle documentatie** voor het volledige overzicht.
 
-## Keyboard Shortcuts
+## Sneltoetsen
 
-| Key | Action |
-|-----|--------|
-| `?` | Open context-sensitive help panel |
-| `s` | Focus the search bar (on search pages) |
-| `j` / `k` | Navigate down/up in lists |
-| `Enter` | Open selected item |
-| `Escape` | Close modals / help panel |
+- `s` — zoeken;
+- `j` en `k` — door resultaten navigeren;
+- `Enter` — geselecteerd item openen;
+- `?` — Help openen.
 
-## Theme
+## Sessie en veiligheid
 
-Click the 🌙/☀️ icon in the top right to toggle between dark/light mode. The choice is saved in localStorage.
-
-## Session
-
-The session expires after 8 hours of inactivity. Attached files are limited to 16 MB per upload.
-
-## Rate Limiting
-
-To prevent abuse, there is a global limit of 300 requests per 60 seconds per IP. For create/edit actions, a stricter limit of 30 requests per 60 seconds applies.
+Log uit wanneer je klaar bent. Deel geen accounts en laat geen gevoelige
+gegevens achter in screenshots of browservensters. Inactiviteit beëindigt de
+sessie volgens de ingestelde beveiligingsperiode.
 
 ## Continuïteit
 
-De productieomgeving wordt tweemaal per dag versleuteld geback-upt en een
-geslaagde backup wordt off-site bewaard. Voor gebruikers verandert dit niets;
-herstelacties worden alleen door bevoegde beheerders uitgevoerd.
+Productie maakt tweemaal per dag een versleutelde back-up. Een restore wordt
+uitgevoerd volgens het productie-runbook en niet vanuit de gewone Help.

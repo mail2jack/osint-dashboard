@@ -634,21 +634,77 @@ def inject_globals():
                 topic_map = {
                     "dashboard": "dashboard",
                     "cases_crud": "cases",
+                    "cases": "cases",
+                    "create_case": "cases",
+                    "edit_case": "cases",
+                    "view_case": "cases",
+                    "case_report": "reports",
+                    "case_report_pdf": "reports",
+                    "generate_case_report": "reports",
+                    "case_timeline": "cases",
                     "cases_state": "cases",
                     "cases_subjects": "cases",
                     "cases_reports": "cases",
                     "clients_crud": "clients",
+                    "clients": "clients",
+                    "view_client": "clients",
+                    "create_client": "clients",
+                    "edit_client": "clients",
                     "clients_archive": "clients",
                     "subjects_list": "subjects",
+                    "subjects": "subjects",
+                    "view_subject": "subjects",
+                    "subject_profile": "subjects",
+                    "edit_subject": "subjects",
                     "subjects_crud": "subjects",
                     "subjects_faces": "subjects",
                     "subjects_rel": "subjects",
                     "spiderfoot": "spiderfoot",
+                    "spiderfoot_index": "spiderfoot",
+                    "spiderfoot_scan": "spiderfoot",
+                    "spiderfoot_scans": "spiderfoot",
+                    "spiderfoot_scan_status": "spiderfoot",
                     "settings": "settings",
+                    "tenant_settings": "settings",
+                    "statistics": "settings",
+                    "manage_api_keys": "settings",
                     "osint_search": "search",
                     "search": "search",
+                    "global_search": "search",
+                    "reminders": "reminders",
+                    "create_reminder": "reminders",
+                    "view_reminder": "reminders",
+                    "edit_reminder": "reminders",
+                    "notification_history": "notifications",
+                    "notification_preferences": "notifications",
+                    "audit_log": "audit",
+                    "customer_registrations": "portal",
+                    "portal_requests": "portal",
+                    "workflow": "workflow",
+                    "invoice_list": "financials",
+                    "invoice_create": "financials",
+                    "invoice_view": "financials",
+                    "credit_note_list": "financials",
                 }
-                ctx["help_topic"] = topic_map.get(topic, "general")
+                mapped_topic = topic_map.get(topic)
+                if mapped_topic is None:
+                    if topic.startswith(("notification", "announcement")):
+                        mapped_topic = "notifications"
+                    elif topic.startswith(("portal", "customer_registration", "registration")):
+                        mapped_topic = "portal"
+                    elif topic.startswith(("workflow", "finding")):
+                        mapped_topic = "workflow"
+                    elif topic.startswith(("report", "template")):
+                        mapped_topic = "reports"
+                    elif topic.startswith(("invoice", "credit_note", "financial")):
+                        mapped_topic = "financials"
+                    elif topic.startswith(("reminder",)):
+                        mapped_topic = "reminders"
+                    elif topic.startswith(("audit", "login_history")):
+                        mapped_topic = "audit"
+                    else:
+                        mapped_topic = "general"
+                ctx["help_topic"] = mapped_topic
             else:
                 ctx["help_topic"] = "general"
         else:
